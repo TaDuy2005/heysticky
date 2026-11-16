@@ -85,19 +85,65 @@ inline int todo_row_at(int y) {
 }
 
 // ---------- 02a/02b New task, 02d/02e Edit task ----------
+// Deadline = Date and Time, each on/off. Both off = none; Time only = today at that time;
+// Date only = a date-only @due.
+struct Deadline {
+  bool dateOn = false, timeOn = false;
+  long sel = 0;     // chosen day (day_num)
+  int mins = 9 * 60;
+  int y = 2026, m = 1;  // month shown in 02c
+};
 struct TaskEdit {
   int idx = -1;  // -1 = new task
-  String text, due;
+  String text;
+  Deadline dl;
   bool kbOpen = true, dirty = false;
   uint32_t dirtyAt = 0;
   Keyboard kb;
 };
 inline TaskEdit g_ed;
+inline Deadline g_dlUndo;  // restored by Cancel in 02c / 02h
 constexpr int FIELD_X = 40, FIELD_Y = 132, FIELD_W = 400, FIELD_H = 76;
-constexpr int TODAY_DUE_HOUR = 18;  // "Today" chip: 18:00, or the next full hour after that
+constexpr int ROW_DATE_Y = 259, ROW_TIME_Y = 339, ROW_H = 72;
 
-struct Chip { int16_t x, y, w; };
-inline Chip g_chips[4];  // None, Today, Tomorrow, Pick date
+inline Deadline dl_from(const String &due) {
+  Deadline d;
+  const String now = now_key();
+  d.dateOn = due.length() > 0;
+  d.timeOn = due.length() == 16;
+  d.sel = ymd_num(due.length() ? due : now.length() ? now : String("2026-01-01"));
+  if (d.timeOn) d.mins = due.substring(11, 13).toInt() * 60 + due.substring(14).toInt();
+  int day;
+  civil(d.sel, d.y, d.m, day);
+  return d;
+}
+
+inline bool dl_due(const Deadline &d, String &due) {  // false: Time only, but no clock for "today" yet
+  if (!d.dateOn && !d.timeOn) { due = ""; return true; }
+  const String now = now_key();
+  if (!d.dateOn && !now.length()) return false;
+  due = (d.dateOn ? ymd(d.sel) : now.substring(0, 10)) + (d.timeOn ? " " + hhmm(d.mins) : String(""));
+  return true;
+}
+
+inline String dmy(long n) {  // "17/11/26"
+  int y, m, d;
+  civil(n, y, m, d);
+  char b[9];
+  snprintf(b, sizeof b, "%02d/%02d/%02d", d, m, y % 100);
+  return b;
+}
+
+// Settings-style rows (Figma Row/...): Bold 28 label; value + chevron, or a toggle.
+inline void link_row(int y, const String &label, const String &value) {
+  ui_text(F_B28, label, 40, y + 18, 37);
+  ui_text(F_R25, value, 402, y + 20, 33, AL_RIGHT);
+  ui_icon(ICON_CHEV, 414, y + 23);
+}
+inline void toggle_row(int y, const String &label, bool on) {
+  ui_text(F_B28, label, 40, y + 18, 37);
+  ui_toggle(372, y + 17, on);
+}
 
 inline void editor_field() {
   ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
@@ -115,56 +161,14 @@ inline void editor_field() {
   if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
 }
 
-inline int chip_selected(const String &now) {
-  if (!g_ed.due.length()) return 0;
-  const long d = ymd_num(g_ed.due), today = now.length() ? ymd_num(now) : -9;
-  return d == today ? 1 : d == today + 1 ? 2 : 3;
-}
-
-inline void editor_chips() {
-  display.fillRect(40, 259, 400, 122, PAPER);
-  const String now = now_key(), hm = short_hm(g_ed.due), sp = hm.length() ? " " : "";
-  const int sel = chip_selected(now);
-  const String label[4] = {"None", sel == 1 ? "Today" + sp + hm : "Today", sel == 2 ? "Tomorrow" + sp + hm : "Tomorrow",
-                           sel == 3 ? day_month(ymd_num(g_ed.due)) + sp + hm : "Pick date"};
-  int x = 40, y = 259;
-  for (int k = 0; k < 4; k++) {
-    const int w = ui_width(F_B25, label[k]) + 32 + (k == 3 ? 26 : 0);
-    if (x + w > 440) { x = 40; y = 324; }
-    const bool on = k == sel;
-    if (on) display.fillRoundRect(x, y, w, 57, 22, INK);
-    else ui_card(x, y, w, 57, 22, 2);
-    int tx = x + 16;
-    if (k == 3) { ui_icon(ICON_CAL, tx, y + 19, on ? PAPER : INK); tx += 26; }
-    ui_text(F_B25, label[k], tx, y + 12, 33, AL_LEFT, on ? PAPER : INK, on ? INK : PAPER);
-    g_chips[k] = {int16_t(x), int16_t(y), int16_t(w)};
-    x += w + 8;
-  }
-}
-
-inline int chip_at(int x, int y) {
-  for (int k = 0; k < 4; k++)
-    if (x >= g_chips[k].x && x < g_chips[k].x + g_chips[k].w && y >= g_chips[k].y && y < g_chips[k].y + 57) return k;
-  return -1;
-}
-
-// Chip 1/2: today at TODAY_DUE_HOUR (or the next hour, if later) / tomorrow 09:00. Needs the clock.
-inline bool chip_due(int k, String &due) {
-  const String now = now_key();
-  if (!now.length()) return false;
-  if (k == 2) { due = ymd(ymd_num(now) + 1) + " 09:00"; return true; }
-  const int h = max(TODAY_DUE_HOUR, int(now.substring(11, 13).toInt()) + 1);
-  due = now.substring(0, 10) + (h > 23 ? String(" 23:59") : " " + String(h) + ":00");
-  return true;
-}
-
 inline void draw_task_editor() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_topbar(g_ed.idx < 0 ? "New task" : "Edit task", "Cancel");
   editor_field();
   ui_text(F_B25, "DEADLINE (OPTIONAL)", 40, 218, 33);
-  editor_chips();
+  link_row(ROW_DATE_Y, "Date", g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : "Off");
+  link_row(ROW_TIME_Y, "Time", g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : "Off");
   if (g_ed.kbOpen) {
     g_ed.kb.draw();
   } else if (g_ed.idx < 0) {
@@ -175,80 +179,127 @@ inline void draw_task_editor() {
   }
 }
 
-// ---------- 02c Deadline picker ----------
-struct Picker { int y, m, mins; long sel; };
-inline Picker g_pk;
-constexpr int CAL_TOP = 212, CELL_W = 57, CELL_H = 48, TIME_STEP = 15;
+// ---------- 02c Date ----------
+constexpr int CAL_TOP = 280, CELL_W = 57, CELL_H = 48;
 
 inline int cal_x(int col) { return 40 + col * 400 / 7; }
-inline long month_first() { return day_num(g_pk.y, g_pk.m, 1); }
+inline long month_first() { return day_num(g_ed.dl.y, g_ed.dl.m, 1); }
 inline int month_lead() { return (weekday(month_first()) + 6) % 7; }  // Monday-first column of day 1
-inline int month_days() { return day_num(g_pk.y + (g_pk.m == 12), g_pk.m % 12 + 1, 1) - month_first(); }
+inline int month_days() { return day_num(g_ed.dl.y + (g_ed.dl.m == 12), g_ed.dl.m % 12 + 1, 1) - month_first(); }
 
-inline void picker_open() {
-  const String now = now_key();
-  g_pk.sel = ymd_num(g_ed.due.length() ? g_ed.due : now.length() ? now : String("2026-01-01"));
-  int d;
-  civil(g_pk.sel, g_pk.y, g_pk.m, d);
-  g_pk.mins = g_ed.due.length() == 16 ? g_ed.due.substring(11, 13).toInt() * 60 + g_ed.due.substring(14).toInt() : 9 * 60;
+inline void date_month(int step) {
+  Deadline &d = g_ed.dl;
+  d.m += step;
+  if (d.m < 1) { d.m = 12; d.y--; }
+  if (d.m > 12) { d.m = 1; d.y++; }
 }
 
-inline void picker_month(int step) {
-  g_pk.m += step;
-  if (g_pk.m < 1) { g_pk.m = 12; g_pk.y--; }
-  if (g_pk.m > 12) { g_pk.m = 1; g_pk.y++; }
-}
-
-inline String picker_due() { return ymd(g_pk.sel) + " " + hhmm(g_pk.mins); }
-
-inline void draw_picker() {
+inline void draw_date() {
+  const Deadline &dl = g_ed.dl;
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Deadline", "Clear");
-  ui_icon(ICON_LEFT30, 40, 128);
-  ui_text(F_X25, String(MONTHS[g_pk.m - 1]) + " " + g_pk.y, W / 2, 126, 33, AL_CENTER);
-  ui_icon(ICON_RIGHT30, 410, 128);
-  static const char *const WD[] = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
-  for (int c = 0; c < 7; c++) ui_text(F_B25, WD[c], cal_x(c) + CELL_W / 2, 169, 33, AL_CENTER);
-  const String now = now_key();
-  const long first = month_first(), today = now.length() ? ymd_num(now) : -9;
-  for (int d = 1, n = month_days(); d <= n; d++) {
-    const int cell = month_lead() + d - 1, x = cal_x(cell % 7), y = CAL_TOP + cell / 7 * CELL_H;
-    const bool sel = first + d - 1 == g_pk.sel, tod = first + d - 1 == today;
-    if (sel) display.fillRoundRect(x, y, CELL_W, CELL_H, 8, INK);
-    else if (tod) ui_card(x, y, CELL_W, CELL_H, 8, 2);
-    ui_text(sel || tod ? F_X25 : F_R25, String(d), x + CELL_W / 2, y + 8, 33, AL_CENTER, sel ? PAPER : INK, sel ? INK : PAPER);
+  ui_topbar("Date", "Cancel");
+  toggle_row(112, "Date", dl.dateOn);
+  if (dl.dateOn) {
+    ui_icon(ICON_LEFT30, 40, 196);
+    ui_text(F_X25, String(MONTHS[dl.m - 1]) + " " + dl.y, W / 2, 194, 33, AL_CENTER);
+    ui_icon(ICON_RIGHT30, 410, 196);
+    static const char *const WD[] = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
+    for (int c = 0; c < 7; c++) ui_text(F_B25, WD[c], cal_x(c) + CELL_W / 2, 237, 33, AL_CENTER);
+    const String now = now_key();
+    const long first = month_first(), today = now.length() ? ymd_num(now) : -9;
+    for (int d = 1, n = month_days(); d <= n; d++) {
+      const int cell = month_lead() + d - 1, x = cal_x(cell % 7), y = CAL_TOP + cell / 7 * CELL_H;
+      const bool sel = first + d - 1 == dl.sel, tod = first + d - 1 == today;
+      if (sel) display.fillRoundRect(x, y, CELL_W, CELL_H, 8, INK);
+      else if (tod) ui_card(x, y, CELL_W, CELL_H, 8, 2);
+      ui_text(sel || tod ? F_X25 : F_R25, String(d), x + CELL_W / 2, y + 8, 33, AL_CENTER, sel ? PAPER : INK, sel ? INK : PAPER);
+    }
   }
-  ui_card(40, 510, 400, 69, 12, 2);
-  ui_icon(ICON_CLOCK28, 58, 531);
-  ui_text(F_B25, "Time", 98, 528, 33);
-  ui_icon(ICON_DOWN30, 236, 530);
-  ui_text(F_X34, hhmm(g_pk.mins), 278, 522, 45);
-  ui_icon(ICON_UP30, 392, 530);
-  display.fillRoundRect(40, 711, 400, 73, 12, INK);
-  ui_text(F_X25, String("Set · ") + DAY3[weekday(g_pk.sel)] + " " + day_month(g_pk.sel) + ", " + hhmm(g_pk.mins),
-          W / 2, 731, 33, AL_CENTER, PAPER, INK);
+  ui_button(40, 711, 400, 73, true, nullptr, "Done");
 }
 
-inline bool picker_day_at(int x, int y) {  // tap on a day cell -> select it
+inline bool date_day_at(int x, int y) {  // tap on a day cell -> select it
   if (x < 40 || x >= 440 || y < CAL_TOP || y >= CAL_TOP + 6 * CELL_H) return false;
   const int d = (y - CAL_TOP) / CELL_H * 7 + (x - 40) * 7 / 400 - month_lead() + 1;
   if (d < 1 || d > month_days()) return false;
-  g_pk.sel = month_first() + d - 1;
+  g_ed.dl.sel = month_first() + d - 1;
   return true;
+}
+
+// ---------- 02h Time: HH:MM fields + number pad ----------
+inline TimeEntry g_te;
+constexpr int TF_Y = 224, TF_W = 140, TF_H = 100;
+inline const int TF_X[2] = {65, 276};
+
+inline void time_begin() {
+  g_te = TimeEntry();
+  const String t = hhmm(g_ed.dl.mins);
+  g_te.f[0] = t.substring(0, 2);
+  g_te.f[1] = t.substring(3);
+}
+
+inline void time_commit() { g_ed.dl.mins = g_te.f[0].toInt() * 60 + g_te.f[1].toInt(); }  // "" counts as 0
+
+inline void time_fields() {
+  display.fillRect(40, TF_Y, 400, TF_H, PAPER);
+  for (int i = 0; i < 2; i++) {
+    const bool on = i == g_te.active;
+    if (on) display.fillRoundRect(TF_X[i], TF_Y, TF_W, TF_H, 12, INK);
+    else ui_card(TF_X[i], TF_Y, TF_W, TF_H, 12, 3);
+    ui_text(F_X64, g_te.f[i], TF_X[i] + TF_W / 2, TF_Y + 8, 84, AL_CENTER, on ? PAPER : INK, on ? INK : PAPER);
+  }
+  ui_text(F_X64, ":", W / 2, TF_Y + 8, 84, AL_CENTER);
+}
+
+// Keypad keys 0..11 = 1-9, backspace, 0, Done (Figma Keypad: 3 x 146 px columns, 68 px rows).
+inline int pad_x(int i) { return 12 + i % 3 * 155; }
+inline int pad_y(int i) { return 524 + i / 3 * 68; }
+
+inline void draw_keypad() {
+  display.fillRect(0, KB_TOP, W, KB_H, PAPER);
+  display.fillRect(0, KB_TOP, W, 2, INK);
+  for (int i = 0; i < 12; i++) {
+    const int x = pad_x(i), y = pad_y(i);
+    if (i == 11) {
+      display.fillRoundRect(x, y, 146, 60, 6, INK);
+      ui_icon(ICON_KB_ENTER, x + 28, y + 18, PAPER);
+      ui_text(F_X25, "Done", x + 58, y + 14, 33, AL_LEFT, PAPER, INK);
+      continue;
+    }
+    ui_card(x, y, 146, 60, 6, 2);
+    if (i == 9) ui_icon(ICON_KB_BACKSPACE, x + 58, y + 15);
+    else ui_text(F_B25, String(i == 10 ? 0 : i + 1), x + 73, y + 14, 33, AL_CENTER);
+  }
+}
+
+inline int keypad_hit(int x, int y) {
+  if (y < 520 || x < 8) return -1;
+  const int c = min((x - 8) / 155, 2), r = min((y - 520) / 68, 3);
+  return r * 3 + c;
+}
+
+inline void draw_time() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar("Time", "Cancel");
+  toggle_row(112, "Time", g_ed.dl.timeOn);
+  if (g_ed.dl.timeOn) {
+    time_fields();
+    draw_keypad();
+  } else {
+    ui_button(40, 711, 400, 73, true, nullptr, "Done");
+  }
 }
 
 // ---------- 02f Delete task ----------
 inline void draw_delete_task() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  display.fillCircle(240, 237, 80, INK);
-  display.fillCircle(240, 237, 75, PAPER);
-  ui_icon(ICON_TRASH64, 208, 205);
-  ui_text(F_X40, "Delete task?", W / 2, 335, 53, AL_CENTER);
-  ui_card(40, 406, 400, 182, 14, 3);
-  ui_text(F_X25, ui_fit(F_X25, g_ed.text, 354), 63, 425, 33);
-  ui_wrap(F_R25, "It will be removed from /todo.md on the SD card.", 63, 464, 354, 35, 3);
+  display.fillCircle(240, 337, 80, INK);  // badge 160x160, 5 px ring
+  display.fillCircle(240, 337, 75, PAPER);
+  ui_icon(ICON_TRASH64, 208, 305);
+  ui_text(F_X40, "Delete task?", W / 2, 435, 53, AL_CENTER);
   ui_button(40, 705, 193, 79, false, &ICON_TRASH24, "Delete");
   ui_button(247, 705, 193, 79, true, &ICON_X24, "Cancel");
 }
