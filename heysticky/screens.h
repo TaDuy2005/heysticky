@@ -1,21 +1,21 @@
-// HeySticky screens: 01 Home, 01a Apps, 04j Web setup. Coordinates from Figma frames 4:2 / 35:521.
+// HeySticky screens: 01 Home, 01a Apps, 04j Web setup, To-do (todo_ui.h); navigation and touch.
+// Coordinates from the Figma frames.
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include "ui.h"
 #include "kbd.h"
 #include "net.h"
+#include "todo_ui.h"
 
-enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_NEWTASK };
+enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DEADLINE, SCR_DELTASK, SCR_NOSD };
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
-struct HomeState { String date, clock, indoor, humidity; int battery = -2; bool wifi = false; uint32_t wxAt = 1; };
+struct HomeState { String date, clock, indoor, humidity; int battery = -2, today = -2; bool wifi = false; uint32_t wxAt = 1; };
 inline HomeState g_shown;  // what is currently on the panel
 
 inline String fmt_date(const tm &t) {
   static const char *DAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-  static const char *MONTHS[] = {"January", "February", "March", "April", "May", "June", "July",
-                                 "August", "September", "October", "November", "December"};
   return String(DAYS[t.tm_wday]) + ", " + t.tm_mday + " " + MONTHS[t.tm_mon];
 }
 
@@ -83,10 +83,12 @@ inline void home_indoor(const String &temp, const String &hum) {
   ui_text(F_R25, "Humidity", 311, 498, 33);
 }
 
-inline void home_today(int n) {  // ponytail: always 0 until To-do lands (TASK-08)
+inline int today_count() { return g_sdOk ? todo_due_today(g_tasks, now_key()) : -1; }  // -1 = no card
+
+inline void home_today(int n) {
   ui_card(40, 561, 400, 72, 12, 2);
-  ui_icon(n ? ICON_CHECKLIST : ICON_CHECK_CIRCLE, 58, 584);
-  ui_text(F_X30, n == 0 ? "No tasks today" : String(n) + (n == 1 ? " task today" : " tasks today"), 96, 577, 40);
+  ui_icon(n > 0 ? ICON_CHECKLIST : ICON_CHECK_CIRCLE, 58, 584);
+  ui_text(F_X30, n < 0 ? "No microSD card" : n == 0 ? "No tasks today" : String(n) + (n == 1 ? " task today" : " tasks today"), 96, 577, 40);
   ui_icon(ICON_CHEV, 402, 584);
 }
 
@@ -103,7 +105,7 @@ inline void draw_home() {
   g_shown.wxAt = g_wx.at;
   read_indoor(g_shown.indoor, g_shown.humidity);
   home_indoor(g_shown.indoor, g_shown.humidity);
-  home_today(0);
+  home_today(g_shown.today = today_count());
   ui_page_counter("1/2");
 }
 
@@ -117,6 +119,8 @@ inline void home_tick() {
     g_shown.clock = clock; g_shown.date = date;
     home_clock(date, clock);
     ui_partial(40, 104, 400, 176);
+    const int n = today_count();  // a task's day can arrive at midnight
+    if (n != g_shown.today) { home_today(g_shown.today = n); ui_partial(40, 561, 400, 72); }
   }
   if (g_wx.at != g_shown.wxAt) {
     g_shown.wxAt = g_wx.at;
@@ -198,40 +202,64 @@ inline void draw_websetup() {
   }
 }
 
-// ---------- 02a New task (TASK-07 test bed for the keyboard; TASK-08 makes it real) ----------
-struct Editor {
-  String text;
-  bool kbOpen = true, dirty = false;
-  uint32_t dirtyAt = 0;
-  Keyboard kb;
-};
-inline Editor g_ed;
-constexpr int FIELD_X = 40, FIELD_Y = 132, FIELD_W = 400, FIELD_H = 76;
-constexpr uint32_t KEY_BATCH_MS = 30;   // keys queued during a refresh are applied together anyway
-constexpr int KBD_FULL_EVERY = 20;      // full refresh after this many typing refreshes
 
-inline void editor_field() {
-  ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
-  // Show the tail when the text is wider than the field. ponytail: drops one byte at a time,
-  // fine for ASCII; make it UTF-8 aware when Vietnamese typing (TASK-14) lands.
-  const int maxW = FIELD_W - 2 * 19 - 6;
-  String shown = g_ed.text;
-  bool cut = false;
-  while (shown.length() && ui_width(F_B26, (cut ? "…" : "") + shown) > maxW) { shown.remove(0, 1); cut = true; }
-  if (cut) shown = "…" + shown;
-  const int tw = ui_text(F_B26, shown, 59, 153, 34);
-  display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
+// ---------- navigation ----------
+inline bool g_redraw = false;  // redraw the current screen with one partial refresh (batched taps)
+
+inline void draw_screen() {
+  switch (g_screen) {
+    case SCR_HOME: draw_home(); break;
+    case SCR_APPS: draw_apps(); break;
+    case SCR_WEBSETUP: draw_websetup(); break;
+    case SCR_TODO: draw_todo(); break;
+    case SCR_TASK: draw_task_editor(); break;
+    case SCR_DEADLINE: draw_picker(); break;
+    case SCR_DELTASK: draw_delete_task(); break;
+    case SCR_NOSD: draw_nosd(); break;
+  }
 }
 
-inline void draw_newtask() {
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_text(F_X32, "New task", 40, 54, 42);
-  ui_text(F_R25, "Cancel", 440, 58, 33, AL_RIGHT);
-  display.fillRect(40, 109, 400, 3, INK);  // TopBar bottom stroke
-  editor_field();
-  if (g_ed.kbOpen) g_ed.kb.draw();
+inline void show(Screen s) {  // screen change: full refresh
+  g_screen = s;
+  g_redraw = false;
+  draw_screen();
+  ui_full();
 }
+
+inline void open_todo() {
+  g_todoPage = 0;
+  show(g_sdOk || todo_retry() ? SCR_TODO : SCR_NOSD);
+}
+
+inline void todo_commit(Screen next) { show(todo_save() ? next : SCR_NOSD); }  // after any change to g_tasks
+
+inline void open_editor(int idx) {  // idx -1 = new task
+  g_ed = TaskEdit();
+  g_ed.idx = idx;
+  if (idx >= 0) { g_ed.text = g_tasks[idx].text; g_ed.due = g_tasks[idx].due; g_ed.kbOpen = false; }
+  show(SCR_TASK);
+}
+
+inline void editor_save() {
+  String s = g_ed.text;
+  s.trim();
+  if (!s.length()) { hw_beep(120, 1200); return; }  // nothing to save
+  hw_beep(30);
+  if (g_ed.idx < 0) {
+    Task t;
+    t.text = s;
+    t.due = g_ed.due;
+    g_tasks.push_back(t);
+  } else {
+    g_tasks[g_ed.idx].text = s;
+    g_tasks[g_ed.idx].due = g_ed.due;
+  }
+  todo_commit(SCR_TODO);
+}
+
+// ---------- typing ----------
+constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are applied together anyway
+constexpr int KBD_FULL_EVERY = 20;     // full refresh after this many typing refreshes
 
 inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
   switch (k.kind) {
@@ -241,7 +269,7 @@ inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep 
       if (g_ed.kb.shift) { g_ed.kb.shift = false; g_ed.kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
       break;
     case K_BKSP:
-      if (g_ed.text.length()) g_ed.text.remove(g_ed.text.length() - 1);
+      if (g_ed.text.length()) utf8_pop(g_ed.text);
       break;
     case K_SHIFT:
     case K_MODE:
@@ -250,11 +278,9 @@ inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep 
       g_ed.kb.draw();
       ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
       return;
-    case K_DONE:  // §4: Done only hides the keyboard
-      Serial.printf("[edit] \"%s\"\n", g_ed.text.c_str());
+    case K_DONE:  // §4: Done only hides the keyboard (Save / Delete appear)
       g_ed.kbOpen = false;
-      display.fillRect(0, KB_TOP, W, KB_H, PAPER);
-      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
+      g_redraw = true;
       return;
   }
   g_ed.dirty = true;
@@ -268,59 +294,114 @@ inline void editor_flush() {  // one partial refresh per burst of keys
   ui_partial(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, KBD_FULL_EVERY);
 }
 
-// ---------- navigation ----------
-inline void show(Screen s) {
-  g_screen = s;
-  if (s == SCR_HOME) draw_home();
-  else if (s == SCR_APPS) draw_apps();
-  else if (s == SCR_NEWTASK) draw_newtask();
-  else draw_websetup();
-  ui_full();
+// ---------- touch ----------
+inline bool in(int x, int y, int x0, int y0, int w, int h) { return x >= x0 && x < x0 + w && y >= y0 && y < y0 + h; }
+inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  // Cancel / Clear / Back
+
+inline void todo_tap(int x, int y) {
+  if (in(x, y, 40, g_addBtnY, 400, 72)) { hw_beep(30); open_editor(-1); return; }
+  const int idx = todo_row_at(y);
+  if (idx < 0 || x < 40 || x >= 440) return;
+  hw_beep(30);
+  g_tasks[idx].done = !g_tasks[idx].done;
+  if (!todo_save()) { show(SCR_NOSD); return; }
+  g_redraw = true;
 }
 
-inline void open_newtask() {
-  g_ed = Editor();
-  show(SCR_NEWTASK);
+inline void editor_tap(int x, int y) {
+  if (top_right(x, y)) { hw_beep(30); show(SCR_TODO); return; }
+  if (!g_ed.kbOpen && in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back
+    g_ed.kbOpen = true;
+    g_redraw = true;
+    return;
+  }
+  const int k = chip_at(x, y);
+  if (k == 0) { g_ed.due = ""; g_redraw = true; }
+  else if (k == 1 || k == 2) { if (chip_due(k, g_ed.due)) g_redraw = true; }
+  else if (k == 3) { hw_beep(30); picker_open(); show(SCR_DEADLINE); }
+  else if (!g_ed.kbOpen && y >= 717 && y < 784) {
+    if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(30); show(SCR_DELTASK); }
+    else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
+  }
+}
+
+inline void picker_tap(int x, int y) {
+  if (top_right(x, y)) { hw_beep(30); g_ed.due = ""; show(SCR_TASK); return; }  // Clear
+  if (y >= 112 && y < 162 && (x < 110 || x >= 370)) { picker_month(x < 110 ? -1 : 1); g_redraw = true; return; }
+  if (picker_day_at(x, y)) { g_redraw = true; return; }
+  if (y >= 510 && y < 579 && (in(x, y, 220, 510, 56, 69) || x >= 376)) {
+    g_pk.mins = (g_pk.mins + (x >= 376 ? TIME_STEP : 24 * 60 - TIME_STEP)) % (24 * 60);
+    g_redraw = true;
+    return;
+  }
+  if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); g_ed.due = picker_due(); show(SCR_TASK); }
 }
 
 // Touch events come from the touch task's queue, so taps made during a refresh are not lost.
-// DOWN acts on keys; UP (with the DOWN position) acts on taps, swipes and Cancel. Backspace repeats while held.
+// DOWN acts on keys; UP (with the DOWN position) acts on taps, swipes and buttons.
 inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const int dx = x1 - x0;
-  if (g_screen == SCR_WEBSETUP && !g_ap) { show(SCR_HOME); return; }
-  if (g_screen == SCR_NEWTASK) {
-    if (x0 >= 340 && y0 >= 40 && y0 < 112) { hw_beep(30); show(SCR_APPS); }  // Cancel
-    else if (!g_ed.kbOpen && y0 >= FIELD_Y && y0 < FIELD_Y + FIELD_H) {   // tap field -> keyboard back
-      g_ed.kbOpen = true;
-      g_ed.kb.draw();
-      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
-    }
-    return;
-  }
-  if (abs(dx) > 80 && abs(dx) > abs(y1 - y0)) {  // swipe: left = next page
-    if (dx < 0 && g_screen == SCR_HOME) show(SCR_APPS);
-    else if (dx > 0 && g_screen == SCR_APPS) show(SCR_HOME);
-  } else if (g_screen == SCR_APPS) {
-    const int t = apps_hit(x0, y0);
-    if (t == 0) { hw_beep(30); open_newtask(); }           // To-do -> New task (test bed)
-    else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
+  const bool swipe = abs(dx) > 80 && abs(dx) > abs(y1 - y0);
+  switch (g_screen) {
+    case SCR_WEBSETUP:
+      if (!g_ap) show(SCR_HOME);
+      return;
+    case SCR_HOME:
+      if (swipe && dx < 0) show(SCR_APPS);
+      else if (!swipe && in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
+      return;
+    case SCR_APPS:
+      if (swipe && dx > 0) show(SCR_HOME);
+      else if (!swipe) {
+        const int t = apps_hit(x0, y0);
+        if (t == 0) { hw_beep(30); open_todo(); }
+        else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
+      }
+      return;
+    case SCR_TODO:  // swipe left = next page; right = previous page, or back to Apps from page 1
+      if (!swipe) todo_tap(x0, y0);
+      else if (dx < 0 && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
+      else if (dx > 0 && g_todoPage > 0) { g_todoPage--; g_redraw = true; }
+      else if (dx > 0) show(SCR_APPS);
+      return;
+    case SCR_TASK: editor_tap(x0, y0); return;
+    case SCR_DEADLINE: picker_tap(x0, y0); return;
+    case SCR_DELTASK:
+      if (in(x0, y0, 40, 705, 193, 79)) {
+        hw_beep(30);
+        g_tasks.erase(g_tasks.begin() + g_ed.idx);
+        todo_commit(SCR_TODO);
+      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(SCR_TASK); }
+      return;
+    case SCR_NOSD:
+      if (top_right(x0, y0)) { hw_beep(30); show(SCR_APPS); }
+      else if (in(x0, y0, 40, 712, 400, 72)) { hw_beep(30); show(todo_retry() ? SCR_TODO : SCR_NOSD); }
+      return;
   }
 }
+
+constexpr uint32_t ROW_HOLD_MS = 500;  // to-do row: hold = edit
 
 inline void screens_input() {
   static int16_t x0, y0;
   static uint32_t t0 = 0, lastRepeat = 0;
   static KbKey held;
-  static bool holding = false;
+  static bool holding = false, pressing = false, longDone = false;
   TouchEv e;
   while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
     if (e.down) {
-      x0 = e.x; y0 = e.y; t0 = millis(); holding = false;
-      if (g_screen == SCR_NEWTASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = true; editor_key(held); }
+      x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; longDone = false;
+      if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = true; editor_key(held); }
     } else {
-      holding = false;
-      on_touch_up(x0, y0, e.x, e.y);
+      holding = pressing = false;
+      if (!longDone) on_touch_up(x0, y0, e.x, e.y);
     }
+  }
+  // Long press on a to-do row opens Edit task while the finger is still down.
+  if (pressing && !longDone && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS) {
+    longDone = true;
+    const int idx = todo_row_at(y0);
+    if (idx >= 0) { hw_beep(60); open_editor(idx); }
   }
   // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
   if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
@@ -333,11 +414,21 @@ inline void screens_input() {
     if (g_screen == SCR_WEBSETUP && !g_ap) show(SCR_HOME);
     else if (b == BTN_DOWN && g_screen == SCR_HOME) show(SCR_APPS);
     else if (b == BTN_UP && g_screen == SCR_APPS) show(SCR_HOME);
+    else if (g_screen == SCR_TODO && (b == BTN_DOWN || b == BTN_UP)) {
+      const int p = g_todoPage + (b == BTN_DOWN ? 1 : -1);
+      if (p < 0) show(SCR_APPS);
+      else if (p < g_todoPages) { g_todoPage = p; g_redraw = true; }
+    }
   }
 }
 
 inline void screens_loop() {
   screens_input();
+  if (g_redraw) {
+    g_redraw = false;
+    draw_screen();
+    ui_partial(0, 0, W, H);
+  }
   if (g_screen == SCR_HOME) home_tick();
-  else if (g_screen == SCR_NEWTASK) editor_flush();
+  else if (g_screen == SCR_TASK) editor_flush();
 }

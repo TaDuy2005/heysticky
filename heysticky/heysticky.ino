@@ -16,6 +16,7 @@ void setup() {
   display.setRotation(1);  // portrait, confirmed upright on the real panel
   display.fillScreen(TFT_WHITE);  // clear any ghost of the previous image before the first draw
   display.refresh();
+  todo_load();  // after display.begin(): the card shares the panel's SPI bus
   const bool online = net_begin();
   if (online) net_loop();  // first weather fetch before the first Home draw
   show(online ? SCR_HOME : SCR_WEBSETUP);

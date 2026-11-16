@@ -28,3 +28,7 @@ inline const Font F_X28 = {X28_vlw, 29, 9};
 inline const Font F_X48 = {X48_vlw, 49, 15};
 #include "X120.h"
 inline const Font F_X120 = {X120_vlw, 123, 36};
+#include "X34.h"
+inline const Font F_X34 = {X34_vlw, 35, 11};
+#include "X40.h"
+inline const Font F_X40 = {X40_vlw, 41, 12};
