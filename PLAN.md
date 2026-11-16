@@ -34,7 +34,7 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 2. Tech stack
 
 - **Arduino C++** built with `arduino-cli`; core + libraries pinned in `sketch.yaml`
-- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi` (USB CDC on boot is the default; `CDCOnBoot=cdc` means *Disabled* on this board). The board menu only offers 8 MB flash; the 32 MB partition table comes with TASK-13
+- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,CDCOnBoot=cdc`. `cdc` means USB CDC *Disabled*, which is what we want: the USB-C port goes through a USB-UART bridge ("USB Single Serial"), so `Serial` must be UART0. The board menu only offers 8 MB flash; the 32 MB partition table comes with TASK-13
 - Seeed_GFX2 is not in the Arduino index: cloned into `libs/Seeed_GFX2` (git-ignored) at a pinned commit, referenced from `sketch.yaml`
 - Libraries: **Seeed_GFX2**, **ArduinoJson**, a small QR-code library; core built-ins `WiFi`, `WebServer`, `DNSServer`, `HTTPClient`, `Preferences`, `SD`
 - Sensors/touch over raw I2C (no extra libraries)
@@ -116,7 +116,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 - [x] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
 - [x] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
-- [ ] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
+- [x] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
 - [ ] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
 - [ ] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
 - [ ] TASK-06 Home screen
