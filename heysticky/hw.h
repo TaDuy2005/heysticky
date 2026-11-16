@@ -78,32 +78,66 @@ inline bool hw_touch_begin() {
   return true;
 }
 
-// Raw first touch point. ponytail: one point only, multi-touch when a screen needs it.
-inline bool hw_touch_read(uint16_t &x, uint16_t &y) {
-  if (!g_tp_addr) return false;
+// One GT911 report: a point, an explicit release (report with 0 points), or nothing new.
+// ponytail: first point only, multi-touch when a screen needs it.
+enum TpState : uint8_t { TP_NONE, TP_POINT, TP_RELEASE };
+inline TpState hw_touch_read(uint16_t &x, uint16_t &y) {
+  if (!g_tp_addr) return TP_NONE;
   uint8_t st;
-  if (!i2c_read(Wire, g_tp_addr, 0x814E, true, &st, 1) || !(st & 0x80)) return false;
-  bool got = false;
+  if (!i2c_read(Wire, g_tp_addr, 0x814E, true, &st, 1) || !(st & 0x80)) return TP_NONE;
+  TpState r = TP_RELEASE;
   if (st & 0x0F) {
     uint8_t p[5];
-    if (i2c_read(Wire, g_tp_addr, 0x814F, true, p, 5)) { x = p[1] | p[2] << 8; y = p[3] | p[4] << 8; got = true; }
+    if (i2c_read(Wire, g_tp_addr, 0x814F, true, p, 5)) { x = p[1] | p[2] << 8; y = p[3] | p[4] << 8; r = TP_POINT; }
   }
   Wire.beginTransmission(g_tp_addr);  // clear buffer-ready flag
   Wire.write(0x81); Wire.write(0x4E); Wire.write(0);
   Wire.endTransmission();
-  return got;
+  return r;
 }
 
 // Touch in screen coordinates (portrait 480x800, rotation 1).
 // Calibration knobs, checked on the device with a dot test: only Y is flipped.
 constexpr bool TOUCH_FLIP_X = false, TOUCH_FLIP_Y = true;
-inline bool hw_touch_get(int16_t &x, int16_t &y) {
+inline TpState hw_touch_get(int16_t &x, int16_t &y) {
   uint16_t rx, ry;
-  if (!hw_touch_read(rx, ry)) return false;
+  const TpState s = hw_touch_read(rx, ry);
+  if (s != TP_POINT) return s;
   const int16_t w = g_tp_maxX ? g_tp_maxX : 480, h = g_tp_maxY ? g_tp_maxY : 800;
   x = constrain(TOUCH_FLIP_X ? w - 1 - rx : rx, 0, w - 1);
   y = constrain(TOUCH_FLIP_Y ? h - 1 - ry : ry, 0, h - 1);
-  return true;
+  return TP_POINT;
+}
+
+// ---------- touch task: keeps reading while the main loop waits on an e-paper refresh ----------
+struct TouchEv { int16_t x, y; bool down; };  // down = finger landed, else lifted (x/y = last point)
+inline QueueHandle_t g_touchQ = nullptr;
+inline volatile bool g_touchHeld = false;     // finger currently on the glass
+constexpr uint32_t TOUCH_LOST_MS = 300;       // fallback release if the chip never reports 0 points
+constexpr int TOUCH_NEW_TAP_PX = 40;          // a jump this far within one contact = a new tap (fast typing)
+
+inline void touch_task(void *) {
+  bool down = false;
+  int16_t lx = 0, ly = 0;
+  uint32_t last = 0;
+  auto push = [](int16_t x, int16_t y, bool d) { TouchEv e{x, y, d}; xQueueSend(g_touchQ, &e, 0); };
+  for (;;) {
+    int16_t x, y;
+    const TpState s = hw_touch_get(x, y);
+    if (s == TP_POINT) {
+      if (down && (abs(x - lx) > TOUCH_NEW_TAP_PX || abs(y - ly) > TOUCH_NEW_TAP_PX) && millis() - last > 30) {
+        push(lx, ly, false);  // next finger landed before the chip reported the lift
+        down = false;
+      }
+      if (!down) { down = true; push(x, y, true); }
+      lx = x; ly = y; last = millis();
+    } else if (down && (s == TP_RELEASE || millis() - last > TOUCH_LOST_MS)) {
+      down = false;
+      push(lx, ly, false);
+    }
+    g_touchHeld = down;
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
 }
 
 // ---------- SHT40 (0x44 on Wire1) ----------
@@ -137,5 +171,8 @@ inline void hw_begin() {
   hw_buttons_begin();
   Wire1.begin(PIN_SENS_SDA, PIN_SENS_SCL, 100000);
   if (!hw_touch_begin()) Serial.println("[touch] GT911 not found on 0x5D/0x14");
+  // Wire (touch) is used only by this task from here on; Wire1 (sensors) stays on the main loop.
+  g_touchQ = xQueueCreate(32, sizeof(TouchEv));
+  xTaskCreatePinnedToCore(touch_task, "touch", 3072, nullptr, 2, nullptr, 0);
   Serial.printf("[btn] idle levels top=%d up=%d down=%d\n", g_btn[0].idle, g_btn[1].idle, g_btn[2].idle);
 }

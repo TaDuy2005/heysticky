@@ -20,7 +20,7 @@ def pack(png):
         row = 0
         for x in range(((w + 7) // 8) * 8):
             r, g, b, a = im.getpixel((x, y)) if x < w else (0, 0, 0, 0)
-            ink = a >= THRESHOLD and (r + g + b) / 3 < 128
+            ink = a >= THRESHOLD  # any opaque pixel is ink; the colour is chosen when drawing
             row = (row << 1) | ink
             if x % 8 == 7:
                 out.append(row)

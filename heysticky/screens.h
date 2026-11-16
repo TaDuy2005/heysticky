@@ -2,9 +2,10 @@
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include "ui.h"
+#include "kbd.h"
 #include "net.h"
 
-enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP };
+enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_NEWTASK };
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -197,35 +198,134 @@ inline void draw_websetup() {
   }
 }
 
+// ---------- 02a New task (TASK-07 test bed for the keyboard; TASK-08 makes it real) ----------
+struct Editor {
+  String text;
+  bool kbOpen = true, dirty = false;
+  uint32_t dirtyAt = 0;
+  Keyboard kb;
+};
+inline Editor g_ed;
+constexpr int FIELD_X = 40, FIELD_Y = 132, FIELD_W = 400, FIELD_H = 76;
+constexpr uint32_t KEY_BATCH_MS = 30;   // keys queued during a refresh are applied together anyway
+constexpr int KBD_FULL_EVERY = 20;      // full refresh after this many typing refreshes
+
+inline void editor_field() {
+  ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
+  // Show the tail when the text is wider than the field. ponytail: drops one byte at a time,
+  // fine for ASCII; make it UTF-8 aware when Vietnamese typing (TASK-14) lands.
+  const int maxW = FIELD_W - 2 * 19 - 6;
+  String shown = g_ed.text;
+  bool cut = false;
+  while (shown.length() && ui_width(F_B26, (cut ? "…" : "") + shown) > maxW) { shown.remove(0, 1); cut = true; }
+  if (cut) shown = "…" + shown;
+  const int tw = ui_text(F_B26, shown, 59, 153, 34);
+  display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
+}
+
+inline void draw_newtask() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_text(F_X32, "New task", 40, 54, 42);
+  ui_text(F_R25, "Cancel", 440, 58, 33, AL_RIGHT);
+  display.fillRect(40, 109, 400, 3, INK);  // TopBar bottom stroke
+  editor_field();
+  if (g_ed.kbOpen) g_ed.kb.draw();
+}
+
+inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
+  switch (k.kind) {
+    case K_CHAR:
+    case K_SPACE:
+      if (g_ed.text.length() < 120) g_ed.text += g_ed.kb.shift ? char(toupper(k.ch)) : k.ch;
+      if (g_ed.kb.shift) { g_ed.kb.shift = false; g_ed.kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
+      break;
+    case K_BKSP:
+      if (g_ed.text.length()) g_ed.text.remove(g_ed.text.length() - 1);
+      break;
+    case K_SHIFT:
+    case K_MODE:
+      if (k.kind == K_SHIFT) g_ed.kb.shift = !g_ed.kb.shift;
+      else { g_ed.kb.numbers = !g_ed.kb.numbers; g_ed.kb.shift = false; }
+      g_ed.kb.draw();
+      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
+      return;
+    case K_DONE:  // §4: Done only hides the keyboard
+      Serial.printf("[edit] \"%s\"\n", g_ed.text.c_str());
+      g_ed.kbOpen = false;
+      display.fillRect(0, KB_TOP, W, KB_H, PAPER);
+      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
+      return;
+  }
+  g_ed.dirty = true;
+  g_ed.dirtyAt = millis();
+}
+
+inline void editor_flush() {  // one partial refresh per burst of keys
+  if (!g_ed.dirty || millis() - g_ed.dirtyAt < KEY_BATCH_MS) return;
+  g_ed.dirty = false;
+  editor_field();
+  ui_partial(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, KBD_FULL_EVERY);
+}
+
 // ---------- navigation ----------
 inline void show(Screen s) {
   g_screen = s;
   if (s == SCR_HOME) draw_home();
   else if (s == SCR_APPS) draw_apps();
+  else if (s == SCR_NEWTASK) draw_newtask();
   else draw_websetup();
   ui_full();
 }
 
-// Touch gestures: tap or horizontal swipe, reported on release.
-inline void screens_input() {
-  static bool down = false;
-  static int16_t x0, y0, x1, y1;
-  static uint32_t lastSeen = 0;
-  int16_t x, y;
-  if (hw_touch_get(x, y)) {
-    if (!down) { down = true; x0 = x; y0 = y; }
-    x1 = x; y1 = y; lastSeen = millis();
-  } else if (down && millis() - lastSeen > 120) {  // finger lifted
-    down = false;
-    const int dx = x1 - x0;
-    if (g_screen == SCR_WEBSETUP && !g_ap) { show(SCR_HOME); return; }
-    if (abs(dx) > 80 && abs(dx) > abs(y1 - y0)) {  // swipe: left = next page
-      if (dx < 0 && g_screen == SCR_HOME) show(SCR_APPS);
-      else if (dx > 0 && g_screen == SCR_APPS) show(SCR_HOME);
-    } else if (g_screen == SCR_APPS && apps_hit(x0, y0) == 2) {  // Settings -> Web setup for now
-      hw_beep(30);
-      show(SCR_WEBSETUP);
+inline void open_newtask() {
+  g_ed = Editor();
+  show(SCR_NEWTASK);
+}
+
+// Touch events come from the touch task's queue, so taps made during a refresh are not lost.
+// DOWN acts on keys; UP (with the DOWN position) acts on taps, swipes and Cancel. Backspace repeats while held.
+inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
+  const int dx = x1 - x0;
+  if (g_screen == SCR_WEBSETUP && !g_ap) { show(SCR_HOME); return; }
+  if (g_screen == SCR_NEWTASK) {
+    if (x0 >= 340 && y0 >= 40 && y0 < 112) { hw_beep(30); show(SCR_APPS); }  // Cancel
+    else if (!g_ed.kbOpen && y0 >= FIELD_Y && y0 < FIELD_Y + FIELD_H) {   // tap field -> keyboard back
+      g_ed.kbOpen = true;
+      g_ed.kb.draw();
+      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
     }
+    return;
+  }
+  if (abs(dx) > 80 && abs(dx) > abs(y1 - y0)) {  // swipe: left = next page
+    if (dx < 0 && g_screen == SCR_HOME) show(SCR_APPS);
+    else if (dx > 0 && g_screen == SCR_APPS) show(SCR_HOME);
+  } else if (g_screen == SCR_APPS) {
+    const int t = apps_hit(x0, y0);
+    if (t == 0) { hw_beep(30); open_newtask(); }           // To-do -> New task (test bed)
+    else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
+  }
+}
+
+inline void screens_input() {
+  static int16_t x0, y0;
+  static uint32_t t0 = 0, lastRepeat = 0;
+  static KbKey held;
+  static bool holding = false;
+  TouchEv e;
+  while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
+    if (e.down) {
+      x0 = e.x; y0 = e.y; t0 = millis(); holding = false;
+      if (g_screen == SCR_NEWTASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = true; editor_key(held); }
+    } else {
+      holding = false;
+      on_touch_up(x0, y0, e.x, e.y);
+    }
+  }
+  // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
+  if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
+    lastRepeat = millis();
+    editor_key(held);
   }
 
   if (HwButton b = hw_buttons_poll()) {
@@ -239,4 +339,5 @@ inline void screens_input() {
 inline void screens_loop() {
   screens_input();
   if (g_screen == SCR_HOME) home_tick();
+  else if (g_screen == SCR_NEWTASK) editor_flush();
 }

@@ -8,6 +8,10 @@ inline const Font F_B20 = {B20_vlw, 21, 6};
 inline const Font F_R20 = {R20_vlw, 21, 6};
 #include "B25.h"
 inline const Font F_B25 = {B25_vlw, 26, 8};
+#include "B26.h"
+inline const Font F_B26 = {B26_vlw, 27, 8};
+#include "X25.h"
+inline const Font F_X25 = {X25_vlw, 26, 8};
 #include "R25.h"
 inline const Font F_R25 = {R25_vlw, 26, 8};
 #include "R30.h"
