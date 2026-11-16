@@ -1,0 +1,12 @@
+# Pinned build profile: arduino-cli compile --profile heysticky
+# Seeed_GFX2 is not in the Arduino index; clone it into ../libs (see README):
+#   git clone https://github.com/Seeed-Studio/Seeed_GFX2 libs/Seeed_GFX2 && git -C libs/Seeed_GFX2 checkout 002798b7b0adc7b3ada8cfd4db6d8a7ca11030f3
+profiles:
+  heysticky:
+    fqbn: esp32:esp32:XIAO_ESP32S3:PSRAM=opi
+    platforms:
+      - platform: esp32:esp32 (3.3.12)
+    libraries:
+      - ArduinoJson (7.4.3)
+      - dir: ../libs/Seeed_GFX2
+default_profile: heysticky

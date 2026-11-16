@@ -34,7 +34,8 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 2. Tech stack
 
 - **Arduino C++** built with `arduino-cli`; core + libraries pinned in `sketch.yaml`
-- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,CDCOnBoot=cdc`, flash size 32 MB (same as the published sticky-lab firmware)
+- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi` (USB CDC on boot is the default; `CDCOnBoot=cdc` means *Disabled* on this board). The board menu only offers 8 MB flash; the 32 MB partition table comes with TASK-13
+- Seeed_GFX2 is not in the Arduino index: cloned into `libs/Seeed_GFX2` (git-ignored) at a pinned commit, referenced from `sketch.yaml`
 - Libraries: **Seeed_GFX2**, **ArduinoJson**, a small QR-code library; core built-ins `WiFi`, `WebServer`, `DNSServer`, `HTTPClient`, `Preferences`, `SD`
 - Sensors/touch over raw I2C (no extra libraries)
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
@@ -113,7 +114,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 ## 7. V1 task list
 
-- [ ] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
+- [x] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
 - [ ] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
 - [ ] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
 - [ ] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
