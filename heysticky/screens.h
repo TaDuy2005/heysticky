@@ -354,33 +354,49 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
   g_timeDirty = true;
 }
 
+// ---------- page moves + Home (PLAN.md §3) ----------
+// DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
+inline void page_back() {
+  if (g_screen == SCR_APPS) show(SCR_HOME);
+  else if (g_screen == SCR_TODO) {
+    if (g_todoPage > 0) { g_todoPage--; g_redraw = true; }
+    else show(SCR_APPS);
+  }
+}
+inline void page_fwd() {
+  if (g_screen == SCR_HOME) show(SCR_APPS);
+  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
+}
+inline void go_home() { if (g_screen != SCR_HOME) show(SCR_HOME); }
+
+constexpr int EDGE_Y = 785;      // calibration knob: a swipe starting below this line is the Home gesture
+constexpr int EDGE_SWIPE = 100;  // ...and must travel this far up
+
 // Touch events come from the touch task's queue, so taps made during a refresh are not lost.
 // DOWN acts on keys; UP (with the DOWN position) acts on taps, swipes and buttons.
 inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const int dx = x1 - x0;
   const bool swipe = abs(dx) > 80 && abs(dx) > abs(y1 - y0);
+  if (y0 >= EDGE_Y && y0 - y1 >= EDGE_SWIPE) { hw_beep(30); go_home(); return; }  // swipe up from the bottom edge
+  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO)) {
+    if (dx < 0) page_fwd();
+    else page_back();
+    return;
+  }
   switch (g_screen) {
     case SCR_WEBSETUP:
       if (!g_ap) show(SCR_HOME);
       return;
     case SCR_HOME:
-      if (swipe && dx < 0) show(SCR_APPS);
-      else if (!swipe && in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
+      if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
       return;
-    case SCR_APPS:
-      if (swipe && dx > 0) show(SCR_HOME);
-      else if (!swipe) {
-        const int t = apps_hit(x0, y0);
-        if (t == 0) { hw_beep(30); open_todo(); }
-        else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
-      }
+    case SCR_APPS: {
+      const int t = apps_hit(x0, y0);
+      if (t == 0) { hw_beep(30); open_todo(); }
+      else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
       return;
-    case SCR_TODO:  // swipe left = next page; right = previous page, or back to Apps from page 1
-      if (!swipe) todo_tap(x0, y0);
-      else if (dx < 0 && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
-      else if (dx > 0 && g_todoPage > 0) { g_todoPage--; g_redraw = true; }
-      else if (dx > 0) show(SCR_APPS);
-      return;
+    }
+    case SCR_TODO: todo_tap(x0, y0); return;
     case SCR_TASK: editor_tap(x0, y0); return;
     case SCR_DATE: date_tap(x0, y0); return;
     case SCR_TIME: time_tap(x0, y0); return;
@@ -410,7 +426,8 @@ inline void screens_input() {
     if (e.down) {
       x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; consumed = false;
       int k;
-      if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = consumed = true; editor_key(held); }
+      if (e.y >= EDGE_Y) {}  // may be the Home gesture: no key acts down here
+      else if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = consumed = true; editor_key(held); }
       else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
       holding = pressing = false;
@@ -431,14 +448,10 @@ inline void screens_input() {
 
   if (HwButton b = hw_buttons_poll()) {
     hw_beep(b == BTN_TOP_LONG ? 120 : 30);
-    if (g_screen == SCR_WEBSETUP && !g_ap) show(SCR_HOME);
-    else if (b == BTN_DOWN && g_screen == SCR_HOME) show(SCR_APPS);
-    else if (b == BTN_UP && g_screen == SCR_APPS) show(SCR_HOME);
-    else if (g_screen == SCR_TODO && (b == BTN_DOWN || b == BTN_UP)) {
-      const int p = g_todoPage + (b == BTN_DOWN ? 1 : -1);
-      if (p < 0) show(SCR_APPS);
-      else if (p < g_todoPages) { g_todoPage = p; g_redraw = true; }
-    }
+    if (b == BTN_TOP) go_home();
+    else if (b == BTN_DOWN) page_back();
+    else if (b == BTN_UP) page_fwd();
+    // BTN_TOP_LONG: hold to talk to the AI (V2); the long beep is all it does in V1
   }
 }
 

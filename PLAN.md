@@ -47,8 +47,9 @@ Pin map (from the open-source sticky-2048 firmware):
 
 ## 3. Interaction model
 
-- **Touch** everything; **UP/DOWN** move focus, **top button** = OK.
-- Focused item is drawn **inverted (black)** — the clearest highlight on e-paper.
+- **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do pages; right on To-do page 1 → Apps).
+- **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. They only move between pages; on screens without pages they do nothing (they are never Cancel).
+- **Press top button = Home**, from any screen. **Swipe up from the bottom edge = Home** too (start in the bottom 15 px, y ≥ 785; keys ignore touches that start there).
 - **Hold top button = talk to AI** (V2). Sleep is by idle timer, not a button hold.
 - **Long-tap a to-do row = edit.** Tap = tick.
 - Partial refresh for small changes (typing, ticking); full refresh when changing screens.
@@ -108,7 +109,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
 - [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city search, auto timezone, 30-min refresh, °C/°F), About
-- [ ] REQ-09 Touch and UP/DOWN/OK work on every screen
+- [ ] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [ ] REQ-11 No secrets in source or in the `.bin`
 - [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
