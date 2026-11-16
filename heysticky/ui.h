@@ -15,9 +15,19 @@ enum Align : uint8_t { AL_LEFT, AL_CENTER, AL_RIGHT };
 
 // Text in a Figma text box: x = left / centre / right edge, y + h = the box.
 // The glyphs' line box (ascent + descent) is centred in the Figma box, like Figma does.
-inline int ui_text(const Font &f, String s, int x, int y, int h, Align a = AL_LEFT, uint16_t fg = INK, uint16_t bg = PAPER) {
+inline void ui_use(const Font &f) {
   static const Font *loaded = nullptr;
   if (loaded != &f) { display.loadFont(f.data); loaded = &f; }
+}
+
+inline int ui_width(const Font &f, String s) {
+  ui_use(f);
+  s.replace(" ", " ");
+  return display.textWidth(s.c_str());
+}
+
+inline int ui_text(const Font &f, String s, int x, int y, int h, Align a = AL_LEFT, uint16_t fg = INK, uint16_t bg = PAPER) {
+  ui_use(f);
   s.replace(" ", " ");  // the font ships U+00A0 with the real monospace advance
   display.setTextColor(fg, bg);
   display.setTextDatum(a == AL_LEFT ? TL_DATUM : a == AL_CENTER ? TC_DATUM : TR_DATUM);
@@ -72,7 +82,9 @@ constexpr int FULL_EVERY = 30;  // calibration knob: partial refreshes between g
 inline int g_partials = 0;
 
 inline void ui_full() { display.update(); g_partials = 0; }
-inline void ui_partial(int x, int y, int w, int h) {
-  if (++g_partials >= FULL_EVERY) ui_full();
-  else display.updatePartial(x, y, w, h);
+inline void ui_partial(int x, int y, int w, int h, int fullEvery = FULL_EVERY) {
+  if (++g_partials >= fullEvery) { ui_full(); return; }
+  const uint32_t t = millis();
+  display.updatePartial(x, y, w, h);
+  Serial.printf("[refresh] partial %dx%d %lu ms\n", w, h, millis() - t);
 }

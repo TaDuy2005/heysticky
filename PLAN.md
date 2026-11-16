@@ -40,7 +40,8 @@ Pin map (from the open-source sticky-2048 firmware):
 - Sensors/touch over raw I2C (no extra libraries)
 - Fonts: JetBrains Mono TTFs in `fonts/` (OFL) -> `tools/make_fonts.py` (Pillow) -> VLW headers in `heysticky/src/fonts/`, pre-thresholded to pure black/white because the 1-bit panel maps any non-black pixel to white. Spaces are drawn as U+00A0 (the library guesses U+0020's width). Text is placed by Figma text box: top = box y + (box h - ascent - descent) / 2
 - Icons: exported from Figma at 1x into `tools/icons/` -> `tools/make_icons.py` -> 1-bit bitmaps in `heysticky/src/icons.h` (alpha threshold 64 keeps ~1.5 px strokes unbroken)
-- Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials
+- Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials (20 while typing)
+- Measured on this unit: a partial refresh takes ~860 ms regardless of area. Touch is read by a FreeRTOS task on core 0 into a queue, so taps made during a refresh are applied in the next one; typing is silent (a beep per key cannot keep pace)
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
 - V2: any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`, e.g. DeepSeek)
 
@@ -104,7 +105,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
 - [ ] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Today / Tomorrow / pick date + time); overdue first, then by due date
 - [ ] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
-- [ ] REQ-07 On-screen keyboard with partial refresh
+- [x] REQ-07 On-screen keyboard with partial refresh
 - [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city search, auto timezone, 30-min refresh, °C/°F), About
 - [ ] REQ-09 Touch and UP/DOWN/OK work on every screen
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
@@ -123,7 +124,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
 - [x] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
 - [x] TASK-06 Home screen
-- [ ] TASK-07 On-screen keyboard
+- [x] TASK-07 On-screen keyboard
 - [ ] TASK-08 To-do: list, add, tick, edit, delete, deadlines + Deadline picker
 - [ ] TASK-09 Notes: list, view, new, edit, delete
 - [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup, Location screens

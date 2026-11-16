@@ -32,6 +32,8 @@ FONTS = {
     "B20": ("Bold", 20, TEXT),
     "R20": ("Regular", 20, TEXT),
     "B25": ("Bold", 25, TEXT),
+    "B26": ("Bold", 26, TEXT),
+    "X25": ("ExtraBold", 25, TEXT),
     "R25": ("Regular", 25, TEXT),
     "R30": ("Regular", 30, TEXT),
     "B35": ("Bold", 35, TEXT),
