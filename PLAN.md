@@ -95,8 +95,8 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 ## 6. V1 requirements
 
-- [ ] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
-- [ ] REQ-02 Phone setup page saves Wi-Fi, name, city, units — stored on the device only
+- [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
+- [x] REQ-02 Phone setup page saves Wi-Fi, name, city, units — stored on the device only
 - [ ] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Next up, dock
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
 - [ ] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Today / Tomorrow / pick date + time); overdue first, then by due date
@@ -117,7 +117,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
 - [x] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
 - [x] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
-- [ ] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
+- [x] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
 - [ ] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
 - [ ] TASK-06 Home screen
 - [ ] TASK-07 On-screen keyboard
@@ -156,6 +156,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 ## 9. Network
 
+- **Wi-Fi:** no network scan in hotspot mode (scanning around `softAP()` crashes the Wi-Fi driver on ESP32 core 3.3.12); the user types the network name.
 - **Setup page:** served by the Sticky on its IP (or `192.168.4.1` in hotspot mode). Saved keys are shown masked and never sent back to the browser.
   Known limit: the page is plain HTTP on the local network.
 - **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone
@@ -200,6 +201,7 @@ HeySticky/
 - [ ] Certifications: not readable from the chip; show static text copied from the device label / Seeed's regulatory docs
 - [ ] `.fpack` format is Seeed's; confirm it is documented or use our own font format
 - [ ] Wi-Fi, Web setup, Your name and Sleep after are no longer in Settings — decide where they live (phone setup page only?)
+  - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
 - [ ] No microSD card: the old "No SD card" screen was removed — decide what the Sticky shows instead
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
 
