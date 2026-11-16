@@ -75,7 +75,52 @@ inline void ui_status_bar(int pct) {
   if (WiFi.status() == WL_CONNECTED) ui_icon(ICON_WIFI, bx - 8 - 28, 6);
 }
 
-inline void ui_page_counter(const char *s) { ui_text(F_R20, s, W / 2, 758, 26, AL_CENTER); }
+inline void ui_page_counter(const String &s) { ui_text(F_R20, s, W / 2, 758, 26, AL_CENTER); }
+
+// Figma TopBar: title left, small action right (Cancel, Clear, "4 left"), 3 px rule under it.
+inline void ui_topbar(const String &title, const String &right) {
+  ui_text(F_X32, title, 40, 54, 42);
+  ui_text(F_R25, right, 440, 58, 33, AL_RIGHT);
+  display.fillRect(40, 109, 400, 3, INK);
+}
+
+inline void utf8_pop(String &s) {  // drop the last character, not just its last byte
+  int n = s.length() - 1;
+  while (n > 0 && (uint8_t(s[n]) & 0xC0) == 0x80) n--;
+  s.remove(max(n, 0));
+}
+
+inline String ui_fit(const Font &f, String s, int maxW) {  // cut with "…" to fit
+  if (ui_width(f, s) <= maxW) return s;
+  while (s.length() && ui_width(f, s + "…") > maxW) utf8_pop(s);
+  return s + "…";
+}
+
+// Word-wrapped text, one line per lineH; x is the left edge (or the box's left edge when centred).
+inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT) {
+  const int ax = a == AL_CENTER ? x + w / 2 : x;
+  String line;
+  int n = 0, i = 0;
+  while (i <= int(s.length()) && n < maxLines) {
+    int j = s.indexOf(' ', i);
+    if (j < 0) j = s.length();
+    const String word = s.substring(i, j), next = line.length() ? line + " " + word : word;
+    if (line.length() && ui_width(f, next) > w) { ui_text(f, line, ax, y + lineH * n++, lineH, a); line = word; }
+    else line = next;
+    i = j + 1;
+  }
+  if (line.length() && n < maxLines) ui_text(f, line, ax, y + lineH * n, lineH, a);
+}
+
+// Figma Button/PrimaryButton: optional icon + ExtraBold label, centred as one group.
+inline void ui_button(int x, int y, int w, int h, bool filled, const Icon *icon, const String &label, int gap = 8) {
+  if (filled) display.fillRoundRect(x, y, w, h, 12, INK);
+  else ui_card(x, y, w, h, 12, 3);
+  const uint16_t fg = filled ? PAPER : INK, bg = filled ? INK : PAPER;
+  const int iw = icon ? icon->w + gap : 0, gx = x + (w - iw - ui_width(F_X25, label)) / 2;
+  if (icon) ui_icon(*icon, gx, y + (h - icon->h + 1) / 2, fg);
+  ui_text(F_X25, label, gx + iw, y + (h - 33 + 1) / 2, 33, AL_LEFT, fg, bg);
+}
 
 // ---------- refresh ----------
 constexpr int FULL_EVERY = 30;  // calibration knob: partial refreshes between ghost-clearing full refreshes

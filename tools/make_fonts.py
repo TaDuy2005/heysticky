@@ -42,6 +42,8 @@ FONTS = {
     "X28": ("ExtraBold", 28, "0123456789.,-°%CF "),
     "X48": ("ExtraBold", 48, "0123456789-°CF "),
     "X120": ("ExtraBold", 120, "0123456789:- "),
+    "X34": ("ExtraBold", 34, "0123456789: "),
+    "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"),
 }
 
 
