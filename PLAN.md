@@ -115,7 +115,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 ## 7. V1 task list
 
 - [x] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
-- [ ] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
+- [x] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
 - [ ] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
 - [ ] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
 - [ ] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
