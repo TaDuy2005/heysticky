@@ -38,6 +38,9 @@ Pin map (from the open-source sticky-2048 firmware):
 - Seeed_GFX2 is not in the Arduino index: cloned into `libs/Seeed_GFX2` (git-ignored) at a pinned commit, referenced from `sketch.yaml`
 - Libraries: **Seeed_GFX2**, **ArduinoJson**, a small QR-code library; core built-ins `WiFi`, `WebServer`, `DNSServer`, `HTTPClient`, `Preferences`, `SD`
 - Sensors/touch over raw I2C (no extra libraries)
+- Fonts: JetBrains Mono TTFs in `fonts/` (OFL) -> `tools/make_fonts.py` (Pillow) -> VLW headers in `heysticky/src/fonts/`, pre-thresholded to pure black/white because the 1-bit panel maps any non-black pixel to white. Spaces are drawn as U+00A0 (the library guesses U+0020's width). Text is placed by Figma text box: top = box y + (box h - ascent - descent) / 2
+- Icons: exported from Figma at 1x into `tools/icons/` -> `tools/make_icons.py` -> 1-bit bitmaps in `heysticky/src/icons.h` (alpha threshold 64 keeps ~1.5 px strokes unbroken)
+- Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
 - V2: any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`, e.g. DeepSeek)
 
@@ -97,7 +100,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
 - [x] REQ-02 Phone setup page saves Wi-Fi, name, city, units — stored on the device only
-- [ ] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Next up, dock
+- [ ] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Next up, dock (done except the Today count, which waits for To-do in TASK-08)
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
 - [ ] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Today / Tomorrow / pick date + time); overdue first, then by due date
 - [ ] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
@@ -119,7 +122,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
 - [x] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
 - [x] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
-- [ ] TASK-06 Home screen
+- [x] TASK-06 Home screen
 - [ ] TASK-07 On-screen keyboard
 - [ ] TASK-08 To-do: list, add, tick, edit, delete, deadlines + Deadline picker
 - [ ] TASK-09 Notes: list, view, new, edit, delete
