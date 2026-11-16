@@ -53,6 +53,57 @@ void drawWebSetup(bool ap) {
   display.update();
 }
 
+// TASK-05 check screen: time, date, weather. Temporary; the real Home comes in TASK-06.
+void drawClockCheck() {
+  static const char *DAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  static const char *MONTHS[] = {"January", "February", "March", "April", "May", "June", "July",
+                                 "August", "September", "October", "November", "December"};
+  display.fillScreen(TFT_WHITE);
+  display.setTextColor(TFT_BLACK);
+  display.setTextDatum(TL_DATUM);
+  display.setTextSize(2);
+  display.drawString("HeySticky", 16, 16);
+  display.setTextDatum(TC_DATUM);
+  display.setTextSize(3);
+  display.drawString("Hello, " + cfg_get("name"), W / 2, 80);
+
+  struct tm t;
+  if (getLocalTime(&t, 0)) {
+    char hm[6];
+    strftime(hm, sizeof hm, "%H:%M", &t);
+    display.setTextSize(12);
+    display.drawString(hm, W / 2, 140);
+    display.setTextSize(3);
+    display.drawString(String(DAYS[t.tm_wday]) + ", " + t.tm_mday + " " + MONTHS[t.tm_mon], W / 2, 260);
+  } else {
+    display.setTextSize(4);
+    display.drawString("--:--", W / 2, 170);
+  }
+
+  display.drawRoundRect(40, 320, W - 80, 200, 16, TFT_BLACK);
+  display.setTextDatum(TL_DATUM);
+  const char u = cfg_get("units", "C")[0];
+  if (g_wx.ok) {
+    display.setTextSize(3);
+    display.drawString(wx_info(g_wx.code).label, 64, 344);
+    display.setTextSize(6);
+    display.drawString(String(lroundf(g_wx.temp)) + u, 64, 392);
+    display.setTextSize(3);
+    display.drawString("H " + String(lroundf(g_wx.hi)) + "  L " + String(lroundf(g_wx.lo)), 64, 456);
+  } else {
+    display.setTextSize(4);
+    display.drawString("Offline", 64, 400);
+  }
+  display.setTextSize(2);
+  display.drawString(cfg_get("city"), 64, 490);
+
+  display.setTextDatum(TC_DATUM);
+  display.drawString("Setup page: http://" + net_ip(), W / 2, 740);
+  display.update();
+}
+
+bool g_online = false;
+
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 3000) delay(10);
@@ -60,12 +111,23 @@ void setup() {
   hw_beep();
   if (!display.begin()) Serial.println(display.lastResult().message);
   display.setRotation(1);  // portrait, confirmed upright on the real panel
-  const bool online = net_begin();
-  drawWebSetup(!online);
+  g_online = net_begin();
+  if (!g_online) drawWebSetup(true);
 }
 
 void loop() {
   net_loop();
+  if (g_online) {  // redraw when the minute or the weather changes
+    static int lastMin = -1;
+    static uint32_t lastWx = 1;
+    struct tm t;
+    const int m = getLocalTime(&t, 0) ? t.tm_hour * 60 + t.tm_min : -2;
+    if (m != lastMin || g_wx.at != lastWx) {
+      lastMin = m;
+      lastWx = g_wx.at;
+      drawClockCheck();
+    }
+  }
   static const char *names[] = {"", "TOP", "UP", "DOWN", "TOP_LONG"};
   if (HwButton b = hw_buttons_poll()) {
     Serial.printf("[btn] %s\n", names[b]);

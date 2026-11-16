@@ -118,7 +118,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
 - [x] TASK-03 `hw.h`: touch, buttons, buzzer, SHT40, battery — verified over serial
 - [x] TASK-04 `net.h`: settings in flash, Wi-Fi connect, hotspot fallback, web setup page
-- [ ] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
+- [x] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
 - [ ] TASK-06 Home screen
 - [ ] TASK-07 On-screen keyboard
 - [ ] TASK-08 To-do: list, add, tick, edit, delete, deadlines + Deadline picker
@@ -148,7 +148,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 | Key | V1 | V2 |
 |---|---|---|
 | `wifi_ssid`, `wifi_pass` | ✓ | |
-| `name`, `city`, `lat`, `lon`, `tz`, `units` | ✓ | |
+| `name`, `city`, `lat`, `lon`, `tz`, `units`, `geo_city` (city that lat/lon belong to) | ✓ | |
 | `sound`, `sleep_min` | ✓ | |
 | `rotate`, `lang`, `font`, `ota_last` | ✓ | |
 | `stt_url`, `stt_model`, `stt_key` | | ✓ |
@@ -161,7 +161,8 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
   Known limit: the page is plain HTTP on the local network.
 - **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
-- **Time:** NTP, offset from the Open-Meteo timezone
+- **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
+- **HTTPS:** certificates checked with the ESP32 core's built-in root CA bundle (`useBuiltinCACertBundle()`)
 - **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes both the app `.bin` (OTA) and the merged `.bin` (first install at `0x0`)
 
 ## 10. Project layout
