@@ -3,7 +3,7 @@
 Personal assistant firmware for the **Seeed reTerminal Sticky** (ESP32-S3, 3.97" e-paper).
 Home dashboard, to-dos with deadlines, notes on microSD, a phone setup page, and (V2) hold-to-talk AI.
 
-- **Design (clickable prototype):** https://www.figma.com/design/SHu2RsGVk0D3wuorPdUztE
+- **Design (clickable prototype):** https://www.figma.com/design/SHu2RsGVk0D3wuorPdUztE (English section + a Tiếng Việt copy to its right; strings in §13)
 - **Display library:** https://github.com/Seeed-Studio/Seeed_GFX2 (`Seeed_Product::reTerminal_Sticky`)
 - **Publishing target:** https://github.com/Seeed-Projects/reterminal-sticky-playground-registry (community firmware, firmware-only)
 
@@ -201,3 +201,56 @@ HeySticky/
 - [ ] Wi-Fi, Web setup, Your name and Sleep after are no longer in Settings — decide where they live (phone setup page only?)
 - [ ] No microSD card: the old "No SD card" screen was removed — decide what the Sticky shows instead
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
+
+## 13. Strings (EN / VI)
+
+Firmware string table for TASK-14; the Figma "Tiếng Việt (VI)" section uses the same text. Short forms are for tight spots (app tiles, buttons, cards).
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| hello | Hello, {name} | Xin chào, {name} |
+| weekdays | Mon Tue Wed Thu Fri Sat Sun | T2 T3 T4 T5 T6 T7 CN |
+| date | Monday, 16 November | Thứ Hai, 16 tháng 11 |
+| month_year | November 2026 | Tháng 11 2026 |
+| hi_lo | H 31°  L 25° | C 31°  T 25° |
+| offline | Offline | Ngoại tuyến |
+| indoor / humidity | Indoor / Humidity | Phòng / Độ ẩm |
+| today_n | {n} tasks today | {n} việc hôm nay |
+| today_none | No tasks today | Không có việc |
+| app_todo | To-do | Việc cần làm (tile, button: Việc) |
+| app_notes | Notes | Ghi chú |
+| app_settings | Settings | Cài đặt |
+| apps | Apps | Ứng dụng |
+| left_n | {n} left | còn {n} |
+| overdue | Overdue | Quá hạn |
+| today / tomorrow | Today / Tomorrow | Hôm nay / Ngày mai |
+| add_task / new_task / edit_task | Add task / New task / Edit task | Thêm việc / Việc mới / Sửa việc |
+| new_note / edit_note | New note / Edit note | Ghi chú mới / Sửa ghi chú |
+| title / placeholder | Title / Start typing… | Tiêu đề / Bắt đầu gõ… |
+| deadline_opt | DEADLINE (OPTIONAL) | HẠN CHÓT (TUỲ CHỌN) |
+| none / pick_date / time | None / Pick date / Time | Không / Chọn ngày / Giờ |
+| deadline / clear / set | Deadline / Clear / Set · {date} | Hạn chót / Bỏ hạn / Đã đặt · {date} |
+| save / edit / delete / cancel / done | Save / Edit / Delete / Cancel / Done | Lưu / Sửa / Xoá / Huỷ / Xong |
+| key_space | space | cách |
+| del_task / del_task_body | Delete task? / It will be removed from /todo.md on the SD card. | Xoá việc này? / Việc sẽ bị xoá khỏi /todo.md trên thẻ SD. |
+| del_note / del_note_body | Delete note? / Note #{n} will be deleted from the SD card. | Xoá ghi chú? / Ghi chú #{n} sẽ bị xoá khỏi thẻ SD. |
+| empty_todo | No tasks yet / Tap Add task to make one. | Chưa có việc nào / Chạm Thêm việc để tạo. |
+| empty_notes | No notes yet / Tap New note, or hold ● to speak one. | Chưa có ghi chú / Chạm Ghi chú mới, hoặc giữ ● để nói. |
+| auto_rotate / sound | Auto-rotate / Sound | Tự xoay / Âm thanh |
+| lang_font / sys_lang / user_font | Language & Font / System Language / User Font | Ngôn ngữ & Phông / Ngôn ngữ hệ thống / Phông chữ |
+| font_default | Default (built-in) | Mặc định (có sẵn) |
+| sw_update / up_to_date / check | Software Update / You're up to date / Check for updates | Cập nhật phần mềm / Đã là bản mới nhất / Kiểm tra cập nhật |
+| config / city / tz / refresh | Configuration / City / Timezone / Refresh interval | Cấu hình / Thành phố / Múi giờ / Làm mới |
+| temp / c / f | Temperature / Celsius (°C) / Fahrenheit (°F) | Nhiệt độ / Độ C (°C) / Độ F (°F) |
+| location / now | Location / Now: {city} | Vị trí / Hiện tại: {city} |
+| about / name / sw_ver / certs | About / Name / Software version / Certifications | Thông tin / Tên / Phiên bản / Chứng nhận |
+| sd / free / inserted / mounted / path / space / files | SD card / {x} free / Inserted / Mounted / Path / Space / Files | Thẻ SD / Trống {x} / Đã lắp / Đã gắn / Đường dẫn / Dung lượng / Tệp |
+| yes / on | Yes / On | Có / Bật |
+| web_setup / open_phone / same_wifi / stop_web | Web setup / Open this on your phone / Use the same Wi-Fi. / Stop web setup | Cài đặt qua web / Mở trên điện thoại / Dùng cùng mạng Wi-Fi. / Dừng cài đặt web |
+| hotspot | No Wi-Fi yet? Join the hotspot "HeySticky-Setup", then open 192.168.4.1 | Chưa có Wi-Fi? Kết nối điểm phát "HeySticky-Setup", rồi mở 192.168.4.1 |
+| ai_listening / ai_working | Listening… / Working on it… | Đang nghe… / Đang xử lý… |
+| ai_steps | Heard you / Sorting it out… / Saving… | Đã nghe / Đang phân loại… / Đang lưu… |
+| ai_review / ai_unsure / ai_again | Here's what I heard / Not sure. Save it as: / Record again? | Tôi đã nghe được / Chưa rõ. Lưu thành: / Ghi âm lại? |
+| ai_added / ai_list | Added / TO-DOS LIST | Đã thêm / DANH SÁCH VIỆC |
+| ai_fail / ai_no_net / retry / home | Couldn't do that / No internet connection / Try again / Home | Không làm được / Không có Internet / Thử lại / Trang chủ |
+| ai_err_* | I didn't catch that · AI key missing — open Web setup · AI service error ({code}) | Tôi chưa nghe rõ · Thiếu khoá AI — mở Cài đặt qua web · Lỗi dịch vụ AI ({code}) |
