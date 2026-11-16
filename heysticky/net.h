@@ -1,9 +1,14 @@
-// HeySticky network: Wi-Fi connect, HeySticky-Setup hotspot fallback, phone setup page.
+// HeySticky network: Wi-Fi connect, HeySticky-Setup hotspot fallback, phone setup page,
+// city lookup, weather (Open-Meteo) and NTP time.
 // Known limit (PLAN.md §9): the setup page is plain HTTP on the local network.
 #pragma once
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <HTTPClient.h>
+#include <NetworkClientSecure.h>
+#include <ArduinoJson.h>
+#include <time.h>
 #include "store.h"
 
 constexpr char AP_SSID[] = "HeySticky-Setup";
@@ -108,11 +113,99 @@ inline bool net_begin() {
     g_web.send(302, "text/plain", "");
   });
   g_web.begin();
+  if (!g_ap) configTime(0, 0, "pool.ntp.org", "time.google.com");  // UTC until the weather reply gives the offset
   Serial.printf("[net] %s %s  ip=%s\n", g_ap ? "hotspot" : "wifi", g_ap ? AP_SSID : ssid.c_str(), net_ip().c_str());
   return !g_ap;
+}
+
+// ---------- HTTPS JSON (certificates checked against the core's built-in root CA bundle) ----------
+inline bool http_json(const String &url, JsonDocument &doc) {
+  NetworkClientSecure tls;
+  tls.useBuiltinCACertBundle();
+  HTTPClient http;
+  http.setTimeout(8000);
+  if (!http.begin(tls, url)) return false;
+  const int code = http.GET();
+  const bool ok = code == 200 && !deserializeJson(doc, http.getString());
+  if (!ok) Serial.printf("[http] %d %s\n", code, url.c_str());
+  http.end();
+  return ok;
+}
+
+inline String url_enc(const String &s) {
+  String o;
+  for (uint8_t c : s) {
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') o += char(c);
+    else { char b[4]; snprintf(b, sizeof b, "%%%02X", c); o += b; }
+  }
+  return o;
+}
+
+// City -> lat/lon/timezone, only when the saved city changed. Top match; picking among
+// several comes with the Location screen (TASK-10).
+inline bool net_geocode() {
+  const String city = cfg_get("city");
+  if (city.isEmpty()) return false;
+  if (cfg_get("geo_city") == city && cfg_get("lat").length()) return true;
+  JsonDocument d;
+  if (!http_json("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + url_enc(city), d)) return false;
+  JsonObject r = d["results"][0];
+  if (r.isNull()) { Serial.printf("[geo] no match for %s\n", city.c_str()); return false; }
+  cfg_set("lat", String(r["latitude"].as<float>(), 4));
+  cfg_set("lon", String(r["longitude"].as<float>(), 4));
+  cfg_set("tz", r["timezone"].as<String>());
+  cfg_set("geo_city", city);
+  Serial.printf("[geo] %s -> %s, %s  %s\n", city.c_str(), cfg_get("lat").c_str(), cfg_get("lon").c_str(), cfg_get("tz").c_str());
+  return true;
+}
+
+// ---------- weather ----------
+enum WxIcon : uint8_t { WX_SUN, WX_PARTLY, WX_CLOUD, WX_FOG, WX_RAIN, WX_SNOW, WX_STORM };
+struct WxInfo { const char *label; WxIcon icon; };
+
+// WMO weather code -> short label + icon type. ponytail: English only; VI comes with TASK-14.
+inline WxInfo wx_info(int code) {
+  if (code == 0) return {"Clear", WX_SUN};
+  if (code == 1) return {"Mainly clear", WX_SUN};
+  if (code == 2) return {"Partly cloudy", WX_PARTLY};
+  if (code == 3) return {"Overcast", WX_CLOUD};
+  if (code == 45 || code == 48) return {"Fog", WX_FOG};
+  if (code >= 51 && code <= 57) return {"Drizzle", WX_RAIN};
+  if (code >= 61 && code <= 67) return {"Rain", WX_RAIN};
+  if (code >= 71 && code <= 77) return {"Snow", WX_SNOW};
+  if (code >= 80 && code <= 82) return {"Showers", WX_RAIN};
+  if (code == 85 || code == 86) return {"Snow showers", WX_SNOW};
+  if (code >= 95) return {"Thunderstorm", WX_STORM};
+  return {"Unknown", WX_CLOUD};
+}
+
+struct Weather { bool ok = false; float temp = 0, hi = 0, lo = 0; int code = 0; uint32_t at = 0; };
+inline Weather g_wx;               // ok=false -> show "Offline"
+inline uint32_t g_wx_next = 0;     // millis() of the next fetch
+inline long g_utc_off = LONG_MIN;  // seconds, from Open-Meteo
+constexpr uint32_t WX_EVERY_MS = 30UL * 60 * 1000, WX_RETRY_MS = 60UL * 1000;
+
+inline bool net_weather() {
+  if (WiFi.status() != WL_CONNECTED || !net_geocode()) return false;
+  String url = "https://api.open-meteo.com/v1/forecast?latitude=" + cfg_get("lat") + "&longitude=" + cfg_get("lon") +
+               "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
+  if (cfg_get("units", "C") == "F") url += "&temperature_unit=fahrenheit";
+  JsonDocument d;
+  if (!http_json(url, d)) return false;
+  g_wx = {true, d["current"]["temperature_2m"].as<float>(), d["daily"]["temperature_2m_max"][0].as<float>(),
+          d["daily"]["temperature_2m_min"][0].as<float>(), d["current"]["weather_code"].as<int>(), millis()};
+  const long off = d["utc_offset_seconds"].as<long>();
+  if (off != g_utc_off) { g_utc_off = off; configTime(off, 0, "pool.ntp.org", "time.google.com"); }  // follows DST within 30 min
+  Serial.printf("[wx] %.1f (%.0f/%.0f) code=%d %s  utc%+ld\n", g_wx.temp, g_wx.hi, g_wx.lo, g_wx.code, wx_info(g_wx.code).label, off);
+  return true;
 }
 
 inline void net_loop() {
   if (g_ap) g_dns.processNextRequest();
   g_web.handleClient();
+  if (!g_ap && millis() >= g_wx_next) {
+    const bool ok = net_weather();
+    if (!ok && millis() - g_wx.at > WX_EVERY_MS) g_wx.ok = false;  // stale or never fetched -> Offline
+    g_wx_next = millis() + (ok ? WX_EVERY_MS : WX_RETRY_MS);
+  }
 }
