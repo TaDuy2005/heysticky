@@ -62,5 +62,19 @@ int main() {
   for (int i : todo_order(ts)) got += ts[i].text + "|";
   assert(got == "overdue|today|tomorrow|buy milk|second undated|done|");
   assert(todo_left(ts) == 5 && todo_due_today(ts, now) == 1);
+
+  // 02h time entry ('<' = backspace); returns "HH:MM" plus any refused keys
+  auto type = [](const char *keys) {
+    TimeEntry te; te.f[0] = "09"; te.f[1] = "00";
+    std::string bad;
+    for (const char *k = keys; *k; k++) { if (*k == '<') time_back(te); else if (!time_digit(te, *k)) bad += *k; }
+    return std::string(te.f[0]) + ":" + std::string(te.f[1]) + (bad.size() ? " !" + bad : "");
+  };
+  assert(type("1830") == "18:30");
+  assert(type("930") == "09:30");       // 9 can only start 09
+  assert(type("187") == "18:07");       // so can a minute of 7
+  assert(type("25359") == "23:59 !5");  // 25 refused
+  assert(type("18<9") == "19:00");      // backspace from a fresh minute goes back into the hour
+  assert(type("1830<5") == "18:35");
   puts("todo_test OK");
 }

@@ -112,6 +112,13 @@ inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lin
   if (line.length() && n < maxLines) ui_text(f, line, ax, y + lineH * n, lineH, a);
 }
 
+// Figma Toggle (68x38): On = black pill, white knob right; Off = outline, black knob left.
+inline void ui_toggle(int x, int y, bool on) {
+  display.fillRoundRect(x, y, 68, 38, 19, INK);
+  if (!on) display.fillRoundRect(x + 3, y + 3, 62, 32, 16, PAPER);
+  display.fillCircle(x + (on ? 48 : 20), y + 19, 12, on ? PAPER : INK);
+}
+
 // Figma Button/PrimaryButton: optional icon + ExtraBold label, centred as one group.
 inline void ui_button(int x, int y, int w, int h, bool filled, const Icon *icon, const String &label, int gap = 8) {
   if (filled) display.fillRoundRect(x, y, w, h, 12, INK);

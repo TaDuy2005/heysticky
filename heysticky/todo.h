@@ -132,3 +132,26 @@ inline String todo_label(const Task &t, const String &now) {
   if (day == today + 1) return "Tomorrow" + sp + hm;
   return (day - today < 7 ? String(DAY3[weekday(day)]) : day_month(day)) + sp + hm;
 }
+
+// ---------- 02h Time entry: HH and MM fields typed on a number pad ----------
+struct TimeEntry { String f[2]; int active = 0; bool fresh = true; };  // fresh: next digit replaces the field
+
+// Typing fills the hour, then the minute. A first digit that cannot start a valid value is
+// taken as "0d" (9 -> 09). Returns false when the digit would make an invalid time.
+inline bool time_digit(TimeEntry &te, char c) {
+  String &f = te.f[te.active];
+  if (te.fresh || f.length() >= 2) { f = ""; te.fresh = false; }
+  if (!f.length() && c - '0' > (te.active ? 5 : 2)) f = "0";
+  f += c;
+  if (f.toInt() > (te.active ? 59 : 23)) { f = f.substring(0, f.length() - 1); return false; }
+  if (f.length() == 2 && te.active == 0) { te.active = 1; te.fresh = true; }
+  return true;
+}
+
+inline void time_back(TimeEntry &te) {
+  String &f = te.f[te.active];
+  if (f.length() && !te.fresh) f = f.substring(0, f.length() - 1);
+  else if (te.active == 1) { te.active = 0; String &h = te.f[0]; h = h.substring(0, h.length() ? h.length() - 1 : 0); }  // back into the hour
+  else f = "";
+  te.fresh = false;
+}

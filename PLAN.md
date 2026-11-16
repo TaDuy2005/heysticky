@@ -59,7 +59,7 @@ Pin map (from the open-source sticky-2048 firmware):
 | Row | Screens |
 |---|---|
 | Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) |
-| To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Deadline picker · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) |
+| To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) |
 | Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04f Location · 04g Temperature · 04h About · 04i SD Card · 04j Web setup · 06 Phone setup page |
 
@@ -70,6 +70,7 @@ Pin map (from the open-source sticky-2048 firmware):
 - Page counter (`1/2`, no spaces): centred, 16 px above the bottom edge, **only on screens with more than one page** (Home/Apps, To-do, Notes, Note view). No hint bar.
 - Bottom buttons sit **16 px** above the bottom edge; on screens with a page counter they sit 12 px above it (bottom at y 746).
 - To-do rows: checkbox, then the task title with its due date on the line below. Notes list: title on one line, cut with "…".
+- Task deadline: under DEADLINE (OPTIONAL) the editor has two rows, `Date Off ›` and `Time Off ›` (values `17/11/26`, `09:00` once set). Date (02c) = toggle + calendar + Done; Time (02h) = toggle + HH:MM fields + number pad (Done on the pad). Cancel undoes that screen. Date only = date-only `@due`; Time only = today at that time; both off = no deadline.
 - Editing: the keyboard's Enter key is **Done** and only hides the keyboard (tap a field to bring it back). Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete).
 
 **Settings (08):** Auto-rotate (toggle) · Sound (toggle) · Language & Font › · Software Update › · Configuration › · About ›. Same layout as Seeed's official Sticky firmware.
@@ -101,16 +102,16 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
 - [x] REQ-02 Phone setup page saves Wi-Fi, name, city, units — stored on the device only
-- [ ] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Next up, dock (done except the Today count, which waits for To-do in TASK-08)
+- [x] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Today count, dock
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
-- [ ] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Today / Tomorrow / pick date + time); overdue first, then by due date
+- [x] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Date and Time, each on/off); overdue first, then by due date
 - [ ] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
 - [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city search, auto timezone, 30-min refresh, °C/°F), About
 - [ ] REQ-09 Touch and UP/DOWN/OK work on every screen
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [ ] REQ-11 No secrets in source or in the `.bin`
-- [ ] REQ-12 Missing SD card → "No microSD card" screen with retry
+- [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
 - [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
 - [ ] REQ-14 OTA: on Wi-Fi connect and on "Check for updates", compare with the latest GitHub Release; download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [ ] REQ-15 Language English/Vietnamese; user fonts loaded from `/fonts/*.fpack`; built-in font covers Vietnamese diacritics
@@ -125,7 +126,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-05 Clock (NTP + timezone) and weather (Open-Meteo)
 - [x] TASK-06 Home screen
 - [x] TASK-07 On-screen keyboard
-- [ ] TASK-08 To-do: list, add, tick, edit, delete, deadlines + Deadline picker
+- [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
 - [ ] TASK-09 Notes: list, view, new, edit, delete
 - [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup, Location screens
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
@@ -198,7 +199,6 @@ HeySticky/
 - [x] City is typed by the user (no IP geolocation)
 - [x] Hold top button is reserved for AI; sleep is idle-only
 - [x] AI providers are OpenAI-compatible and user-configurable (DeepSeek for chat; a separate speech-to-text provider, since DeepSeek has no audio API)
-- [ ] Git: repository not initialized yet (user's choice)
 - [ ] Device + microSD card needed on USB-C from TASK-02
 - [ ] Deadline reminder beeps — V3 unless pulled into V1
 - [ ] SN: where the factory firmware stores it is unknown (efuse user block? an NVS/factory partition?). Read the device's partition table before the first flash; if our merged `.bin` would overwrite it, back it up and keep that partition
@@ -207,7 +207,7 @@ HeySticky/
 - [ ] `.fpack` format is Seeed's; confirm it is documented or use our own font format
 - [ ] Wi-Fi, Web setup, Your name and Sleep after are no longer in Settings — decide where they live (phone setup page only?)
   - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
-- [ ] No microSD card: the old "No SD card" screen was removed — decide what the Sticky shows instead
+- [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
 
 ## 13. Strings (EN / VI)
@@ -236,11 +236,10 @@ Firmware string table for TASK-14; the Figma "Tiếng Việt (VI)" section uses 
 | new_note / edit_note | New note / Edit note | Ghi chú mới / Sửa ghi chú |
 | title / placeholder | Title / Start typing… | Tiêu đề / Bắt đầu gõ… |
 | deadline_opt | DEADLINE (OPTIONAL) | HẠN CHÓT (TUỲ CHỌN) |
-| none / pick_date / time | None / Pick date / Time | Không / Chọn ngày / Giờ |
-| deadline / clear / set | Deadline / Clear / Set · {date} | Hạn chót / Bỏ hạn / Đã đặt · {date} |
+| date / time / off | Date / Time / Off | Ngày / Giờ / Tắt |
 | save / edit / delete / cancel / done | Save / Edit / Delete / Cancel / Done | Lưu / Sửa / Xoá / Huỷ / Xong |
 | key_space | space | cách |
-| del_task / del_task_body | Delete task? / It will be removed from /todo.md on the SD card. | Xoá việc này? / Việc sẽ bị xoá khỏi /todo.md trên thẻ SD. |
+| del_task | Delete task? | Xoá việc này? |
 | del_note / del_note_body | Delete note? / Note #{n} will be deleted from the SD card. | Xoá ghi chú? / Ghi chú #{n} sẽ bị xoá khỏi thẻ SD. |
 | empty_todo | No tasks yet / Tap Add task to make one. | Chưa có việc nào / Chạm Thêm việc để tạo. |
 | empty_notes | No notes yet / Tap New note, or hold ● to speak one. | Chưa có ghi chú / Chạm Ghi chú mới, hoặc giữ ● để nói. |

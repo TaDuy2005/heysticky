@@ -37,12 +37,13 @@ FONTS = {
     "R25": ("Regular", 25, TEXT),
     "R30": ("Regular", 30, TEXT),
     "B35": ("Bold", 35, TEXT),
+    "B28": ("Bold", 28, TEXT),
     "X30": ("ExtraBold", 30, TEXT),
     "X32": ("ExtraBold", 32, TEXT),
     "X28": ("ExtraBold", 28, "0123456789.,-°%CF "),
     "X48": ("ExtraBold", 48, "0123456789-°CF "),
     "X120": ("ExtraBold", 120, "0123456789:- "),
-    "X34": ("ExtraBold", 34, "0123456789: "),
+    "X64": ("ExtraBold", 64, "0123456789:"),
     "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"),
 }
 

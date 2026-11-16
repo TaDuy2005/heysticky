@@ -18,6 +18,8 @@ inline const Font F_R25 = {R25_vlw, 26, 8};
 inline const Font F_R30 = {R30_vlw, 31, 9};
 #include "B35.h"
 inline const Font F_B35 = {B35_vlw, 36, 11};
+#include "B28.h"
+inline const Font F_B28 = {B28_vlw, 29, 9};
 #include "X30.h"
 inline const Font F_X30 = {X30_vlw, 31, 9};
 #include "X32.h"
@@ -28,7 +30,7 @@ inline const Font F_X28 = {X28_vlw, 29, 9};
 inline const Font F_X48 = {X48_vlw, 49, 15};
 #include "X120.h"
 inline const Font F_X120 = {X120_vlw, 123, 36};
-#include "X34.h"
-inline const Font F_X34 = {X34_vlw, 35, 11};
+#include "X64.h"
+inline const Font F_X64 = {X64_vlw, 66, 20};
 #include "X40.h"
 inline const Font F_X40 = {X40_vlw, 41, 12};

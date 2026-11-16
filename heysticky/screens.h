@@ -7,7 +7,7 @@
 #include "net.h"
 #include "todo_ui.h"
 
-enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DEADLINE, SCR_DELTASK, SCR_NOSD };
+enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD };
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -204,7 +204,7 @@ inline void draw_websetup() {
 
 
 // ---------- navigation ----------
-inline bool g_redraw = false;  // redraw the current screen with one partial refresh (batched taps)
+inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
 inline void draw_screen() {
   switch (g_screen) {
@@ -213,7 +213,8 @@ inline void draw_screen() {
     case SCR_WEBSETUP: draw_websetup(); break;
     case SCR_TODO: draw_todo(); break;
     case SCR_TASK: draw_task_editor(); break;
-    case SCR_DEADLINE: draw_picker(); break;
+    case SCR_DATE: draw_date(); break;
+    case SCR_TIME: draw_time(); break;
     case SCR_DELTASK: draw_delete_task(); break;
     case SCR_NOSD: draw_nosd(); break;
   }
@@ -236,23 +237,25 @@ inline void todo_commit(Screen next) { show(todo_save() ? next : SCR_NOSD); }  /
 inline void open_editor(int idx) {  // idx -1 = new task
   g_ed = TaskEdit();
   g_ed.idx = idx;
-  if (idx >= 0) { g_ed.text = g_tasks[idx].text; g_ed.due = g_tasks[idx].due; g_ed.kbOpen = false; }
+  if (idx >= 0) { g_ed.text = g_tasks[idx].text; g_ed.kbOpen = false; }
+  g_ed.dl = dl_from(idx >= 0 ? g_tasks[idx].due : String(""));
   show(SCR_TASK);
 }
 
 inline void editor_save() {
   String s = g_ed.text;
   s.trim();
-  if (!s.length()) { hw_beep(120, 1200); return; }  // nothing to save
+  String due;
+  if (!s.length() || !dl_due(g_ed.dl, due)) { hw_beep(120, 1200); return; }  // no text / Time-only before NTP
   hw_beep(30);
   if (g_ed.idx < 0) {
     Task t;
     t.text = s;
-    t.due = g_ed.due;
+    t.due = due;
     g_tasks.push_back(t);
   } else {
     g_tasks[g_ed.idx].text = s;
-    g_tasks[g_ed.idx].due = g_ed.due;
+    g_tasks[g_ed.idx].due = due;
   }
   todo_commit(SCR_TODO);
 }
@@ -315,26 +318,40 @@ inline void editor_tap(int x, int y) {
     g_redraw = true;
     return;
   }
-  const int k = chip_at(x, y);
-  if (k == 0) { g_ed.due = ""; g_redraw = true; }
-  else if (k == 1 || k == 2) { if (chip_due(k, g_ed.due)) g_redraw = true; }
-  else if (k == 3) { hw_beep(30); picker_open(); show(SCR_DEADLINE); }
+  if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(30); g_dlUndo = g_ed.dl; show(SCR_DATE); }
+  else if (in(x, y, 40, ROW_TIME_Y, 400, ROW_H)) { hw_beep(30); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
   else if (!g_ed.kbOpen && y >= 717 && y < 784) {
     if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(30); show(SCR_DELTASK); }
     else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
   }
 }
 
-inline void picker_tap(int x, int y) {
-  if (top_right(x, y)) { hw_beep(30); g_ed.due = ""; show(SCR_TASK); return; }  // Clear
-  if (y >= 112 && y < 162 && (x < 110 || x >= 370)) { picker_month(x < 110 ? -1 : 1); g_redraw = true; return; }
-  if (picker_day_at(x, y)) { g_redraw = true; return; }
-  if (y >= 510 && y < 579 && (in(x, y, 220, 510, 56, 69) || x >= 376)) {
-    g_pk.mins = (g_pk.mins + (x >= 376 ? TIME_STEP : 24 * 60 - TIME_STEP)) % (24 * 60);
-    g_redraw = true;
-    return;
-  }
-  if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); g_ed.due = picker_due(); show(SCR_TASK); }
+// 02c / 02h: the toggle row flips; Cancel restores what the editor had; Done keeps the change.
+inline bool dl_common_tap(int x, int y, bool &on) {
+  if (top_right(x, y)) { hw_beep(30); g_ed.dl = g_dlUndo; show(SCR_TASK); return true; }
+  if (in(x, y, 40, 112, 400, 72)) { on = !on; g_redraw = true; return true; }
+  return false;
+}
+
+inline void date_tap(int x, int y) {
+  if (dl_common_tap(x, y, g_ed.dl.dateOn)) return;
+  if (g_ed.dl.dateOn && y >= 184 && y < 244 && (x < 110 || x >= 370)) { date_month(x < 110 ? -1 : 1); g_redraw = true; }
+  else if (g_ed.dl.dateOn && date_day_at(x, y)) g_redraw = true;
+  else if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); show(SCR_TASK); }
+}
+
+inline void time_tap(int x, int y) {
+  if (dl_common_tap(x, y, g_ed.dl.timeOn)) { if (g_ed.dl.timeOn) time_begin(); return; }
+  if (!g_ed.dl.timeOn) { if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); show(SCR_TASK); } return; }
+  for (int i = 0; i < 2; i++)
+    if (in(x, y, TF_X[i], TF_Y, TF_W, TF_H)) { g_te.active = i; g_te.fresh = true; g_timeDirty = true; }
+}
+
+inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
+  if (k == 11) { hw_beep(30); time_commit(); show(SCR_TASK); return; }
+  if (k == 9) time_back(g_te);
+  else if (!time_digit(g_te, k == 10 ? '0' : char('1' + k))) hw_beep(80, 1200);  // would be an invalid time
+  g_timeDirty = true;
 }
 
 // Touch events come from the touch task's queue, so taps made during a refresh are not lost.
@@ -365,7 +382,8 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       else if (dx > 0) show(SCR_APPS);
       return;
     case SCR_TASK: editor_tap(x0, y0); return;
-    case SCR_DEADLINE: picker_tap(x0, y0); return;
+    case SCR_DATE: date_tap(x0, y0); return;
+    case SCR_TIME: time_tap(x0, y0); return;
     case SCR_DELTASK:
       if (in(x0, y0, 40, 705, 193, 79)) {
         hw_beep(30);
@@ -386,20 +404,22 @@ inline void screens_input() {
   static int16_t x0, y0;
   static uint32_t t0 = 0, lastRepeat = 0;
   static KbKey held;
-  static bool holding = false, pressing = false, longDone = false;
+  static bool holding = false, pressing = false, consumed = false;  // consumed: DOWN already acted
   TouchEv e;
   while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
     if (e.down) {
-      x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; longDone = false;
-      if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = true; editor_key(held); }
+      x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; consumed = false;
+      int k;
+      if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = consumed = true; editor_key(held); }
+      else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
       holding = pressing = false;
-      if (!longDone) on_touch_up(x0, y0, e.x, e.y);
+      if (!consumed) on_touch_up(x0, y0, e.x, e.y);
     }
   }
   // Long press on a to-do row opens Edit task while the finger is still down.
-  if (pressing && !longDone && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS) {
-    longDone = true;
+  if (pressing && !consumed && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS) {
+    consumed = true;
     const int idx = todo_row_at(y0);
     if (idx >= 0) { hw_beep(60); open_editor(idx); }
   }
@@ -431,4 +451,9 @@ inline void screens_loop() {
   }
   if (g_screen == SCR_HOME) home_tick();
   else if (g_screen == SCR_TASK) editor_flush();
+  else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one
+    g_timeDirty = false;
+    time_fields();
+    ui_partial(40, TF_Y, 400, TF_H, KBD_FULL_EVERY);
+  }
 }
