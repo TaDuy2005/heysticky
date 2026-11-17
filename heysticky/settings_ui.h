@@ -43,8 +43,9 @@ inline void draw_settings() {
     const int y = SROW_TOP + i * SROW_H;
     ui_icon(*SET_ROWS[i].icon, 40, y + 20);
     ui_text(F_B28, TR(SET_ROWS[i].label, SET_ROWS[i].vi), 86, y + 17, 37);
-    if (i == SR_ROTATE || i == SR_SOUND) ui_toggle(372, y + 17, i == SR_ROTATE ? set_rotate() : g_sound);
+    if (i == SR_ROTATE) ui_toggle(372, y + 17, set_rotate());
     else ui_icon(ICON_CHEV, 414, y + 23);
+    if (i == SR_SOUND) ui_text(F_R25, g_sound ? TR("On", "Bật") : TR("Off", "Tắt"), 406, y + 19, 33, AL_RIGHT);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
   }
 }
@@ -109,6 +110,24 @@ inline void draw_choices(const String &title, const std::vector<String> &rows, i
 
 inline void draw_temp() {
   draw_choices(TR("Temperature", "Nhiệt độ"), {TR("Celsius (°C)", "Độ C (°C)"), TR("Fahrenheit (°F)", "Độ F (°F)")}, units() == "F");
+}
+
+// ---------- 04m Sound (flash keys sound, vol): toggle in the top bar like Web setup; Off shows nothing below ----------
+constexpr int VOL_N = 3;  // Low, Medium, High (hw.h VOLUME_DUTY)
+inline void draw_sound() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_text(F_X32, TR("Sound", "Âm thanh"), 40, 54, 42);
+  ui_toggle(372, 56, g_sound);
+  display.fillRect(40, 109, 400, 3, INK);
+  if (!g_sound) return;
+  const String rows[VOL_N] = {TR("Low", "Nhỏ"), TR("Medium", "Vừa"), TR("High", "Lớn")};
+  for (int i = 0; i < VOL_N; i++) {
+    const int y = SROW_TOP + i * SROW_H;
+    ui_text(F_B28, rows[i], 40, y + 17, 37);
+    checkbox(404, y + 18, i == g_vol);
+    display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
+  }
 }
 
 // ---------- 04l Sleep after (flash key sleep_min, 0 = Never) ----------
