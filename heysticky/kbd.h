@@ -69,6 +69,7 @@ struct Keyboard {
 
 // One key into a text field. Shift / 123 redraw the keyboard here; the caller refreshes the field.
 // Shift turns itself on where a sentence starts (cap_next) and off after one letter.
+// Like a phone: two spaces after a word make ". " (space_dot); a space on the 123 page goes back to letters.
 constexpr int KBD_FULL_EVERY = 20;  // full refresh after this many typing refreshes
 enum KbResult : uint8_t { KB_TEXT, KB_NONE, KB_DONE };
 
@@ -77,10 +78,12 @@ inline KbResult kb_apply(Keyboard &kb, String &s, unsigned cap, const KbKey &k) 
     case K_CHAR:
     case K_SPACE:
     case K_BKSP: {
+      const bool page = kb.numbers && k.kind == K_SPACE;  // 123 + space -> letters, like a phone
       if (k.kind == K_BKSP) { if (s.length()) utf8_pop(s); }
-      else if (s.length() < cap) s += kb.shift ? char(toupper(k.ch)) : k.ch;
+      else if (s.length() < cap && !(k.kind == K_SPACE && space_dot(s))) s += kb.shift ? char(toupper(k.ch)) : k.ch;
+      kb.numbers = kb.numbers && !page;
       const bool sh = cap_next(s);
-      if (sh != kb.shift) { kb.shift = sh; kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
+      if (sh != kb.shift || page) { kb.shift = sh; kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
       return KB_TEXT;
     }
     case K_SHIFT: kb.shift = !kb.shift; break;

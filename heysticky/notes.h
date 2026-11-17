@@ -65,6 +65,17 @@ inline bool cap_next(const String &s) {
   return i < int(s.length()) && (s[i - 1] == '.' || s[i - 1] == '!' || s[i - 1] == '?');
 }
 
+// Phone keyboard: a space typed right after "word " turns that space into ". ". True if it did.
+inline bool space_dot(String &s) {
+  const int n = s.length();
+  if (n < 2 || s[n - 1] != ' ') return false;
+  const uint8_t c = s[n - 2];
+  if (!isalnum(c) && c < 0x80) return false;  // UTF-8 bytes count as letters (Việt)
+  s[n - 1] = '.';
+  s += ' ';
+  return true;
+}
+
 // Word wrap to lines no wider than w (width() measures a String). Keeps the body's own line
 // breaks; a word wider than the line is split by character (UTF-8 safe).
 template <class Width>
