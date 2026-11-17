@@ -63,7 +63,8 @@ Pin map (from the open-source sticky-2048 firmware):
 | Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) |
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task (confirm) · 02j Discard changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note (confirm) · 03i Discard changes (confirm) |
-| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 04l Wi-Fi · 04m Enter password · 04n Incorrect password · 04o Network details · 04p Forget network · 06 Phone setup page · 06a City suggestions |
+| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files |
+| Phone setup page (served only on the hotspot) | 06 Setup · 06a City suggestions · 06b Wi-Fi · 06c Enter password · 06d Incorrect password · 06e Network details · 06f Forget network · 06g Integrations · 06h AI · 06i Notion · 06j Home Assistant · 06k Remote access |
 
 **Layout & type (all Sticky screens; not the phone setup page):**
 - Font: **JetBrains Mono** (Regular, Bold, ExtraBold). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
@@ -75,13 +76,13 @@ Pin map (from the open-source sticky-2048 firmware):
 - Task deadline: under DEADLINE (OPTIONAL) the editor has two rows, `Date Off ›` and `Time Off ›` (values `17/11/26`, `09:00` once set). Date (02c) = toggle + calendar + Done; Time (02h) = toggle + HH:MM fields + number pad (Done on the pad). Cancel undoes that screen. Date only = date-only `@due`; Time only = today at that time; both off = no deadline.
 - Editing: every keyboard's last key is **↵** (no "Done" text; the 02h time keypad too). In one-line fields (task, note title) ↵ only hides the keyboard; in the note body ↵ = new line and UP/DOWN hide the keyboard. Tap a field to bring the keyboard back. The cursor is always at the end of the text. Shift turns on by itself at the start of a field or line and after ". " / "! " / "? " (one letter, like a phone). Also like a phone: two spaces after a word make ". ", and a space on the 123 page goes back to letters. Empty fields show an Italic placeholder (*Task*, *Title*, body hint); a focused field shows it with the cursor after it until tapped or typed in. Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete). Home (top button or bottom-edge swipe) in a task or note editor (incl. the task's Date/Time) asks first when work would be lost: a New task / New note with text typed → 02i / 03h *Discard task? / Discard note?*; an Edit that changed the text, title, body or deadline → 02j / 03i *Discard changes?*. Discard = drop it and go Home (the saved item stays as it was), Cancel = back exactly as it was. Nothing typed / nothing changed: Home goes straight there. On the warning the top button does nothing.
 
-**Settings (04):** Wi-Fi › · Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Wi-Fi and Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
+**Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
 - **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9).
 - **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
-- **Wi-Fi (04l–04p), like a phone:** 04l has a Wi-Fi On/Off toggle, the joined network (✓, 🔒, signal 1–3, ⓘ), **MY NETWORKS** (saved, up to 5) and **OTHER NETWORKS** (from a scan, refreshed while the screen is open), then **Other…** for a hidden network (name + password). Tap a saved network → join; tap a new secured one → 04m Enter password (keyboard, ↵ = Join, the last letter shows 1 s then becomes a dot; Cancel → 04l); an open one joins straight away. While joining, the row shows "Joining…". A wrong password (router rejects it) → 04n *Incorrect password* (OK → 04m, field empty); not found / timeout → "Couldn't join" on the row. ⓘ (saved networks only) → 04o Network details: Status (Connected / Saved), Signal (Excellent / Good / Weak), Security, IP address, **Forget This Network** → 04p *Forget "{ssid}"?* (Forget / Cancel). More networks than fit: UP / DOWN pages.
-- **Phone setup page (06):** Wi-Fi (Network, Password) and Profile (Your name, City). Units is set only on the Sticky (04g). **City suggestions (06a):** from 2 letters, after a 0.3 s pause, the phone itself asks Open-Meteo geocoding for up to 5 places ("{name}" + "{region}, {country}"); picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Typed without picking (or no phone internet, e.g. hotspot) → the Sticky uses the top match for the name.
-- **Web setup (04j):** On/Off toggle in the top bar. On = address box, QR code and hotspot hint, and the phone setup page is served; Off = nothing below, page not served. Starts Off after every boot on Wi-Fi; always On in hotspot mode (it is the only way to set up).
+- **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** Profile — Your name, City (06a suggestions), **Wi-Fi** "{current network}" ›, **Integrations** › — and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c password sheet (Cancel / Join). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until V2 (its fields would save keys nothing uses yet).
+- **City suggestions (06a):** from 2 letters, after a 0.3 s pause, up to 5 places ("{name}" + "{region}, {country}"). The Sticky looks them up through its own Wi-Fi; if it has no internet yet, the phone tries Open-Meteo itself; if neither works there is no list and the typed name is used (top match). Picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Units is set only on the Sticky (04g).
+- **Web setup (04j):** On/Off toggle in the top bar. **On** starts the hotspot `HeySticky-Setup` with a new random 8-character WPA2 password each time and shows: *Scan to join* + a Wi-Fi QR code (`WIFI:T:WPA;S:HeySticky-Setup;P:{password};;` — the phone camera joins it), "Wi-Fi HeySticky-Setup", "Password {password}", *Then open* `192.168.4.1` ("It may open by itself": captive portal). The Sticky stays on its home Wi-Fi while the hotspot is on (clock and weather keep going). **Off** stops the hotspot and the page; nothing below the top bar. Starts Off after boot, except with no saved network (first setup): then On by itself. The setup page is never served on the home network.
 - **About:** Name, SN (eFuse BLOCK3, 18 digits), MAC, Software version, Certifications, SD card › (04i: Inserted, Mounted, Path, Space, Files › → 04k SD Files: every file by path with its size, 9 per page).
 - **Auto-rotate:** setting is stored; no screen supports rotation yet (needs the IMU).
 | AI voice (V2) | 05 Listening · 05a Working · 05b Review (only when unsure) · 05c Done · 05d Failed |
@@ -120,7 +121,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
 - [ ] REQ-14 OTA: on Wi-Fi connect and on "Check for updates", compare with the latest GitHub Release; download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [ ] REQ-15 Language English/Vietnamese; user fonts loaded from `/fonts/*.fpack`; built-in font covers Vietnamese diacritics
-- [ ] REQ-17 Wi-Fi like a phone: list nearby networks, join with a password, wrong-password pop-up, up to 5 saved networks joined automatically in the background (strongest in range), forget a network; the hotspot only when nothing is saved
+- [ ] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
 
 ## 7. V1 task list
@@ -135,7 +136,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
 - [x] TASK-09 Notes: list, view, new, edit, delete
 - [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
-- [ ] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect, scan in station mode, 04l–04p screens, wrong-password detection from the disconnect reason, Forget, phone setup page adds to the list, hotspot only with no saved networks
+- [ ] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect, 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
 - [ ] TASK-11 Power: idle sleep, minute clock wake, button wake
@@ -159,7 +160,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 | Key | V1 | V2 |
 |---|---|---|
-| `wifi_on`; `wifi0`…`wifi4` = saved networks (SSID + password), most recently joined first (TASK-15; replaces `wifi_ssid`, `wifi_pass`) | ✓ | |
+| `wifi0`…`wifi4` = saved networks (SSID + password), most recently joined first (TASK-15; replaces `wifi_ssid`, `wifi_pass`) | ✓ | |
 | `name`, `city`, `lat`, `lon`, `tz`, `units`, `geo_city` (city that lat/lon belong to) | ✓ | |
 | `sound`, `sleep_min` | ✓ | |
 | `rotate`, `lang`, `font`, `ota_last` | ✓ | |
@@ -168,9 +169,9 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 
 ## 9. Network
 
-- **Wi-Fi:** never blocks the screen. At boot and after a drop, a background scan picks the strongest saved network in range and joins it; retries every 30 s while none is found. Scans only in station mode (scanning around `softAP()` crashes the Wi-Fi driver on ESP32 core 3.3.12), so the hotspot page has no network list and the user types the name there. Wrong password is told apart from "not found" by the disconnect reason (auth fail / 4-way handshake timeout). The `HeySticky-Setup` hotspot starts only when no network is saved. Networks with a sign-in page (hotels, cafés) are not supported.
-- **Setup page:** served by the Sticky on its IP (or `192.168.4.1` in hotspot mode). Saved keys are shown masked and never sent back to the browser.
-  Known limit: the page is plain HTTP on the local network.
+- **Wi-Fi:** never blocks the screen. At boot and after a drop, a background scan picks the strongest saved network in range and joins it; retries every 30 s while none is found. Wrong password is told apart from "not found" by the disconnect reason (auth fail / 4-way handshake timeout). Hotspot (04j On) runs in AP+STA mode next to the home connection. Scanning while `softAP()` starts crashed the Wi-Fi driver on ESP32 core 3.3.12, so the scan runs just before the hotspot starts and the list is kept; a refresh while it runs is to be tested on the device. Networks with a sign-in page (hotels, cafés) are not supported.
+- **Setup page:** served only on the Sticky's own WPA2 hotspot at `192.168.4.1` while 04j is On, never on the home network. Saved keys are shown masked and never sent back to the browser.
+  Known limit: plain HTTP, but only between the phone and the Sticky over its password-protected hotspot.
 - **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone (phone page suggestions; the Sticky itself uses count=1 for a typed name)
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
 - **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
@@ -212,8 +213,8 @@ HeySticky/
 - [ ] MAC: read from efuse (`esptool read_mac`; `ESP.getEfuseMac()` in firmware) — no unknowns
 - [ ] Certifications: not readable from the chip, and the factory firmware has no certification text either. About shows the Figma placeholder "FCC · CE" until the text on the device label is confirmed
 - [ ] `.fpack` format is Seeed's; confirm it is documented or use our own font format
-- [x] Web setup is a row in Settings (below Configuration). Your name is set only on the phone setup page; Wi-Fi on the Sticky (04l) or the phone page.
-- [x] Wi-Fi behaves like a phone (04l–04p): up to 5 saved networks, background auto-join, wrong-password pop-up, Forget (2026-11-17) Sleep after: decide with TASK-11
+- [x] Web setup is a row in Settings (below Configuration). Everything (name, city, Wi-Fi, integrations) is set on the phone setup page, reached only through the Sticky's hotspot (04j On → edit → Save → Off). Sleep after: decide with TASK-11
+- [x] Wi-Fi is set like iPhone Settings on the phone page (06b–06f), not on the Sticky: up to 5 saved networks, background auto-join, wrong-password alert, Forget. Hotspot gets a random password each time it is turned on (2026-11-17)
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
 - [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
 - [x] BQ27220 runs at 10× scale (factory config: design/full-charge capacity 7500 mAh for the 750 mAh cell), so its mA are divided by `GAUGE_SCALE` = 10 in `hw.h`. Its data memory is sealed (read-only check, 2026-11-17); we never write to the gauge. Charging stops by itself at full (100%, 0 mA, FC flag set)
@@ -262,16 +263,15 @@ Firmware string table for TASK-14; the Figma "Tiếng Việt (VI)" section uses 
 | about / name / sw_ver / certs | About / Name / Software version / Certifications | Thông tin / Tên / Phiên bản / Chứng nhận |
 | sd / free / inserted / mounted / path / space / files | SD card / {x} free / Inserted / Mounted / Path / Space / Files | Thẻ SD / Trống {x} / Đã lắp / Đã gắn / Đường dẫn / Dung lượng / Tệp |
 | yes / on | Yes / On | Có / Bật |
-| web_setup / open_phone / same_wifi | Web setup / Open this on your phone / Use the same Wi-Fi. | Cài đặt qua web / Mở trên điện thoại / Dùng cùng mạng Wi-Fi. |
-| join_wifi / scan_join | Join this Wi-Fi / Scan to join, then open | Kết nối Wi-Fi này / Quét để kết nối, rồi mở |
+| web_setup / password | Web setup / Password | Cài đặt qua web / Mật khẩu |
+| scan_join / then_open / may_open | Scan to join / Then open / It may open by itself. | Quét để kết nối / Rồi mở / Trang có thể tự mở. |
 | sd_files / no_files | SD Files / No files | Tệp trên thẻ SD / Không có tệp |
-| wifi / my_networks / other_networks / other | Wi-Fi / MY NETWORKS / OTHER NETWORKS / Other… | Wi-Fi / MẠNG CỦA TÔI / MẠNG KHÁC / Khác… |
+| (phone page) wifi / my_networks / other_networks / other | Wi-Fi / MY NETWORKS / OTHER NETWORKS / Other… | Wi-Fi / MẠNG CỦA TÔI / MẠNG KHÁC / Khác… |
 | enter_pass / for_net / joining / cant_join | Enter password / for "{ssid}" / Joining… / Couldn't join | Nhập mật khẩu / cho "{ssid}" / Đang kết nối… / Không kết nối được |
 | wrong_pass / ok | Incorrect password / OK | Sai mật khẩu / OK |
 | net_status / connected / saved / signal / security / ip | Status / Connected / Saved / Signal / Security / IP address | Trạng thái / Đã kết nối / Đã lưu / Tín hiệu / Bảo mật / Địa chỉ IP |
 | signal levels | Excellent / Good / Weak | Rất tốt / Tốt / Yếu |
 | forget_net / forget_q / forget_hint / forget | Forget This Network / Forget "{ssid}"? / Your Sticky will stop joining it. / Forget | Quên mạng này / Quên "{ssid}"? / Sticky sẽ không tự kết nối mạng này nữa. / Quên |
-| hotspot | No Wi-Fi yet? Join the hotspot "HeySticky-Setup", then open 192.168.4.1 | Chưa có Wi-Fi? Kết nối điểm phát "HeySticky-Setup", rồi mở 192.168.4.1 |
 | ai_listening / ai_working | Listening… / Working on it… | Đang nghe… / Đang xử lý… |
 | ai_steps | Heard you / Sorting it out… / Saving… | Đã nghe / Đang phân loại… / Đang lưu… |
 | ai_review / ai_unsure / ai_again | Here's what I heard / Not sure. Save it as: / Record again? | Tôi đã nghe được / Chưa rõ. Lưu thành: / Ghi âm lại? |
