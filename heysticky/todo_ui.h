@@ -286,14 +286,14 @@ inline void draw_time() {
 }
 
 // ---------- 02f Delete task / 03f Delete note ----------
-inline void draw_delete(const char *question) {
+inline void draw_delete(const char *question, const char *action = "Delete") {  // also 02i/03h Discard
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   display.fillCircle(240, 337, 80, INK);  // badge 160x160, 5 px ring
   display.fillCircle(240, 337, 75, PAPER);
   ui_icon(ICON_TRASH64, 208, 305);
   ui_text(F_X40, question, W / 2, 435, 53, AL_CENTER);
-  ui_button(40, 705, 193, 79, false, &ICON_TRASH24, "Delete");
+  ui_button(40, 705, 193, 79, false, &ICON_TRASH24, action);
   ui_button(247, 705, 193, 79, true, &ICON_X24, "Cancel");
 }
 
