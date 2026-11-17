@@ -7,10 +7,10 @@
 #include "todo_ui.h"
 #include "notes_ui.h"
 #include "settings_ui.h"
-#include "mic.h"  // after ui.h: the bring-up card draws with it
+#include "ai_ui.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
@@ -219,6 +219,7 @@ inline void draw_screen() {
     case SCR_USERFONT: draw_userfont(); break;
     case SCR_SLEEP: draw_sleep(); break;
     case SCR_SOUND: draw_sound(); break;
+    case SCR_LISTEN: draw_listen(); break;
   }
 }
 
@@ -575,6 +576,35 @@ inline bool unsaved() {
   t.trim();
   return t.length();
 }
+// ---------- AI voice (PLAN_AI.md): hold the top button = 05 Listening, release = stop ----------
+inline Screen g_listenBack = SCR_HOME;  // the take returns here until AI-04..06 add Working / Review / Done / Failed
+
+inline void listen_start() {
+  if (!mic_start()) { hw_beep(BEEP_MS, 1200); return; }
+  g_listenBack = g_screen;  // editors keep their state, so going back shows them as they were
+  show(SCR_LISTEN);         // recording already runs in the mic task during this full refresh
+}
+
+// Runs instead of the normal loop while listening: touches and other buttons are ignored.
+inline void listen_loop() {
+  static uint32_t last = 0;
+  static int step = 0;
+  g_lastInput = millis();
+  TouchEv e;
+  while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {}
+  if (digitalRead(PIN_BTN_TOP) != g_btn[0].idle && !mic_full()) {
+    if (millis() - last >= WAVE_EVERY_MS) {
+      last = millis();
+      draw_wave(wave_level(), ++step);
+      ui_partial(WAVE_X, WAVE_Y, WAVE_W, WAVE_H, INT_MAX);  // no ghost-clearing full refresh mid-take; show() does one
+    }
+    return;
+  }
+  const size_t size = mic_stop();  // released (the button poll ignores this release: it was reported as long)
+  mic_save_last(size);
+  show(g_listenBack);  // AI-04..06: Working -> Done / Review / Failed
+}
+
 inline void go_home() {
   if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) return;  // on the warning, only its buttons act
   if (unsaved()) { g_discardBack = g_screen; show(SCR_DISCARD); }
@@ -701,11 +731,12 @@ inline void screens_input() {
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();
     else if (b == BTN_UP) page_fwd();
-    else if (b == BTN_TOP_LONG) mic_bringup();  // AI-01; becomes 05 Listening in AI-02
+    else if (b == BTN_TOP_LONG) listen_start();
   }
 }
 
 inline void screens_loop() {
+  if (g_screen == SCR_LISTEN) { listen_loop(); return; }
   screens_input();
   if (g_fontDirty) { g_fontDirty = false; show(g_screen); }  // the font in use changed from the phone page
   if (g_redraw) {
