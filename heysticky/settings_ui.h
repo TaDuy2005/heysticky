@@ -59,19 +59,18 @@ inline void draw_update() {
   ui_topbar(TR("Software Update", "Cập nhật phần mềm"), "");
   ui_text(F_X32, String("HeySticky v") + FW_VERSION, 40, 144, 42);
   const String v = g_otaTag.startsWith("v") ? g_otaTag : "v" + g_otaTag, last = ota_checked_text();
-  String head, l1 = last.length() ? last + " ·" : "", l2 = last.length() ? TR("over Wi-Fi", "qua Wi-Fi") : "", btn = TR("Check for updates", "Kiểm tra cập nhật");
+  String head, sub = last.length() ? last + TR(" · over Wi-Fi", " · qua Wi-Fi") : "", btn = TR("Check for updates", "Kiểm tra cập nhật");
   switch (g_ota) {
     case OTA_IDLE: head = WiFi.status() == WL_CONNECTED ? TR("Not checked yet", "Chưa kiểm tra") : TR("No Wi-Fi connection", "Không có Wi-Fi"); break;
-    case OTA_CHECKING: head = TR("Checking…", "Đang kiểm tra…"); l1 = l2 = ""; break;
+    case OTA_CHECKING: head = TR("Checking…", "Đang kiểm tra…"); sub = ""; break;
     case OTA_LATEST: head = TR("You’re up to date", "Đã là bản mới nhất"); break;
     case OTA_AVAIL: head = TR(v + " is available", "Có bản " + v); btn = TR("Install ", "Cài ") + v; break;
     case OTA_ERR: head = TR("Couldn’t check for updates", "Không kiểm tra được"); break;
-    case OTA_INSTALLING: head = TR("Installing ", "Đang cài ") + v + "… " + g_otaPct + "%"; l1 = TR("Don’t turn off the Sticky.", "Đừng tắt Sticky."); l2 = TR("It restarts when done.", "Xong sẽ tự khởi động lại."); break;
-    case OTA_FAILED: head = TR("Update failed", "Cập nhật thất bại"); l1 = TR("This version is unchanged.", "Phiên bản hiện tại giữ nguyên."); l2 = ""; btn = TR("Try again", "Thử lại"); break;
+    case OTA_INSTALLING: head = TR("Installing ", "Đang cài ") + v + "… " + g_otaPct + "%"; sub = TR("Don’t turn off the Sticky. It restarts when done.", "Đừng tắt Sticky. Xong sẽ tự khởi động lại."); break;
+    case OTA_FAILED: head = TR("Update failed", "Cập nhật thất bại"); sub = TR("This version is unchanged.", "Phiên bản hiện tại giữ nguyên."); btn = TR("Try again", "Thử lại"); break;
   }
   ui_text(F_B25, head, 40, 194, 33);
-  ui_text(F_R25, l1, 40, 235, 33);
-  ui_text(F_R25, l2, 40, 268, 33);
+  ui_wrap(F_R25, sub, 40, 235, 400, 33, 2);  // one sentence, wrapped: Vietnamese runs longer than English
   if (update_has_button()) ui_button(40, UPD_BTN_Y, 400, 72, true, nullptr, btn);
 }
 
