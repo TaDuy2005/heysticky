@@ -48,10 +48,11 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 3. Interaction model
 
 - **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do and Notes pages, a note's pages; right on To-do / Notes page 1 → Apps, on a note's page 1 → Notes).
-- **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. They only move between pages; on screens without pages they do nothing (they are never Cancel).
+- **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. They only move between pages; in the note editor they scroll the body (DOWN = earlier, UP = later); elsewhere without pages they do nothing (they are never Cancel).
 - **Press top button = Home**, from any screen. **Swipe up from the bottom edge = Home** too (start in the bottom 15 px, y ≥ 785; keys ignore touches that start there).
 - **Hold top button = talk to AI** (V2). Sleep is by idle timer, not a button hold.
 - **Long-tap a to-do row = edit.** Tap = tick.
+- **Note body box scrolls**: swipe up/down inside it moves a box-full (minus one line); a scrollbar shows on the right edge when the text doesn't fit. Typing jumps back to the end.
 - Partial refresh for small changes (typing, ticking); full refresh when changing screens.
 - No bottom hint bar: screens don't spell out what the buttons do.
 
@@ -72,7 +73,7 @@ Pin map (from the open-source sticky-2048 firmware):
 - Bottom buttons sit **16 px** above the bottom edge; on screens with a page counter they sit 12 px above it (bottom at y 746).
 - To-do rows: checkbox, then the task title with its due date on the line below. Notes list: title on one line, cut with "…".
 - Task deadline: under DEADLINE (OPTIONAL) the editor has two rows, `Date Off ›` and `Time Off ›` (values `17/11/26`, `09:00` once set). Date (02c) = toggle + calendar + Done; Time (02h) = toggle + HH:MM fields + number pad (Done on the pad). Cancel undoes that screen. Date only = date-only `@due`; Time only = today at that time; both off = no deadline.
-- Editing: the keyboard's Enter key is **Done** and only hides the keyboard (tap a field to bring it back). Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete).
+- Editing: in one-line fields (task, note title) the keyboard's last key is **Done** and only hides the keyboard. In the note body it is **↵ Done**: tap = new line, hold 0.5 s = hide the keyboard. Tap a field to bring the keyboard back. The cursor is always at the end of the text. Empty fields show an Italic placeholder (*Task*, *Title*, body hint); a focused field shows it with the cursor after it until tapped or typed in. Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete).
 
 **Settings (08):** Auto-rotate (toggle) · Sound (toggle) · Language & Font › · Software Update › · Configuration › · About ›. Same layout as Seeed's official Sticky firmware.
 - **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
@@ -209,6 +210,7 @@ HeySticky/
 - [ ] Wi-Fi, Web setup, Your name and Sleep after are no longer in Settings — decide where they live (phone setup page only?)
   - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
+- [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
 
 ## 13. Strings (EN / VI)

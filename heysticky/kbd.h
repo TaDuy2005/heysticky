@@ -11,6 +11,7 @@ inline const char *KB_ROWS[2][3] = {{"qwertyuiop", "asdfghjkl", "zxcvbnm"},
 
 struct Keyboard {
   bool numbers = false, shift = false;
+  bool enter = false;  // "↵ Done" (multi-line field: tap = new line, hold = hide) instead of "Done"
 
   // Builds the key list for the current page (max 31 keys).
   int keys(KbKey *out) const {
@@ -40,6 +41,7 @@ struct Keyboard {
       case K_MODE: ui_text(F_B25, numbers ? "ABC" : "123", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
       case K_SPACE: ui_text(F_R25, "space", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
       case K_DONE:
+        if (!enter) { ui_text(F_X25, "Done", cx, k.y + 14, 33, AL_CENTER, fg, bg); break; }
         ui_icon(ICON_KB_ENTER, k.x + 3, k.y + 18, fg);
         ui_text(F_X25, "Done", k.x + 33, k.y + 14, 33, AL_LEFT, fg, bg);
         break;
