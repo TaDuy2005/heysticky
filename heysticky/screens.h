@@ -1,4 +1,4 @@
-// HeySticky screens: 01 Home, 01a Apps, 04j Web setup, To-do (todo_ui.h); navigation and touch.
+// HeySticky screens: 01 Home, 01a Apps, 04j Web setup, To-do (todo_ui.h), Notes (notes_ui.h); navigation and touch.
 // Coordinates from the Figma frames.
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
@@ -6,8 +6,10 @@
 #include "kbd.h"
 #include "net.h"
 #include "todo_ui.h"
+#include "notes_ui.h"
 
-enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD };
+enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE };
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -215,8 +217,12 @@ inline void draw_screen() {
     case SCR_TASK: draw_task_editor(); break;
     case SCR_DATE: draw_date(); break;
     case SCR_TIME: draw_time(); break;
-    case SCR_DELTASK: draw_delete_task(); break;
+    case SCR_DELTASK: draw_delete("Delete task?"); break;
     case SCR_NOSD: draw_nosd(); break;
+    case SCR_NOTES: draw_notes(); break;
+    case SCR_NOTE: draw_note_view(); break;
+    case SCR_NOTEED: draw_note_editor(); break;
+    case SCR_DELNOTE: draw_delete("Delete note?"); break;
   }
 }
 
@@ -227,12 +233,47 @@ inline void show(Screen s) {  // screen change: full refresh
   ui_full();
 }
 
+inline void nosd(bool notes) { g_nosdNotes = notes; show(SCR_NOSD); }
+
 inline void open_todo() {
   g_todoPage = 0;
-  show(g_sdOk || todo_retry() ? SCR_TODO : SCR_NOSD);
+  if (g_sdOk || todo_retry()) show(SCR_TODO);
+  else nosd(false);
 }
 
-inline void todo_commit(Screen next) { show(todo_save() ? next : SCR_NOSD); }  // after any change to g_tasks
+inline void todo_commit(Screen next) { if (todo_save()) show(next); else nosd(false); }  // after any change to g_tasks
+
+// ---------- Notes ----------
+inline void open_notes() {  // the list is read fresh each time: the card may have been edited on a computer
+  g_notesPage = 0;
+  if (notes_scan() || notes_retry()) show(SCR_NOTES);
+  else nosd(true);
+}
+
+inline void open_note(int num) {
+  g_viewPage = 0;
+  if (note_read(num)) show(SCR_NOTE);
+  else nosd(true);
+}
+
+inline void open_note_editor(bool isNew) {
+  g_ne = NoteEdit();
+  if (!isNew) { g_ne.n = g_note; g_ne.kbOpen = false; }
+  show(SCR_NOTEED);
+}
+
+inline void note_editor_save() {
+  Note n = g_ne.n;
+  n.title.trim();
+  String body = n.body;
+  body.trim();
+  hw_beep(30);
+  if (!n.num && !n.title.length() && !body.length()) { show(SCR_NOTES); return; }  // nothing typed: nothing saved
+  g_note = n;
+  if (!note_save()) { nosd(true); return; }
+  if (n.num) { g_viewPage = 0; show(SCR_NOTE); }
+  else { g_notesPage = 0; show(SCR_NOTES); }
+}
 
 inline void open_editor(int idx) {  // idx -1 = new task
   g_ed = TaskEdit();
@@ -262,32 +303,27 @@ inline void editor_save() {
 
 // ---------- typing ----------
 constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are applied together anyway
-constexpr int KBD_FULL_EVERY = 20;     // full refresh after this many typing refreshes
-
 inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
-  switch (k.kind) {
-    case K_CHAR:
-    case K_SPACE:
-      if (g_ed.text.length() < 120) g_ed.text += g_ed.kb.shift ? char(toupper(k.ch)) : k.ch;
-      if (g_ed.kb.shift) { g_ed.kb.shift = false; g_ed.kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
-      break;
-    case K_BKSP:
-      if (g_ed.text.length()) utf8_pop(g_ed.text);
-      break;
-    case K_SHIFT:
-    case K_MODE:
-      if (k.kind == K_SHIFT) g_ed.kb.shift = !g_ed.kb.shift;
-      else { g_ed.kb.numbers = !g_ed.kb.numbers; g_ed.kb.shift = false; }
-      g_ed.kb.draw();
-      ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
-      return;
-    case K_DONE:  // §4: Done only hides the keyboard (Save / Delete appear)
-      g_ed.kbOpen = false;
-      g_redraw = true;
-      return;
-  }
-  g_ed.dirty = true;
-  g_ed.dirtyAt = millis();
+  const KbResult r = kb_apply(g_ed.kb, g_ed.text, 120, k);
+  if (r == KB_DONE) { g_ed.kbOpen = false; g_redraw = true; }  // §4: Done only hides the keyboard
+  else if (r == KB_TEXT) { g_ed.dirty = true; g_ed.dirtyAt = millis(); }
+}
+
+inline void note_key(const KbKey &k) {
+  String &s = g_ne.field ? g_ne.n.body : g_ne.n.title;
+  const unsigned cap = g_ne.field ? NOTE_BYTES - 3 - g_ne.n.title.length() : TITLE_MAX;
+  const KbResult r = kb_apply(g_ne.kb, s, cap, k);
+  if (r == KB_DONE) { g_ne.kbOpen = false; g_redraw = true; }
+  else if (r == KB_TEXT) { g_ne.dirty = true; g_ne.dirtyAt = millis(); }
+}
+
+inline void key_down(const KbKey &k) { if (g_screen == SCR_NOTEED) note_key(k); else editor_key(k); }
+
+inline void note_flush() {
+  if (!g_ne.dirty || millis() - g_ne.dirtyAt < KEY_BATCH_MS) return;
+  g_ne.dirty = false;
+  note_fields();
+  ui_partial(0, 112, W, KB_TOP - 112, KBD_FULL_EVERY);
 }
 
 inline void editor_flush() {  // one partial refresh per burst of keys
@@ -307,7 +343,7 @@ inline void todo_tap(int x, int y) {
   if (idx < 0 || x < 40 || x >= 440) return;
   hw_beep(30);
   g_tasks[idx].done = !g_tasks[idx].done;
-  if (!todo_save()) { show(SCR_NOSD); return; }
+  if (!todo_save()) { nosd(false); return; }
   g_redraw = true;
 }
 
@@ -324,6 +360,31 @@ inline void editor_tap(int x, int y) {
     if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(30); show(SCR_DELTASK); }
     else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
   }
+}
+
+inline Screen g_delBack = SCR_NOTE;  // 03f Cancel returns to the view or the editor
+
+inline void notes_tap(int x, int y) {
+  if (in(x, y, 40, g_newBtnY, 400, 72)) { hw_beep(30); open_note_editor(true); return; }
+  const int num = notes_row_at(y);
+  if (num && x >= 40 && x < 440) { hw_beep(30); open_note(num); }
+}
+
+inline void note_view_tap(int x, int y) {
+  if (in(x, y, 40, g_viewBtnY, 192, 64)) { hw_beep(30); open_note_editor(false); }
+  else if (in(x, y, 248, g_viewBtnY, 192, 64)) { hw_beep(30); g_delBack = SCR_NOTE; show(SCR_DELNOTE); }
+}
+
+inline void note_editor_tap(int x, int y) {
+  if (top_right(x, y)) { hw_beep(30); show(g_ne.n.num ? SCR_NOTE : SCR_NOTES); return; }  // Cancel: g_note untouched
+  const int field = in(x, y, 40, NT_Y, 400, NT_H) ? 0 : in(x, y, 40, NB_Y, 400, g_nbBottom - NB_Y) ? 1 : -1;
+  if (field >= 0) {  // tap a field: type into it
+    if (field != g_ne.field || !g_ne.kbOpen) { g_ne.field = field; g_ne.kbOpen = true; g_redraw = true; }
+    return;
+  }
+  if (g_ne.kbOpen || y < 717 || y >= 784) return;
+  if (g_ne.n.num && in(x, y, 40, 717, 194, 67)) { hw_beep(30); g_delBack = SCR_NOTEED; show(SCR_DELNOTE); }
+  else if (g_ne.n.num ? in(x, y, 246, 717, 194, 67) : in(x, y, 40, 717, 400, 67)) note_editor_save();
 }
 
 // 02c / 02h: the toggle row flips; Cancel restores what the editor had; Done keeps the change.
@@ -358,6 +419,13 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
 // DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
 inline void page_back() {
   if (g_screen == SCR_APPS) show(SCR_HOME);
+  else if (g_screen == SCR_NOTES) {
+    if (g_notesPage > 0) { g_notesPage--; g_redraw = true; }
+    else show(SCR_APPS);
+  } else if (g_screen == SCR_NOTE) {
+    if (g_viewPage > 0) { g_viewPage--; g_redraw = true; }
+    else show(SCR_NOTES);
+  }
   else if (g_screen == SCR_TODO) {
     if (g_todoPage > 0) { g_todoPage--; g_redraw = true; }
     else show(SCR_APPS);
@@ -366,6 +434,8 @@ inline void page_back() {
 inline void page_fwd() {
   if (g_screen == SCR_HOME) show(SCR_APPS);
   else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
+  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) { g_notesPage++; g_redraw = true; }
+  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
 }
 inline void go_home() { if (g_screen != SCR_HOME) show(SCR_HOME); }
 
@@ -378,7 +448,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const int dx = x1 - x0;
   const bool swipe = abs(dx) > 80 && abs(dx) > abs(y1 - y0);
   if (y0 >= EDGE_Y && y0 - y1 >= EDGE_SWIPE) { hw_beep(30); go_home(); return; }  // swipe up from the bottom edge
-  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO)) {
+  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE)) {
     if (dx < 0) page_fwd();
     else page_back();
     return;
@@ -393,6 +463,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_APPS: {
       const int t = apps_hit(x0, y0);
       if (t == 0) { hw_beep(30); open_todo(); }
+      else if (t == 1) { hw_beep(30); open_notes(); }
       else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
       return;
     }
@@ -409,7 +480,21 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       return;
     case SCR_NOSD:
       if (top_right(x0, y0)) { hw_beep(30); show(SCR_APPS); }
-      else if (in(x0, y0, 40, 712, 400, 72)) { hw_beep(30); show(todo_retry() ? SCR_TODO : SCR_NOSD); }
+      else if (in(x0, y0, 40, 712, 400, 72)) {
+        hw_beep(30);
+        if (g_nosdNotes ? notes_retry() : todo_retry()) show(g_nosdNotes ? SCR_NOTES : SCR_TODO);
+        else show(SCR_NOSD);
+      }
+      return;
+    case SCR_NOTES: notes_tap(x0, y0); return;
+    case SCR_NOTE: note_view_tap(x0, y0); return;
+    case SCR_NOTEED: note_editor_tap(x0, y0); return;
+    case SCR_DELNOTE:
+      if (in(x0, y0, 40, 705, 193, 79)) {
+        hw_beep(30);
+        if (note_delete(g_note.num)) { g_notesPage = 0; show(SCR_NOTES); }
+        else nosd(true);
+      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(g_delBack); }
       return;
   }
 }
@@ -428,6 +513,7 @@ inline void screens_input() {
       int k;
       if (e.y >= EDGE_Y) {}  // may be the Home gesture: no key acts down here
       else if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = consumed = true; editor_key(held); }
+      else if (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held)) { holding = consumed = true; note_key(held); }
       else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
       holding = pressing = false;
@@ -443,7 +529,7 @@ inline void screens_input() {
   // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
   if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
     lastRepeat = millis();
-    editor_key(held);
+    key_down(held);
   }
 
   if (HwButton b = hw_buttons_poll()) {
@@ -464,6 +550,7 @@ inline void screens_loop() {
   }
   if (g_screen == SCR_HOME) home_tick();
   else if (g_screen == SCR_TASK) editor_flush();
+  else if (g_screen == SCR_NOTEED) note_flush();
   else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one
     g_timeDirty = false;
     time_fields();

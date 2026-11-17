@@ -96,6 +96,16 @@ inline String ui_fit(const Font &f, String s, int maxW) {  // cut with "…" to 
   return s + "…";
 }
 
+inline String ui_fit_tail(const Font &f, String s, int maxW) {  // cut the start with "…" to fit
+  if (ui_width(f, s) <= maxW) return s;
+  while (s.length() && ui_width(f, "…" + s) > maxW) {
+    int n = 1;
+    while (n < int(s.length()) && (uint8_t(s[n]) & 0xC0) == 0x80) n++;
+    s.remove(0, n);
+  }
+  return "…" + s;
+}
+
 // Word-wrapped text, one line per lineH; x is the left edge (or the box's left edge when centred).
 inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT) {
   const int ax = a == AL_CENTER ? x + w / 2 : x;

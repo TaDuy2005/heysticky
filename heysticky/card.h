@@ -1,4 +1,4 @@
-// microSD on the panel's SPI bus (Seeed_GFX2 owns the bus; never end()/begin() it) and /todo.md.
+// microSD on the panel's SPI bus (Seeed_GFX2 owns the bus; never end()/begin() it), /todo.md and /notes/.
 // Mount sequence follows Seeed's reTerminal_Sticky_SDcard_BW example.
 #pragma once
 #include <SD.h>
@@ -6,6 +6,7 @@
 #include <driver/gpio.h>
 #include "pins.h"
 #include "todo.h"
+#include "notes.h"
 
 extern Seeed_GFX display;
 inline bool g_sdOk = false;
@@ -80,4 +81,92 @@ inline bool todo_save() {
 inline bool todo_retry() {
   if (!sd_mount()) return false;
   return g_todoUnsaved ? todo_save() : todo_load();
+}
+
+// ---------- /notes/NNN.md ----------
+inline std::vector<NoteHead> g_notes;  // newest first
+inline Note g_note;                    // the note being viewed / saved
+inline bool g_noteUnsaved = false;     // g_note did not reach the card yet (card pulled)
+
+inline String read_upto(File &f, unsigned cap) {
+  String s;
+  s.reserve(min<unsigned>(f.size(), cap));
+  while (f.available() && s.length() < cap) s += char(f.read());
+  return s;
+}
+
+inline bool notes_dir() {
+  if (!g_sdOk && !sd_mount()) return false;
+  if (!SD.exists("/notes") && !SD.mkdir("/notes")) return sd_fail("mkdir /notes");
+  return true;
+}
+
+inline bool notes_scan() {
+  if (!notes_dir()) return false;
+  File dir = SD.open("/notes");
+  if (!dir) return sd_fail("open /notes");
+  g_notes.clear();
+  std::vector<int> tmps;
+  for (File f = dir.openNextFile(); f; f = dir.openNextFile()) {
+    const String name = f.name();
+    const int num = note_file_num(name);
+    if (num > 0 && !f.isDirectory()) {
+      String head;  // title line + first lines of the body, enough for the preview
+      while (f.available() && head.length() < 400) head += f.readStringUntil('\n') + "\n";
+      const Note n = note_parse(head);
+      g_notes.push_back({num, n.title, note_preview(n.body)});
+    } else if (note_file_num(name, ".tmp") > 0) {
+      tmps.push_back(note_file_num(name, ".tmp"));
+    }
+    f.close();
+  }
+  dir.close();
+  bool again = false;
+  for (int t : tmps) {  // finish an interrupted save, or drop a stale temp file
+    if (SD.exists(note_path(t))) SD.remove(note_path(t, ".tmp"));
+    else again |= SD.rename(note_path(t, ".tmp"), note_path(t));
+  }
+  if (again) return notes_scan();
+  std::sort(g_notes.begin(), g_notes.end(), [](const NoteHead &a, const NoteHead &b) { return a.num > b.num; });
+  Serial.printf("[notes] %u notes\n", unsigned(g_notes.size()));
+  return true;
+}
+
+inline bool note_read(int num) {
+  if (!g_sdOk) return false;
+  File f = SD.open(note_path(num));
+  if (!f) return sd_fail("open note");
+  g_note = note_parse(read_upto(f, NOTE_BYTES));
+  g_note.num = num;
+  f.close();
+  return true;
+}
+
+// Saves g_note (a new note takes the next number), via NNN.tmp + rename like todo_save().
+inline bool note_save() {
+  g_noteUnsaved = true;
+  if (!notes_dir()) return false;
+  if (!g_note.num) g_note.num = g_notes.empty() ? 1 : g_notes.front().num + 1;
+  const String tmp = note_path(g_note.num, ".tmp"), path = note_path(g_note.num), s = note_format(g_note);
+  File f = SD.open(tmp, FILE_WRITE);
+  if (!f) return sd_fail("open note tmp");
+  const size_t put = f.print(s);
+  f.close();
+  if (put != s.length()) return sd_fail("write note");
+  SD.remove(path);
+  if (!SD.rename(tmp, path)) return sd_fail("rename note");
+  g_noteUnsaved = false;
+  Serial.printf("[notes] saved %s, %u bytes\n", path.c_str(), unsigned(put));
+  return notes_scan();
+}
+
+inline bool note_delete(int num) {
+  if (!g_sdOk) return false;
+  if (SD.exists(note_path(num)) && !SD.remove(note_path(num))) return sd_fail("remove note");
+  return notes_scan();
+}
+
+inline bool notes_retry() {
+  if (!sd_mount()) return false;
+  return g_noteUnsaved ? note_save() : notes_scan();
 }
