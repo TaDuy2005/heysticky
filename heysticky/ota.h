@@ -7,7 +7,7 @@
 #include "net.h"
 #include "settings.h"
 
-constexpr char OTA_REPO[] = "OWNER/heysticky";  // ponytail: placeholder until the public repo exists; checks fail until then
+constexpr char OTA_REPO[] = "TaDuy2005/heysticky";  // public repo whose GitHub Releases carry heysticky-app.bin
 constexpr char OTA_ASSET[] = "heysticky-app.bin";
 constexpr uint32_t OTA_AUTO_GAP_MS = 60UL * 60 * 1000;  // auto checks at most hourly (GitHub: 60 calls/h without a token)
 

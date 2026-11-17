@@ -122,7 +122,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [ ] REQ-11 No secrets in source or in the `.bin`
 - [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
-- [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
+- [ ] REQ-13 Release package: bootloader `0x0`, partition table `0x8000`, boot_app0 `0xE000`, app `0x10000` + `manifest.json` (`tools/release.sh`); a merged image padded to 32 MB is too big to publish
 - [ ] REQ-14 OTA: on Wi-Fi connect (at most hourly) and on "Check for updates", compare with the latest GitHub Release; on **Install**, download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [x] REQ-15 Language English/Vietnamese; user fonts from `/fonts/<Name>/<slot>.vlw` (added on the phone page); built-in font covers Vietnamese diacritics
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
@@ -180,7 +180,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
 - **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
 - **HTTPS:** certificates checked with the ESP32 core's built-in root CA bundle (`useBuiltinCACertBundle()`)
-- **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes both the app `.bin` (OTA) and the merged `.bin` (first install at `0x0`): `tools/build.sh -e` writes `heysticky/build/<fqbn>/heysticky.ino.bin` (upload it as `heysticky-app.bin`) and `heysticky.ino.merged.bin`. The tag is `vX.Y.Z` and must match `FW_VERSION` in `settings.h`. The repo is `OTA_REPO` in `ota.h` (placeholder `OWNER/heysticky` until the public repo exists). Rollback: the new image marks itself good at the end of `setup()`; a reset before that boots the old slot
+- **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes the app `.bin` as `heysticky-app.bin` (OTA) plus the four first-install files and `manifest.json`, all made by `tools/release.sh vX.Y.Z` into `release/vX.Y.Z/`. The tag is `vX.Y.Z` and must match `FW_VERSION` in `settings.h`. The repo is `OTA_REPO` in `ota.h`: `TaDuy2005/heysticky` (public, MIT). Rollback: the new image marks itself good at the end of `setup()`; a reset before that boots the old slot
 
 ## 10. Project layout
 
@@ -202,7 +202,8 @@ HeySticky/
     lang.h          English / Vietnamese: g_vi + TR(en, vi)
     userfont.h      user fonts from /fonts/<Name>/ on the card (04c)
   release/          exported .bin (git-ignored)
-  tools/build.sh    compile / upload / export for 32 MB flash
+  tools/build.sh    compile / upload / export for 32 MB flash (home folder stripped from the .bin)
+  tools/release.sh  release/vX.Y.Z/: four flash files + manifest.json + heysticky-app.bin
 ```
 
 ## 11. Publishing (after V1 is tested)
