@@ -6,7 +6,7 @@
 #include <limits.h>
 #include <string.h>
 
-constexpr const char *FW_VERSION = "1.0.0";
+constexpr const char *FW_VERSION = "1.0.1";
 
 // GitHub release tag ("v1.2.0" or "1.2.0") newer than the running version? A tag that isn't x.y.z never is.
 inline bool ver_newer(const char *tag, const char *cur) {
