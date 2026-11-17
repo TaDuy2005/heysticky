@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
+#include "lang.h"
 
 struct Task {
   bool task = true;   // false: a line that is not a task (heading, blank, ...), written back unchanged
@@ -41,6 +42,8 @@ inline int weekday(long n) { return int(((n % 7) + 11) % 7); }  // 0 = Sunday (1
 inline const char *const DAY3[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 inline const char *const MONTHS[] = {"January", "February", "March", "April", "May", "June", "July",
                                      "August", "September", "October", "November", "December"};
+inline const char *const DAY3_VI[] = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
+inline const char *day3(int w) { return TR(DAY3[w], DAY3_VI[w]); }
 inline const char *const MON3[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 // ---------- /todo.md lines ----------
@@ -117,7 +120,7 @@ inline String short_hm(const String &due) {  // "2026-11-17 09:00" -> "9:00"; ""
 inline String day_month(long n) {  // "24 Nov"
   int y, m, d;
   civil(n, y, m, d);
-  return String(d) + " " + MON3[m - 1];
+  return g_vi ? String(d) + "/" + m : String(d) + " " + MON3[m - 1];  // VI: "24/11"
 }
 
 // "Overdue · Mon", "Today 19:00", "Tomorrow 9:00", "Fri 9:00", "24 Nov 9:00"
@@ -127,10 +130,10 @@ inline String todo_label(const Task &t, const String &now) {
   if (!now.length()) return day_month(ymd_num(t.due)) + sp + hm;
   const long day = ymd_num(t.due), today = ymd_num(now);
   const bool overdue = t.due.length() == 16 ? t.due < now : day < today;
-  if (overdue) return String("Overdue · ") + (day == today ? hm : today - day < 7 ? String(DAY3[weekday(day)]) : day_month(day));
-  if (day == today) return "Today" + sp + hm;
-  if (day == today + 1) return "Tomorrow" + sp + hm;
-  return (day - today < 7 ? String(DAY3[weekday(day)]) : day_month(day)) + sp + hm;
+  if (overdue) return String(TR("Overdue · ", "Quá hạn · ")) + (day == today ? hm : today - day < 7 ? String(day3(weekday(day))) : day_month(day));
+  if (day == today) return TR("Today", "Hôm nay") + sp + hm;
+  if (day == today + 1) return TR("Tomorrow", "Ngày mai") + sp + hm;
+  return (day - today < 7 ? String(day3(weekday(day))) : day_month(day)) + sp + hm;
 }
 
 // ---------- 02h Time entry: HH and MM fields typed on a number pad ----------

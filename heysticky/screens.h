@@ -19,6 +19,8 @@ inline HomeState g_shown;  // what is currently on the panel
 
 inline String fmt_date(const tm &t) {
   static const char *DAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  static const char *VI[] = {"Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"};
+  if (g_vi) return String(VI[t.tm_wday]) + ", " + t.tm_mday + " tháng " + (t.tm_mon + 1);  // "Thứ Hai, 16 tháng 11"
   return String(DAYS[t.tm_wday]) + ", " + t.tm_mday + " " + MONTHS[t.tm_mon];
 }
 
@@ -65,12 +67,12 @@ inline void home_weather() {
     const WxInfo wi = wx_info(g_wx.code);
     ui_icon(wx_icon(wi.icon), 61, 336);
     ui_text(F_B25, wi.label, 121, 309, 33);
-    ui_text(F_R25, "H " + String(lroundf(g_wx.hi)) + "°  L " + String(lroundf(g_wx.lo)) + "°", 121, 344, 33);
+    ui_text(F_R25, TR("H ", "C ") + String(lroundf(g_wx.hi)) + TR("°  L ", "°  T ") + String(lroundf(g_wx.lo)) + "°", 121, 344, 33);
     ui_text(F_X48, String(lroundf(g_wx.temp)) + "°", 419, 328, 63, AL_RIGHT);
   } else {
     ui_icon(ICON_WX_CLOUD, 61, 336);
-    ui_text(F_B25, "Offline", 121, 309, 33);
-    ui_text(F_R25, "No weather yet", 121, 344, 33);
+    ui_text(F_B25, TR("Offline", "Ngoại tuyến"), 121, 309, 33);
+    ui_text(F_R25, TR("No weather yet", "Chưa có thời tiết"), 121, 344, 33);
   }
   ui_text(F_R25, cfg_get("city"), 121, 377, 33);
 }
@@ -79,11 +81,11 @@ inline void home_indoor(const String &temp, const String &hum) {
   ui_card(40, 445, 193, 102, 12, 2);
   ui_icon(ICON_THERMO, 58, 479);
   ui_text(F_X28, temp, 104, 461, 37);
-  ui_text(F_R25, "Indoor", 104, 498, 33);
+  ui_text(F_R25, TR("Indoor", "Phòng"), 104, 498, 33);
   ui_card(247, 445, 193, 102, 12, 2);
   ui_icon(ICON_DROP, 265, 479);
   ui_text(F_X28, hum, 311, 461, 37);
-  ui_text(F_R25, "Humidity", 311, 498, 33);
+  ui_text(F_R25, TR("Humidity", "Độ ẩm"), 311, 498, 33);
 }
 
 inline int today_count() { return g_sdOk ? todo_due_today(g_tasks, now_key()) : -1; }  // -1 = no card
@@ -91,7 +93,7 @@ inline int today_count() { return g_sdOk ? todo_due_today(g_tasks, now_key()) : 
 inline void home_today(int n) {
   ui_card(40, 561, 400, 72, 12, 2);
   ui_icon(n > 0 ? ICON_CHECKLIST : ICON_CHECK_CIRCLE, 58, 584);
-  ui_text(F_X30, n < 0 ? "No microSD card" : n == 0 ? "No tasks today" : String(n) + (n == 1 ? " task today" : " tasks today"), 96, 577, 40);
+  ui_text(F_X30, n < 0 ? TR("No microSD card", "Không có thẻ SD") : n == 0 ? TR("No tasks today", "Không có việc") : String(n) + TR(n == 1 ? " task today" : " tasks today", " việc hôm nay"), 96, 577, 40);
   ui_icon(ICON_CHEV, 402, 584);
 }
 
@@ -102,7 +104,7 @@ inline void draw_home() {
   g_shown.plugged = g_plugged;
   ui_status_bar(g_shown.battery);
   const String name = cfg_get("name");
-  ui_text(F_B35, name.length() ? "Hello, " + name : "Hello", W / 2, 58, 46, AL_CENTER);
+  ui_text(F_B35, name.length() ? TR("Hello, ", "Xin chào, ") + name : TR("Hello", "Xin chào"), W / 2, 58, 46, AL_CENTER);
   g_shown.clock = now_clock(&g_shown.date);
   home_clock(g_shown.date, g_shown.clock);
   home_weather();
@@ -149,22 +151,22 @@ inline void home_tick() {
 }
 
 // ---------- Apps (01a) ----------
-struct Tile { int x, y; const Icon *icon; const char *label; bool v3; };
+struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool v3; };
 inline const Tile TILES[] = {
-  {40, 126, &ICON_APP_TODO, "To-do", false},   {250, 126, &ICON_APP_NOTE, "Notes", false},
-  {40, 306, &ICON_APP_GEAR, "Settings", false}, {250, 306, &ICON_APP_HOME, "Home · V3", true},
-  {40, 486, &ICON_APP_BOOK, "Reader · V3", true},
+  {40, 126, &ICON_APP_TODO, "To-do", "Việc cần làm", false},   {250, 126, &ICON_APP_NOTE, "Notes", "Ghi chú", false},
+  {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home · V3", "Nhà · V3", true},
+  {40, 486, &ICON_APP_BOOK, "Reader · V3", "Đọc · V3", true},
 };
 
 inline void draw_apps() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_text(F_X32, "Apps", 40, 64, 42);
+  ui_text(F_X32, TR("Apps", "Ứng dụng"), 40, 64, 42);
   for (const Tile &t : TILES) {
     if (t.v3) ui_card_dashed(t.x, t.y, 190, 160, 14, 3);
     else ui_card(t.x, t.y, 190, 160, 14, 3);
     ui_icon(*t.icon, t.x + 65, t.y + 26);
-    ui_text(F_B25, t.label, t.x + 95, t.y + 101, 33, AL_CENTER);
+    ui_text(F_B25, TR(t.label, t.vi), t.x + 95, t.y + 101, 33, AL_CENTER);
   }
   ui_page_counter("2/2");
 }
@@ -181,8 +183,8 @@ inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen
 
 inline const char *discard_question() {
   const bool note = g_discardBack == SCR_NOTEED;
-  if (note ? g_ne.n.num != 0 : g_ed.idx >= 0) return "Discard changes?";
-  return note ? "Discard note?" : "Discard task?";
+  if (note ? g_ne.n.num != 0 : g_ed.idx >= 0) return TR("Discard changes?", "Bỏ thay đổi?");
+  return note ? TR("Discard note?", "Bỏ ghi chú?") : TR("Discard task?", "Bỏ việc này?");
 }
 
 inline void draw_screen() {
@@ -194,13 +196,13 @@ inline void draw_screen() {
     case SCR_TASK: draw_task_editor(); break;
     case SCR_DATE: draw_date(); break;
     case SCR_TIME: draw_time(); break;
-    case SCR_DELTASK: draw_delete("Delete task?"); break;
+    case SCR_DELTASK: draw_delete(TR("Delete task?", "Xoá việc này?")); break;
     case SCR_NOSD: draw_nosd(); break;
     case SCR_NOTES: draw_notes(); break;
     case SCR_NOTE: draw_note_view(); break;
     case SCR_NOTEED: draw_note_editor(); break;
-    case SCR_DELNOTE: draw_delete("Delete note?"); break;
-    case SCR_DISCARD: draw_delete(discard_question(), "Discard"); break;
+    case SCR_DELNOTE: draw_delete(TR("Delete note?", "Xoá ghi chú?")); break;
+    case SCR_DISCARD: draw_delete(discard_question(), TR("Discard", "Bỏ")); break;
     case SCR_SETTINGS: draw_settings(); break;
     case SCR_CONFIG: draw_config(); break;
     case SCR_TEMP: draw_temp(); break;
