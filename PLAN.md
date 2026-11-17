@@ -27,7 +27,7 @@ Pin map (from the open-source sticky-2048 firmware):
 | E-paper MOSI / CLK / MISO / CS / DC / RST / BUSY / EN | 14 / 13 / 12 / 15 / 16 / 17 / 18 / 47 |
 | Touch SCL / SDA / INT / RST / EN | 2 / 3 / 21 / 41 / 42 |
 | Power hold / lock | 45 / 46 |
-| Charger EN / charge state / USB present | 39 / 40 / 9 |
+| Charger enable (BQ25616 EN_BAT_CHGn, active low: firmware drives it LOW) / USB present (high) | 39 / 9 |
 | Fuel gauge INT (BQ27220 @ 0x55) | 7 |
 | microSD CS / EN | 8 / 10 |
 
@@ -68,7 +68,7 @@ Pin map (from the open-source sticky-2048 firmware):
 **Layout & type (all Sticky screens; not the phone setup page):**
 - Font: **JetBrains Mono** (Regular, Bold, ExtraBold). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
 - Content area: 40 px left/right margin (x 40–440); dividers span that width.
-- Status bar (top, 40 px tall) sits **16 px** from the screen edges (x 16–464): "HeySticky" left; Wi-Fi (moon when asleep) + battery % right.
+- Status bar (top, 40 px tall) sits **16 px** from the screen edges (x 16–464): "HeySticky" left; Wi-Fi (moon when asleep) + bolt (while plugged in, Figma StatusBar Mode=Charging) + battery % right.
 - Page counter (`1/2`, no spaces): centred, 16 px above the bottom edge, **only on screens with more than one page** (Home/Apps, To-do, Notes, Note view). No hint bar.
 - Bottom buttons sit **16 px** above the bottom edge; on screens with a page counter they sit 12 px above it (bottom at y 746).
 - To-do rows: checkbox, then the task title with its due date on the line below. Notes list: title on one line, cut with "…".
@@ -211,6 +211,7 @@ HeySticky/
   - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
 - [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
+- [ ] BQ27220 current (reg 0x0C) reads about +5 A while charging, which is implausible: the scale or register is unverified. Charging itself is confirmed by voltage and % rising. The bolt uses USB-present, not the current
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
 
 ## 13. Strings (EN / VI)

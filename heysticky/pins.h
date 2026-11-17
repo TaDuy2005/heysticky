@@ -16,7 +16,8 @@ constexpr int PIN_SENS_SCL = 0, PIN_SENS_SDA = 1;
 
 // Power
 constexpr int PIN_POWER_HOLD = 45;
-constexpr int PIN_CHG_STATE = 40, PIN_USB_PRESENT = 9;
+constexpr int PIN_CHG_EN = 39;       // BQ25616 EN_BAT_CHGn, active low: LOW = charging allowed (Seeed pin_config.h)
+constexpr int PIN_USB_PRESENT = 9;   // external power, HIGH when present
 
 // microSD (shares the panel SPI; driven by Seeed_GFX2)
 constexpr int PIN_SD_CS = 8, PIN_SD_EN = 10, PIN_SD_DETECT = 11;
