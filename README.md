@@ -14,7 +14,7 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 - **On-screen keyboard** with phone-like auto-capitals and double-space full stop.
 - **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
   `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically).
-- **Settings:** Sound, Language (English / Tiếng Việt), User Font, Software Update, Configuration
+- **Settings:** Sound (on/off, volume Low / Medium / High), Language (English / Tiếng Việt), User Font, Software Update, Configuration
   (city, timezone, °C/°F), Sleep after, Web setup, About (SN, MAC, version, SD card).
 - **Power:** sleeps after 1–10 min idle (Home with a moon, clock still updates every minute, weather every
   30 min); shutdown with UP + DOWN; turns itself off when the battery is empty.
@@ -119,7 +119,7 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | English / Vietnamese switch; user font from the phone page | Pass |
 | Sleep after 2 min idle, clock updates each minute, top button wakes | Pass (on USB) |
 | UP + DOWN shutdown; 2 s top-button hold turns on, a tap does not (USB and battery) | Pass |
-| Software Update from GitHub Releases | See release notes |
+| Software Update from GitHub Releases (v1.0.0 → v1.0.1 over Wi-Fi, marked good, settings and SD kept) | Pass |
 
 ## Credits and licences
 

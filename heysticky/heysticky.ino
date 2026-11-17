@@ -17,6 +17,7 @@ void setup() {
   Serial.printf("[power] reset %d, wake %d\n", esp_reset_reason(), esp_sleep_get_wakeup_cause());
   hw_begin();
   g_sound = cfg_get("sound") == "1";  // Settings › Sound, off by default
+  g_vol = cfg_get("vol", "2").toInt();  // Settings › Sound › Volume, High by default
   g_vi = cfg_get("lang") == "vi";     // Settings › Language & Font › System Language
   g_sleepMin = cfg_get("sleep_min", "2").toInt();  // Settings › Sleep after, 0 = Never
   hw_beep();

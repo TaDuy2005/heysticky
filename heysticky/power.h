@@ -100,6 +100,7 @@ inline void power_on_check() {
   if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT0 &&
       !(esp_reset_reason() == ESP_RST_POWERON && !digitalRead(PIN_USB_PRESENT))) return;
   while (millis() < ON_HOLD_MS) { if (digitalRead(PIN_BTN_TOP)) power_cut(); delay(10); }
+  g_vol = cfg_get("vol", "2").toInt();  // setup() has not loaded it yet
   hw_tune(TUNE_ON);
   while (!digitalRead(PIN_BTN_TOP) && millis() < ON_HOLD_MS + 3000) delay(10);  // this hold only turns it on
 }
