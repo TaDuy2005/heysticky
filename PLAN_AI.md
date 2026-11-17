@@ -65,7 +65,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 
 ## 6. Tasks
 
-- [x] AI-01 `mic.h`: PDM RX init, power on/off (GPIO38), record into a PSRAM buffer, running level for the waveform. Bring-up: log levels over serial and write a test clip to `/ai/last.wav`; confirm pins and audio on the device. Pins confirmed 2026-11-17. clip01 (raw, 5.9 s, English) → OpenRouter `openai/whisper-large-v3` playground: "Hello, hello, how are you? Do you hear me?" (exact). Raw PDM sits ~1500 off zero with speech only ~10 dB over the floor, so `mic.h` adds a ~13 Hz DC blocker, ×4 gain (`MIC_GAIN`) and a 300 ms settle: the same clip filtered offline gives speech −25 dBFS, noise −58 dBFS, no clipping. Filtered build still to be heard on the device
+- [x] AI-01 `mic.h`: PDM RX init, power on/off (GPIO38), record into a PSRAM buffer, running level for the waveform. Bring-up: log levels over serial and write a test clip to `/ai/last.wav`; confirm pins and audio on the device. Pins confirmed 2026-11-17. clip01 (raw, 5.9 s, English) → OpenRouter `openai/whisper-large-v3` playground: "Hello, hello, how are you? Do you hear me?" (exact). Raw PDM sits ~1500 off zero with speech only ~10 dB over the floor, so `mic.h` adds a ~13 Hz DC blocker, ×2 gain (`MIC_GAIN`; ×4 peaked at −3 dBFS on the device) and a 300 ms settle: the same clip filtered offline gives speech −25 dBFS, noise −58 dBFS, no clipping. Filtered build checked on the device
 - [ ] AI-02 Hold top button: `BTN_TOP_LONG` opens 05 Listening and records until release (pin read directly); short press still = Home; the sleep-wake press still does nothing else; never sleep during Listening / Working
 - [ ] AI-03 05 Listening: waveform strip (260×80) partial refresh ~3×/s from the mic level, flat when silent; full refresh on leaving
 - [ ] AI-04 `ai.h` transcription: WAV header + multipart body built in PSRAM, HTTPS POST with the built-in CA bundle, read `text`
@@ -81,5 +81,5 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 ## 7. Open
 
 - [ ] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06
-- [x] Mic gain: ×4 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
+- [x] Mic gain: ×2 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
 - [ ] Battery cost of one clip (mic + Wi-Fi + TLS); read it from the gauge during AI-09

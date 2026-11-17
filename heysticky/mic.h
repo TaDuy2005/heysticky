@@ -9,7 +9,7 @@ constexpr uint32_t MIC_RATE = 16000;
 constexpr uint32_t MIC_MAX_S = 60;
 constexpr size_t MIC_MAX_PCM = MIC_RATE * 2 * MIC_MAX_S;  // 1.92 MB
 constexpr uint32_t MIC_SETTLE_MS = 300;  // PDM filter warm-up, thrown away (clip01: first 250 ms was a transient)
-constexpr float MIC_GAIN = 4;            // calibration knob: clip01 speech sat at about -35 dBFS RMS, +12 dB
+constexpr float MIC_GAIN = 2;            // calibration knob: x4 peaked at -3 dBFS on normal speech; x2 leaves ~9 dB headroom
 constexpr float MIC_HP = 0.995f;         // DC blocker pole (~13 Hz); the raw PDM output sits ~1500 off zero
 
 inline I2SClass g_mic;
