@@ -188,7 +188,8 @@ HeySticky/
     sketch.yaml     pinned core + libraries
     pins.h          pin map
     hw.h            touch, buttons, buzzer, SHT40, battery
-    net.h           Wi-Fi, hotspot, setup page, NTP, weather
+    net.h           background Wi-Fi join, hotspot, phone setup page + /api, NTP, weather
+    wifi_list.h     saved networks (host test: tools/wifi_test.cpp)
     ui.h            bars, rows, keyboard, focus drawing
     screens.h       all screens
     store.h         SD files + Preferences
