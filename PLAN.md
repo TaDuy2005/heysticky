@@ -135,7 +135,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-07 On-screen keyboard
 - [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
 - [x] TASK-09 Notes: list, view, new, edit, delete
-- [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
+- [x] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
 - [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
