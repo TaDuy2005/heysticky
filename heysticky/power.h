@@ -67,6 +67,43 @@ inline uint64_t us_to_next_minute() {
 constexpr uint32_t OFF_HOLD_MS = 3000;
 constexpr int BATTERY_EMPTY_PCT = 3;  // calibration knob: gauge % at which it turns itself off (on battery only)
 
+constexpr uint32_t ON_HOLD_MS = 2000;  // calibration knob: top-button hold (from boot) that turns it on
+constexpr int OFF_LOW_PINS[] = {PIN_CHG_EN, PIN_TP_EN, PIN_TP_INT, PIN_TP_RST, PIN_TP_SDA, PIN_TP_SCL};
+
+// Off, no screen change. On battery the power goes here. On USB it can't, so deep sleep instead: touch pins and
+// CHG_EN (low = keeps charging) held low, woken by the top button, then power_on_check() wants the 2 s hold.
+[[noreturn]] inline void power_cut() {
+  Serial.flush();
+  pinMode(PIN_POWER_HOLD, OUTPUT);
+  digitalWrite(PIN_POWER_HOLD, LOW);
+  delay(1000);
+  Serial.println("[power] on USB: deep sleep until the top button");
+  Serial.flush();
+  for (const int p : OFF_LOW_PINS) { pinMode(p, OUTPUT); digitalWrite(p, LOW); gpio_hold_en(gpio_num_t(p)); }
+  gpio_deep_sleep_hold_en();
+  const gpio_num_t top = gpio_num_t(PIN_BTN_TOP);
+  rtc_gpio_pullup_en(top);
+  rtc_gpio_pulldown_dis(top);
+  esp_sleep_enable_ext0_wakeup(top, 0);
+  esp_deep_sleep_start();
+}
+
+// First thing in setup(). Started by the button (on battery, or woken from USB off): only a 2 s top hold
+// turns it on; a tap, a touch or another button goes straight back off. USB plug-in, reset, flashing: on.
+inline void power_on_check() {
+  for (const int p : OFF_LOW_PINS) gpio_hold_dis(gpio_num_t(p));
+  pinMode(PIN_POWER_HOLD, OUTPUT);
+  digitalWrite(PIN_POWER_HOLD, HIGH);
+  rtc_gpio_deinit(gpio_num_t(PIN_BTN_TOP));
+  pinMode(PIN_BTN_TOP, INPUT_PULLUP);
+  pinMode(PIN_USB_PRESENT, INPUT);
+  if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT0 &&
+      !(esp_reset_reason() == ESP_RST_POWERON && !digitalRead(PIN_USB_PRESENT))) return;
+  while (millis() < ON_HOLD_MS) { if (digitalRead(PIN_BTN_TOP)) power_cut(); delay(10); }
+  tone(PIN_BUZZER, 2700, 80);  // startup confirm, even with Sound off
+  while (!digitalRead(PIN_BTN_TOP) && millis() < ON_HOLD_MS + 3000) delay(10);  // this hold only turns it on
+}
+
 // The message stays on the e-paper after the power is cut.
 [[noreturn]] inline void power_off(bool empty) {
   Serial.printf("[power] off: %s\n", empty ? "battery empty" : "UP+DOWN held");
@@ -79,16 +116,7 @@ constexpr int BATTERY_EMPTY_PCT = 3;  // calibration knob: gauge % at which it t
   ui_full();
   touch_power(false);
   wifi_off();
-  Serial.flush();
-  digitalWrite(PIN_POWER_HOLD, LOW);  // on battery the power is cut here
-  delay(1000);
-  // Still running: USB powers it. Deep sleep until the top button (a wake restarts the firmware).
-  Serial.println("[power] on USB: deep sleep until the top button");
-  Serial.flush();
-  const gpio_num_t top = gpio_num_t(PIN_BTN_TOP);
-  if (g_btn[0].idle) { rtc_gpio_pullup_en(top); rtc_gpio_pulldown_dis(top); }
-  esp_sleep_enable_ext0_wakeup(top, g_btn[0].idle ? 0 : 1);
-  esp_deep_sleep_start();
+  power_cut();
 }
 
 // Call about once a minute: two low readings in a row, on battery.

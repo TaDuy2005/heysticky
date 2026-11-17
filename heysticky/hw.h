@@ -15,12 +15,12 @@ constexpr uint32_t LONG_PRESS_MS = 600;  // calibration knob: hold-to-talk thres
 
 struct BtnState { int pin; int idle; bool down; uint32_t since; bool longSent; };
 inline BtnState g_btn[3] = {{PIN_BTN_TOP}, {PIN_BTN_UP}, {PIN_BTN_DOWN}};
+inline bool g_chord = false;  // UP + DOWN pressed together (the shutdown hold): neither release pages
 
 inline void hw_buttons_begin() {
   for (auto &b : g_btn) {
     pinMode(b.pin, INPUT_PULLUP);
-    delay(2);
-    b.idle = digitalRead(b.pin);  // whatever level we boot with = released (no polarity guess)
+    b.idle = HIGH;  // measured: all three read 1 released (a button held at boot must not flip this)
   }
 }
 
@@ -36,6 +36,7 @@ inline HwButton hw_buttons_poll() {
     } else if (!pressed && b.down) {
       b.down = false;
       if (now - b.since < 30 || b.longSent) continue;  // debounce / already reported as long
+      if (i && (g_chord || g_btn[3 - i].down)) { g_chord = g_btn[3 - i].down; continue; }  // UP + DOWN: no paging
       return HwButton(BTN_TOP + i);
     }
   }
@@ -193,5 +194,4 @@ inline void hw_begin() {
   // Wire (touch) is used only by this task from here on; Wire1 (sensors) stays on the main loop.
   g_touchQ = xQueueCreate(32, sizeof(TouchEv));
   xTaskCreatePinnedToCore(touch_task, "touch", 3072, nullptr, 2, nullptr, 0);
-  Serial.printf("[btn] idle levels top=%d up=%d down=%d\n", g_btn[0].idle, g_btn[1].idle, g_btn[2].idle);
 }

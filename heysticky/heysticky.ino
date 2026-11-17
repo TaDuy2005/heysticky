@@ -12,7 +12,9 @@ extern "C" bool verifyRollbackLater() { return true; }  // a new OTA image confi
 
 void setup() {
   Serial.begin(115200);
+  power_on_check();  // before anything slow: a start by the button needs the top button held 2 s
   while (!Serial && millis() < 3000) delay(10);
+  Serial.printf("[power] reset %d, wake %d\n", esp_reset_reason(), esp_sleep_get_wakeup_cause());
   hw_begin();
   g_sound = cfg_get("sound") == "1";  // Settings › Sound, off by default
   g_vi = cfg_get("lang") == "vi";     // Settings › Language & Font › System Language
