@@ -23,6 +23,8 @@ void setup() {
 }
 
 void loop() {
+  static uint32_t batLog = 0;  // battery state on serial every minute
+  if (millis() - batLog > 60000 || !batLog) { batLog = millis() | 1; hw_battery_log(); }
   net_loop();
   screens_loop();
   delay(5);

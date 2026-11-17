@@ -13,7 +13,7 @@ enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SC
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
-struct HomeState { String date, clock, indoor, humidity; int battery = -2, today = -2; bool wifi = false; uint32_t wxAt = 1; };
+struct HomeState { String date, clock, indoor, humidity; int battery = -2, today = -2; bool wifi = false, plugged = false; uint32_t wxAt = 1; };
 inline HomeState g_shown;  // what is currently on the panel
 
 inline String fmt_date(const tm &t) {
@@ -98,6 +98,7 @@ inline void draw_home() {
   display.fillScreen(PAPER);
   g_shown.battery = ui_battery_pct();
   g_shown.wifi = WiFi.status() == WL_CONNECTED;
+  g_shown.plugged = g_plugged;
   ui_status_bar(g_shown.battery);
   const String name = cfg_get("name");
   ui_text(F_B35, name.length() ? "Hello, " + name : "Hello", W / 2, 58, 46, AL_CENTER);
@@ -115,7 +116,8 @@ inline void draw_home() {
 inline void home_tick() {
   String date;
   const String clock = now_clock(&date);
-  if (clock == g_shown.clock && date == g_shown.date && g_wx.at == g_shown.wxAt) return;  // checked often, acts once a minute
+  if (clock == g_shown.clock && date == g_shown.date && g_wx.at == g_shown.wxAt &&
+      bool(digitalRead(PIN_USB_PRESENT)) == g_shown.plugged) return;  // checked often, acts once a minute (or on plug/unplug)
 
   if (clock != g_shown.clock || date != g_shown.date) {
     g_shown.clock = clock; g_shown.date = date;
@@ -138,8 +140,8 @@ inline void home_tick() {
   }
   const int pct = ui_battery_pct();
   const bool wifi = WiFi.status() == WL_CONNECTED;
-  if (pct != g_shown.battery || wifi != g_shown.wifi) {
-    g_shown.battery = pct; g_shown.wifi = wifi;
+  if (pct != g_shown.battery || wifi != g_shown.wifi || g_plugged != g_shown.plugged) {
+    g_shown.battery = pct; g_shown.wifi = wifi; g_shown.plugged = g_plugged;
     ui_status_bar(pct);
     ui_partial(0, 0, W, 40);
   }

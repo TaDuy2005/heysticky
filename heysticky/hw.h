@@ -156,19 +156,25 @@ inline bool hw_sht40_read(float &tempC, float &rh) {
 }
 
 // ---------- BQ27220 (0x55 on Wire1) ----------
-struct Battery { int percent; int mV; int mA; bool usb; bool chargePin; };
+struct Battery { int percent; int mV; int mA; bool usb; };  // mA > 0 = charging
 inline bool hw_battery_read(Battery &b) {
   uint8_t v[2];
   auto rd = [&](uint8_t reg) { return i2c_read(Wire1, 0x55, reg, false, v, 2) ? int16_t(v[0] | v[1] << 8) : INT16_MIN; };
   b.percent = rd(0x2C); b.mV = rd(0x08); b.mA = rd(0x0C);
-  b.usb = digitalRead(PIN_USB_PRESENT); b.chargePin = digitalRead(PIN_CHG_STATE);
+  b.usb = digitalRead(PIN_USB_PRESENT);
   return b.percent != INT16_MIN;
+}
+
+inline void hw_battery_log() {
+  Battery b;
+  if (hw_battery_read(b)) Serial.printf("[bat] %d%% %d mV %+d mA usb=%d\n", b.percent, b.mV, b.mA, b.usb);
 }
 
 // ---------- all ----------
 inline void hw_begin() {
   pinMode(PIN_POWER_HOLD, OUTPUT); digitalWrite(PIN_POWER_HOLD, HIGH);  // stay on when on battery
-  pinMode(PIN_USB_PRESENT, INPUT); pinMode(PIN_CHG_STATE, INPUT);
+  pinMode(PIN_CHG_EN, OUTPUT); digitalWrite(PIN_CHG_EN, LOW);  // enable the battery charger (it stays off otherwise)
+  pinMode(PIN_USB_PRESENT, INPUT);
   hw_buttons_begin();
   Wire1.begin(PIN_SENS_SDA, PIN_SENS_SCL, 100000);
   if (!hw_touch_begin()) Serial.println("[touch] GT911 not found on 0x5D/0x14");

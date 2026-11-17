@@ -56,9 +56,12 @@ inline void ui_card_dashed(int x, int y, int w, int h, int r, int stroke) {
 }
 
 // ---------- status bar (Figma StatusBar, 40 px) ----------
+inline bool g_plugged = false;  // external power present: the status bar shows the bolt (set by ui_battery_pct)
 inline int ui_battery_pct() {
   Battery b;
-  return hw_battery_read(b) ? constrain(b.percent, 0, 100) : -1;
+  const bool ok = hw_battery_read(b);
+  g_plugged = b.usb;
+  return ok ? constrain(b.percent, 0, 100) : -1;
 }
 
 inline void ui_status_bar(int pct) {
@@ -72,7 +75,9 @@ inline void ui_status_bar(int pct) {
   display.fillRect(bx + 5, 16, 17, 9, PAPER);
   display.fillRect(bx + 25, 18, 3, 5, INK);
   if (pct > 0) display.fillRect(bx + 7, 18, max(1, 13 * pct / 100), 5, INK);
-  if (WiFi.status() == WL_CONNECTED) ui_icon(ICON_WIFI, bx - 8 - 28, 6);
+  const int lx = g_plugged ? bx - 8 - 16 : bx;  // Figma StatusBar Mode=Charging: bolt between Wi-Fi and battery
+  if (g_plugged) ui_icon(ICON_BOLT, lx, 5);
+  if (WiFi.status() == WL_CONNECTED) ui_icon(ICON_WIFI, lx - 8 - 28, 6);
 }
 
 inline void ui_page_counter(const String &s) { ui_text(F_R20, s, W / 2, 758, 26, AL_CENTER); }
