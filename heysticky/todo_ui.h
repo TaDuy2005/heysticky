@@ -98,6 +98,7 @@ struct TaskEdit {
   String text;
   Deadline dl;
   bool kbOpen = true, dirty = false;
+  bool touched = false;  // tapped or typed in: an empty field then shows only the cursor
   uint32_t dirtyAt = 0;
   Keyboard kb;
 };
@@ -147,8 +148,9 @@ inline void toggle_row(int y, const String &label, bool on) {
 
 inline void editor_field() {
   ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
-  const String shown = ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
-  const int tw = ui_text(F_B26, shown, 59, 153, 34);
+  const bool hint = !g_ed.text.length() && !(g_ed.kbOpen && g_ed.touched);  // Italic "Task" until tapped
+  const String shown = hint ? String("Task") : ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
+  const int tw = shown.length() ? ui_text(hint ? F_I25 : F_B26, shown, 59, 153, 34) : 0;
   if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
 }
 

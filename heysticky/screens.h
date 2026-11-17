@@ -306,7 +306,7 @@ constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are appli
 inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
   const KbResult r = kb_apply(g_ed.kb, g_ed.text, 120, k);
   if (r == KB_DONE) { g_ed.kbOpen = false; g_redraw = true; }  // §4: Done only hides the keyboard
-  else if (r == KB_TEXT) { g_ed.dirty = true; g_ed.dirtyAt = millis(); }
+  else if (r == KB_TEXT) { g_ed.touched = g_ed.dirty = true; g_ed.dirtyAt = millis(); }
 }
 
 inline void note_key(const KbKey &k) {
@@ -314,7 +314,7 @@ inline void note_key(const KbKey &k) {
   const unsigned cap = g_ne.field ? NOTE_BYTES - 3 - g_ne.n.title.length() : TITLE_MAX;
   const KbResult r = kb_apply(g_ne.kb, s, cap, k);
   if (r == KB_DONE) { g_ne.kbOpen = false; g_redraw = true; }
-  else if (r == KB_TEXT) { g_ne.dirty = true; g_ne.dirtyAt = millis(); }
+  else if (r == KB_TEXT) { g_ne.touched[g_ne.field] = g_ne.dirty = true; g_ne.dirtyAt = millis(); }
 }
 
 inline void key_down(const KbKey &k) { if (g_screen == SCR_NOTEED) note_key(k); else editor_key(k); }
@@ -349,9 +349,8 @@ inline void todo_tap(int x, int y) {
 
 inline void editor_tap(int x, int y) {
   if (top_right(x, y)) { hw_beep(30); show(SCR_TODO); return; }
-  if (!g_ed.kbOpen && in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back
-    g_ed.kbOpen = true;
-    g_redraw = true;
+  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back, placeholder gone
+    if (!g_ed.kbOpen || !g_ed.touched) g_ed.kbOpen = g_ed.touched = g_redraw = true;
     return;
   }
   if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(30); g_dlUndo = g_ed.dl; show(SCR_DATE); }
@@ -379,7 +378,10 @@ inline void note_editor_tap(int x, int y) {
   if (top_right(x, y)) { hw_beep(30); show(g_ne.n.num ? SCR_NOTE : SCR_NOTES); return; }  // Cancel: g_note untouched
   const int field = in(x, y, 40, NT_Y, 400, NT_H) ? 0 : in(x, y, 40, NB_Y, 400, g_nbBottom - NB_Y) ? 1 : -1;
   if (field >= 0) {  // tap a field: type into it
-    if (field != g_ne.field || !g_ne.kbOpen) { g_ne.field = field; g_ne.kbOpen = true; g_redraw = true; }
+    if (field != g_ne.field || !g_ne.kbOpen || !g_ne.touched[field]) {
+      g_ne.field = field;
+      g_ne.touched[field] = g_ne.kbOpen = g_redraw = true;
+    }
     return;
   }
   if (g_ne.kbOpen || y < 717 || y >= 784) return;

@@ -83,6 +83,7 @@ inline void draw_note_view() {
 struct NoteEdit {
   Note n;         // a copy: g_note only changes on Save
   int field = 0;  // 0 title, 1 body
+  bool touched[2] = {false, false};  // tapped or typed in: an empty field then shows only the cursor
   bool kbOpen = true, dirty = false;
   uint32_t dirtyAt = 0;
   Keyboard kb;
@@ -95,16 +96,12 @@ inline int g_nbBottom = NB_BOTTOM;                  // body field bottom as draw
 inline void note_fields() {
   const bool cur = g_ne.kbOpen;
   display.fillRect(0, 112, W, (cur ? KB_TOP : NB_BOTTOM + 1) - 112, PAPER);
-  // Title (ExtraBold 25). An empty field shows its Italic placeholder, or only the cursor while typing in it.
-  const bool titleCur = cur && g_ne.field == 0;
+  // Title (ExtraBold 25). Empty: Italic "Title" (cursor after it when focused) until tapped, then only the cursor.
+  const bool titleCur = cur && g_ne.field == 0, titleHint = !g_ne.n.title.length() && !(titleCur && g_ne.touched[0]);
   ui_card(40, NT_Y, 400, NT_H, 10, 3);
-  if (g_ne.n.title.length() || titleCur) {
-    const String t = titleCur ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
-    const int tw = t.length() ? ui_text(F_X25, t, 57, 149, 33) : 0;
-    if (titleCur) display.fillRect(57 + tw + 2, 150, 3, 32, INK);
-  } else {
-    ui_text(F_I25, "Title", 57, 149, 33);
-  }
+  const String t = titleHint ? String("Title") : titleCur ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
+  const int tw = t.length() ? ui_text(titleHint ? F_I25 : F_X25, t, 57, 149, 33) : 0;
+  if (titleCur) display.fillRect(57 + tw + 2, 150, 3, 32, INK);
   // Body (Regular 25, 35 px lines): grows with the text; while typing in it, the tail stays in view
   const bool bodyCur = cur && g_ne.field == 1, hint = !g_ne.n.body.length() && !bodyCur;
   const std::vector<String> lines = hint ? wrap(F_I25, "Start typing…\nor hold ● to speak and let AI write it.", NB_W)
