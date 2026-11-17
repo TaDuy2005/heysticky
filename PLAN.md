@@ -64,10 +64,10 @@ Pin map (from the open-source sticky-2048 firmware):
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task (confirm) · 02j Discard changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note (confirm) · 03i Discard changes (confirm) |
 | Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files |
-| Phone setup page (served only on the hotspot) | 06 Setup · 06a City suggestions · 06b Wi-Fi · 06c Enter password · 06d Incorrect password · 06e Network details · 06f Forget network · 06g Integrations · 06h AI · 06i Notion · 06j Home Assistant · 06k Remote access · 06l Profile |
+| Phone setup page (served only on the hotspot) | 06 Setup · 06a City suggestions · 06b Wi-Fi · 06c Enter password · 06d Incorrect password · 06e Network details · 06f Forget network · 06g Integrations · 06h AI · 06i Notion · 06j Home Assistant · 06k Remote access · 06l Profile · 06m Fonts · 06n Add font |
 
 **Layout & type (all Sticky screens; not the phone setup page):**
-- Font: **JetBrains Mono** (Regular, Bold, ExtraBold). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
+- Font: **JetBrains Mono** (Regular, Bold, ExtraBold), or the user font picked in 04c for text (digits stay JetBrains Mono). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
 - Content area: 40 px left/right margin (x 40–440); dividers span that width.
 - Status bar (top, 40 px tall) sits **16 px** from the screen edges (x 16–464): "HeySticky" left; Wi-Fi (moon when asleep) + bolt (while plugged in, Figma StatusBar Mode=Charging) + battery % right.
 - Page counter (`1/2`, no spaces): centred, 16 px above the bottom edge, **only on screens with more than one page** (Home/Apps, To-do, Notes, Note view). No hint bar.
@@ -76,8 +76,9 @@ Pin map (from the open-source sticky-2048 firmware):
 - Task deadline: under DEADLINE (OPTIONAL) the editor has two rows, `Date Off ›` and `Time Off ›` (values `17/11/26`, `09:00` once set). Date (02c) = toggle + calendar + Done; Time (02h) = toggle + HH:MM fields + number pad (Done on the pad). Cancel undoes that screen. Date only = date-only `@due`; Time only = today at that time; both off = no deadline.
 - Editing: every keyboard's last key is **↵** (no "Done" text; the 02h time keypad too). In one-line fields (task, note title) ↵ only hides the keyboard; in the note body ↵ = new line and UP/DOWN hide the keyboard. Tap a field to bring the keyboard back. The cursor is always at the end of the text. Shift turns on by itself at the start of a field or line and after ". " / "! " / "? " (one letter, like a phone). Also like a phone: two spaces after a word make ". ", and a space on the 123 page goes back to letters. Empty fields show an Italic placeholder (*Task*, *Title*, body hint); a focused field shows it with the cursor after it until tapped or typed in. Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete). Home (top button or bottom-edge swipe) in a task or note editor (incl. the task's Date/Time) asks first when work would be lost: a New task / New note with text typed → 02i / 03h *Discard task? / Discard note?*; an Edit that changed the text, title, body or deadline → 02j / 03i *Discard changes?*. Discard = drop it and go Home (the saved item stays as it was), Cancel = back exactly as it was. Nothing typed / nothing changed: Home goes straight there. On the warning the top button does nothing.
 
-**Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
-- **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
+**Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup.
+- **Language & Font (04a):** System Language › and User Font ›. **04b System Language:** English / Tiếng Việt checkboxes; every string on the Sticky and on the phone page follows it (§13). **04c User Font:** "Default (built-in)" + up to 8 fonts found in `/fonts/` on the microSD. Tapping a font ticks it at once and shows a "Loading..." card while it loads; tapping the font in use does nothing. A user font replaces the 13 text font slots (R20/25/30, B20/25/26/28/35, X25/30/32/40, I25); the digit-only fonts (clock, temperatures, 04j address) stay built-in. A missing or bad slot file falls back to the built-in font.
+- **Fonts (06m) / Add font (06n), phone page:** 06m lists the fonts on the card (Delete each). 06n picks a TTF/OTF per style (Regular, Bold, ExtraBold, Italic); the browser renders it 1-bit (threshold 128, same characters as `tools/make_fonts.py`) into the 13 VLW slots and uploads them. A missing style warns and uses Regular; a font without Vietnamese letters warns. A 1-bit preview shows each style. Fonts are added only from the phone page; Seeed `.fpack` files are not read.
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9). Figma 04d shows only the up-to-date state; the others reuse its layout: Not checked yet / No Wi-Fi connection, Checking…, "v1.1.0 is available" + **Install v1.1.0**, Installing v1.1.0… 40% (refreshed every 10%, no button), Couldn’t check for updates, Update failed + **Try again**.
 - **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
 - **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until V2 (its fields would save keys nothing uses yet).
@@ -113,14 +114,14 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Date and Time, each on/off); overdue first, then by due date
 - [x] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
-- [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city shown, auto timezone, 30-min refresh, °C/°F), About
+- [x] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city shown, auto timezone, 30-min refresh, °C/°F), About
 - [ ] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [ ] REQ-11 No secrets in source or in the `.bin`
 - [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
 - [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
 - [ ] REQ-14 OTA: on Wi-Fi connect (at most hourly) and on "Check for updates", compare with the latest GitHub Release; on **Install**, download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
-- [ ] REQ-15 Language English/Vietnamese; user fonts loaded from `/fonts/*.fpack`; built-in font covers Vietnamese diacritics
+- [x] REQ-15 Language English/Vietnamese; user fonts from `/fonts/<Name>/<slot>.vlw` (added on the phone page); built-in font covers Vietnamese diacritics
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
 
@@ -138,7 +139,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
 - [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [ ] TASK-13 OTA (`feature/ota`): 32 MB two-slot OTA partition table (`tools/build.sh`), version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
-- [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
+- [x] TASK-14 Language & Font (`feature/lang`): `TR(en, vi)` string table on the Sticky and `L(en, vi)` on the phone page, 04a/04b/04c screens, user fonts as `/fonts/<Name>/<slot>.vlw` (checked by `vlw_ok()`, read into PSRAM), phone 06m Fonts + 06n Add font (TTF/OTF converted in the browser), `/api/fonts`, `/api/font`, `/api/font_del`
 - [ ] TASK-11 Power: idle sleep, minute clock wake, button wake
 - [ ] TASK-12 README (controls, SD layout, device test record), LICENSE (MIT), export merged `.bin`
 
@@ -153,7 +154,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 /notes/012.md       # Idea: sticky habit grid
                     Show a 7×5 grid …
 /ai/note-instructions.txt  (V2) how the AI writes notes, set on the phone setup page
-/fonts/*.fpack      user fonts (Seeed Font Tool export)
+/fonts/<Name>/<slot>.vlw  user font, one file per slot (R20 … I25), made by the phone page (06n)
 ```
 
 **Device flash (`Preferences`)** — never in source, never in the `.bin`:
@@ -194,6 +195,8 @@ HeySticky/
     screens.h       all screens
     store.h         SD files + Preferences
     ota.h           Software Update: GitHub release check, HTTPUpdate install, rollback mark
+    lang.h          English / Vietnamese: g_vi + TR(en, vi)
+    userfont.h      user fonts from /fonts/<Name>/ on the card (04c)
   release/          exported .bin (git-ignored)
   tools/build.sh    compile / upload / export for 32 MB flash
 ```
@@ -215,7 +218,7 @@ HeySticky/
 - [x] SN: in eFuse BLOCK3 (user data), first 8 bytes little-endian, printed as 18 digits like the factory firmware's `%018llu` (this Sticky: 123456789012345678). eFuse is never touched by flashing
 - [ ] MAC: read from efuse (`esptool read_mac`; `ESP.getEfuseMac()` in firmware) — no unknowns
 - [ ] Certifications: not readable from the chip, and the factory firmware has no certification text either. About shows the Figma placeholder "FCC · CE" until the text on the device label is confirmed
-- [ ] `.fpack` format is Seeed's; confirm it is documented or use our own font format
+- [x] User fonts use our own format, not Seeed's `.fpack`: plain VLW files per slot, made on the phone page (TASK-14)
 - [x] Web setup is a row in Settings (below Configuration). Everything (name, city, Wi-Fi, integrations) is set on the phone setup page, reached only through the Sticky's hotspot (04j On → edit → Save → Off). Sleep after: decide with TASK-11
 - [x] Wi-Fi is set like iPhone Settings on the phone page (06b–06f), not on the Sticky: up to 5 saved networks, background auto-join, wrong-password alert, Forget. Hotspot gets a random password each time it is turned on (2026-11-17)
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
