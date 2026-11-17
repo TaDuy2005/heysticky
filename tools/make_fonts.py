@@ -45,8 +45,7 @@ FONTS = {
     "X120": ("ExtraBold", 120, "0123456789:- "),
     "X64": ("ExtraBold", 64, "0123456789:"),
     "X42": ("ExtraBold", 42, "0123456789.HeySticky-Setup"),  # 04j address box
-    "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"  # 02f/03f, 02i/03h titles
-                            "Discard task?Discard note?Discard changes?Bỏ việc này?Bỏ ghi chú?Bỏ thay đổi?"),
+    "X40": ("ExtraBold", 40, TEXT),  # titles (02f/03f, 02i/03h, 01e/01f): full set, a subset kept dropping letters
     "I25": ("Italic", 25, "Title Start typing… or hold ● to speak and let AI write it."
                           "Tiêu đề Bắt đầu gõ… hoặc giữ ● để nói và để AI viết."),  # placeholders only
 }

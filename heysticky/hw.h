@@ -9,6 +9,14 @@
 inline bool g_sound = false;  // Settings › Sound (Preferences "sound"), off by default
 inline void hw_beep(int ms = 40, int hz = 2700) { if (g_sound) tone(PIN_BUZZER, hz, ms); }
 
+// Power tunes: they confirm a hold worked, so they play even with Sound off. Pitched 1.3-4.2 kHz (loud on this buzzer).
+struct Tone { uint16_t hz, ms; };
+constexpr Tone TUNE_ON[] = {{2093, 70}, {2637, 70}, {3136, 70}, {4186, 180}};  // quick rising C-E-G-C
+constexpr Tone TUNE_OFF[] = {{2637, 160}, {1976, 160}, {1319, 360}};          // slow falling E-B-E
+template <size_t N> inline void hw_tune(const Tone (&t)[N]) {
+  for (const Tone &n : t) { tone(PIN_BUZZER, n.hz, n.ms); delay(n.ms + 25); }
+}
+
 // ---------- buttons ----------
 enum HwButton : uint8_t { BTN_NONE, BTN_TOP, BTN_UP, BTN_DOWN, BTN_TOP_LONG };
 constexpr uint32_t LONG_PRESS_MS = 600;  // calibration knob: hold-to-talk threshold
