@@ -9,7 +9,6 @@
 #include <NetworkClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
-#include <vector>
 #include "store.h"
 
 constexpr char AP_SSID[] = "HeySticky-Setup";
@@ -37,44 +36,75 @@ inline String html_esc(const String &s) {
 
 inline String net_ip() { return g_ap ? WiFi.softAPIP().toString() : WiFi.localIP().toString(); }
 
+// Figma 06 Phone — setup page. System sans-serif (no web font: the hotspot has no internet).
 inline const char PAGE_HEAD[] PROGMEM = R"(<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>HeySticky setup</title><style>
-body{font:16px/1.4 ui-monospace,Menlo,monospace;margin:0;padding:20px;max-width:420px;color:#000;background:#fff}
-h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:24px 0 8px;border-bottom:2px solid #000;padding-bottom:4px}
-label{display:block;font-size:14px;margin:12px 0 4px}small{color:#555}
-input[type=text],input[type=password]{width:100%;box-sizing:border-box;font:inherit;padding:10px;border:2px solid #000;border-radius:8px}
-.u label{display:inline-block;margin-right:20px}button{width:100%;margin-top:24px;padding:14px;font:inherit;font-weight:700;color:#fff;background:#000;border:0;border-radius:8px}
-</style></head><body>)";
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:390px;margin:0 auto;border:1px solid #000;min-height:100vh}
+header{background:#000;color:#fff;padding:22px 20px 18px}h1{font-size:26px;margin:0 0 4px}header p{font-size:14px;margin:0}
+form,.c{padding:20px}h2{font-size:19px;margin:0 0 10px}section{margin-bottom:22px}
+label{display:block;font-size:14px;font-weight:600;margin:10px 0 6px}
+input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;color:#000}
+.city{position:relative}.sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:2px solid #000;border-radius:8px;z-index:1;overflow:hidden}
+.sug button{display:block;width:100%;text-align:left;padding:10px 14px;font:inherit;background:#fff;color:#000;border:0;border-top:1px solid #000}
+.sug button:first-child{border-top:0}.sug b,.sug small{display:block}.sug small{font-size:13px;margin-top:2px}
+.save{width:100%;height:56px;margin-top:4px;font:inherit;font-size:18px;font-weight:700;color:#fff;background:#000;border:0;border-radius:8px}
+.note{font-size:13px;margin:16px 0 0}
+</style></head><body><main>)";
+
+// City suggestions: the phone asks Open-Meteo itself (no load on the Sticky). Picking one sends its
+// lat/lon, so the Sticky never guesses between towns with the same name. No internet -> no list, typed name still saves.
+inline const char PAGE_JS[] PROGMEM = R"JS(<script>
+const f=document.forms[0],c=f.city,l=document.getElementById('sug');let t;
+c.oninput=()=>{f.lat.value=f.lon.value='';clearTimeout(t);const q=c.value.trim();
+ if(q.length<2){l.hidden=true;return}
+ t=setTimeout(async()=>{try{
+  const d=await(await fetch('https://geocoding-api.open-meteo.com/v1/search?count=5&name='+encodeURIComponent(q))).json();
+  if(c.value.trim()!==q)return;l.replaceChildren();
+  for(const p of d.results||[]){const b=document.createElement('button');b.type='button';
+   b.append(Object.assign(document.createElement('b'),{textContent:p.name}),
+            Object.assign(document.createElement('small'),{textContent:[p.admin1,p.country].filter(Boolean).join(', ')}));
+   b.onclick=()=>{c.value=p.name;f.lat.value=p.latitude;f.lon.value=p.longitude;l.hidden=true};l.append(b)}
+  l.hidden=!l.children.length}catch(e){l.hidden=true}},300)};
+document.addEventListener('click',e=>{if(!l.contains(e.target)&&e.target!==c)l.hidden=true});
+</script>)JS";
+
+inline String page_header(const String &sub) {
+  return String(FPSTR(PAGE_HEAD)) + "<header><h1>HeySticky setup</h1><p>" + sub + "</p></header>";
+}
 
 inline void web_root() {
-  const String ssid = cfg_get("wifi_ssid"), units = cfg_get("units", "C");
+  const String ssid = cfg_get("wifi_ssid");
   const bool hasPass = cfg_get("wifi_pass").length();
-  String h = FPSTR(PAGE_HEAD);
-  h += "<h1>HeySticky setup</h1><small>Connected to your Sticky at " + net_ip() + "</small>";
-  h += "<form method=post action=/save><h2>Wi-Fi</h2>";
-  h += "<label>Network</label><input type=text name=ssid maxlength=32 required value=\"" + html_esc(ssid) + "\">";
+  String h = page_header("Connected to your Sticky at " + net_ip());
+  h += "<form method=post action=/save><section><h2>Wi-Fi</h2>";
+  h += "<label for=ssid>Network</label><input id=ssid name=ssid maxlength=32 required value=\"" + html_esc(ssid) + "\">";
   // Saved password is never sent back; empty field keeps it.
-  h += "<label>Password</label><input type=password name=pass maxlength=63 placeholder=\"";
+  h += "<label for=pass>Password</label><input id=pass type=password name=pass maxlength=63 placeholder=\"";
   h += hasPass ? "•••••••• (unchanged)" : "";
-  h += "\"><h2>Profile</h2>";
-  h += "<label>Your name</label><input type=text name=name maxlength=32 value=\"" + html_esc(cfg_get("name")) + "\">";
-  h += "<label>City (for weather)</label><input type=text name=city maxlength=64 value=\"" + html_esc(cfg_get("city")) + "\">";
-  h += "<label>Units</label><div class=u><label><input type=radio name=units value=C";
-  h += units == "C" ? " checked" : "";
-  h += "> °C</label><label><input type=radio name=units value=F";
-  h += units == "F" ? " checked" : "";
-  h += "> °F</label></div><button>Save to Sticky</button></form>";
-  h += "<p><small>Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.</small></p></body></html>";
+  h += "\"></section><section><h2>Profile</h2>";
+  h += "<label for=name>Your name</label><input id=name name=name maxlength=32 value=\"" + html_esc(cfg_get("name")) + "\">";
+  h += "<label for=city>City (for weather)</label><div class=city><input id=city name=city maxlength=64 autocomplete=off value=\"" +
+       html_esc(cfg_get("city")) + "\"><div class=sug id=sug hidden></div></div>";
+  h += "<input type=hidden name=lat><input type=hidden name=lon></section>";
+  h += "<button class=save>✓&nbsp; Save to Sticky</button>";
+  h += "<p class=note>Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.</p></form>";
+  h += FPSTR(PAGE_JS);
+  h += "</main></body></html>";
   g_web.send(200, "text/html; charset=utf-8", h);
 }
 
 inline void web_save() {
-  // Trust boundary: length limits match the form; units is an enum.
-  String ssid = g_web.arg("ssid"), pass = g_web.arg("pass"), name = g_web.arg("name"),
-         city = g_web.arg("city"), units = g_web.arg("units");
+  // Trust boundary: length limits match the form; lat/lon only as numbers in range, both or neither.
+  String ssid = g_web.arg("ssid"), pass = g_web.arg("pass"), name = g_web.arg("name"), city = g_web.arg("city"),
+         lat = g_web.arg("lat"), lon = g_web.arg("lon");
   ssid.trim(); name.trim(); city.trim();
+  char *e1 = nullptr, *e2 = nullptr;
+  const double la = strtod(lat.c_str(), &e1), lo = strtod(lon.c_str(), &e2);
+  const bool picked = lat.length() && lon.length();
   if (ssid.isEmpty() || ssid.length() > 32 || pass.length() > 63 || name.length() > 32 || city.length() > 64 ||
-      (units != "C" && units != "F")) {
+      (lat.length() > 0) != (lon.length() > 0) ||  // one without the other
+      (picked && (*e1 || *e2 || !(la >= -90 && la <= 90) || !(lo >= -180 && lo <= 180) || city.isEmpty()))) {  // !(in range) also rejects nan
     g_web.send(400, "text/plain", "Invalid input");
     return;
   }
@@ -82,10 +112,14 @@ inline void web_save() {
   if (pass.length()) cfg_set("wifi_pass", pass);
   cfg_set("name", name);
   cfg_set("city", city);
-  cfg_set("units", units);
+  if (picked) {  // exact place: no lookup by name after the restart
+    cfg_set("lat", String(la, 4));
+    cfg_set("lon", String(lo, 4));
+    cfg_set("geo_city", city);
+  }
   g_web.send(200, "text/html; charset=utf-8",
-             String(FPSTR(PAGE_HEAD)) + "<h1>Saved</h1><p>Your Sticky is restarting and will join <b>" + html_esc(ssid) +
-                 "</b>. Its new address appears on its screen.</p></body></html>");
+             page_header("Saved") + "<div class=c><p>Your Sticky is restarting and will join <b>" + html_esc(ssid) +
+                 "</b>. Its new address appears on its screen.</p></div></main></body></html>");
   delay(1000);
   ESP.restart();
 }
@@ -152,8 +186,8 @@ inline String url_enc(const String &s) {
   return o;
 }
 
-// City -> lat/lon/timezone, only when the saved city changed. Top match; picking among
-// several comes with the Location screen (TASK-10).
+// City -> lat/lon/timezone, only when the saved city changed and wasn't picked from the
+// phone page's suggestions. Top match for the name.
 inline bool net_geocode() {
   const String city = cfg_get("city");
   if (city.isEmpty()) return false;
@@ -168,35 +202,6 @@ inline bool net_geocode() {
   cfg_set("geo_city", city);
   Serial.printf("[geo] %s -> %s, %s  %s\n", city.c_str(), cfg_get("lat").c_str(), cfg_get("lon").c_str(), cfg_get("tz").c_str());
   return true;
-}
-
-// 04f Location search: up to 5 places for a typed name. False = no network / request failed.
-struct Place { String name, area, tz; float lat = 0, lon = 0; };  // area: "California, United States"
-inline bool net_search(const String &q, std::vector<Place> &out) {
-  out.clear();
-  if (WiFi.status() != WL_CONNECTED) return false;
-  JsonDocument d;
-  if (!http_json("https://geocoding-api.open-meteo.com/v1/search?count=5&name=" + url_enc(q), d)) return false;
-  for (JsonObject r : d["results"].as<JsonArray>()) {
-    Place p;
-    p.name = r["name"].as<String>();
-    const String a1 = r["admin1"] | "", c = r["country"] | "";
-    p.area = a1.length() && c.length() ? a1 + ", " + c : a1 + c;
-    p.tz = r["timezone"] | "";
-    p.lat = r["latitude"];
-    p.lon = r["longitude"];
-    out.push_back(p);
-  }
-  return true;
-}
-
-// Saves a picked place as the city (no second lookup by name).
-inline void net_set_place(const Place &p) {
-  cfg_set("city", p.name);
-  cfg_set("lat", String(p.lat, 4));
-  cfg_set("lon", String(p.lon, 4));
-  cfg_set("tz", p.tz);
-  cfg_set("geo_city", p.name);
 }
 
 // ---------- weather ----------
