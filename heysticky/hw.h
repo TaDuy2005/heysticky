@@ -6,15 +6,34 @@
 #include "pins.h"
 
 // ---------- buzzer ----------
+// Driven with LEDC PWM: the duty sets the volume (50 % is the loudest one pin can drive a passive buzzer),
+// a one-shot timer ends each sound, so beeps never block and never stretch during an e-paper refresh.
+#include <esp_timer.h>
 inline bool g_sound = false;  // Settings › Sound (Preferences "sound"), off by default
-inline void hw_beep(int ms = 40, int hz = 2700) { if (g_sound) tone(PIN_BUZZER, hz, ms); }
+inline uint8_t g_vol = 2;     // Settings › Sound › Volume (Preferences "vol"): 0 Low, 1 Medium, 2 High
+constexpr uint16_t VOLUME_DUTY[] = {40, 150, 512};  // calibration knob: duty out of 1024 per level
+inline void hw_buzz(int hz, int ms) {  // plays even with Sound off: callers decide
+  static esp_timer_handle_t stop = nullptr;
+  if (!stop) {
+    ledcAttach(PIN_BUZZER, hz, 10);
+    const esp_timer_create_args_t a = {.callback = [](void *) { ledcWrite(PIN_BUZZER, 0); }, .name = "buzz"};
+    esp_timer_create(&a, &stop);
+  } else {
+    esp_timer_stop(stop);
+    ledcChangeFrequency(PIN_BUZZER, hz, 10);
+  }
+  ledcWrite(PIN_BUZZER, VOLUME_DUTY[min<int>(g_vol, 2)]);
+  esp_timer_start_once(stop, ms * 1000ULL);
+}
+constexpr int BEEP_MS = 120;  // calibration knob: every tap / swipe / button beep (long enough to sound full)
+inline void hw_beep(int ms = BEEP_MS, int hz = 2700) { if (g_sound) hw_buzz(hz, ms); }
 
-// Power tunes: they confirm a hold worked, so they play even with Sound off. Pitched 1.3-4.2 kHz (loud on this buzzer).
+// Power tunes: they confirm a hold worked, so they play even with Sound off (at the chosen volume). Pitched 1.3-4.2 kHz (loud on this buzzer).
 struct Tone { uint16_t hz, ms; };
 constexpr Tone TUNE_ON[] = {{2093, 70}, {2637, 70}, {3136, 70}, {4186, 180}};  // quick rising C-E-G-C
 constexpr Tone TUNE_OFF[] = {{2637, 160}, {1976, 160}, {1319, 360}};          // slow falling E-B-E
 template <size_t N> inline void hw_tune(const Tone (&t)[N]) {
-  for (const Tone &n : t) { tone(PIN_BUZZER, n.hz, n.ms); delay(n.ms + 25); }
+  for (const Tone &n : t) { hw_buzz(n.hz, n.ms); delay(n.ms + 25); }
 }
 
 // ---------- buttons ----------
