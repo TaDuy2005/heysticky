@@ -32,5 +32,14 @@ int main() {
   assert(size_text(512000000) == "512 MB");
   assert(size_text(1500) == "1.5 KB");
 
+  assert(ver_newer("v1.0.1", "1.0.0"));
+  assert(ver_newer("1.1.0", "1.0.9"));
+  assert(ver_newer("v2.0.0", "1.10.3"));
+  assert(ver_newer("v1.10.0", "1.9.0"));  // numbers, not text
+  assert(!ver_newer("v1.0.0", "1.0.0"));
+  assert(!ver_newer("v0.9.9", "1.0.0"));
+  assert(!ver_newer("latest", "1.0.0"));
+  assert(!ver_newer("v1.1", "1.0.0"));
+
   puts("settings_test OK");
 }

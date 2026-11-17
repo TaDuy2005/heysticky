@@ -8,6 +8,16 @@
 
 constexpr const char *FW_VERSION = "1.0.0";
 
+// GitHub release tag ("v1.2.0" or "1.2.0") newer than the running version? A tag that isn't x.y.z never is.
+inline bool ver_newer(const char *tag, const char *cur) {
+  int a[3], b[3];
+  if (*tag == 'v' || *tag == 'V') tag++;
+  if (sscanf(tag, "%d.%d.%d", &a[0], &a[1], &a[2]) != 3 || sscanf(cur, "%d.%d.%d", &b[0], &b[1], &b[2]) != 3) return false;
+  for (int i = 0; i < 3; i++)
+    if (a[i] != b[i]) return a[i] > b[i];
+  return false;
+}
+
 // SN: eFuse user block (BLOCK3), first 8 bytes little-endian, 18 digits like the factory firmware (%018llu).
 inline String sn_text(const uint8_t *b) {
   unsigned long long v = 0;

@@ -5,6 +5,7 @@
 #include "ui.h"
 #include "card.h"
 #include "net.h"
+#include "ota.h"
 #include "settings.h"
 
 // ---------- shared rows ----------
@@ -46,6 +47,32 @@ inline void draw_settings() {
     else ui_icon(ICON_CHEV, 414, y + 23);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
   }
+}
+
+// ---------- 04d Software Update (Figma has the up-to-date state; the others reuse its layout) ----------
+constexpr int UPD_BTN_Y = 333;
+inline bool update_has_button() { return g_ota != OTA_CHECKING && g_ota != OTA_INSTALLING; }
+
+inline void draw_update() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar("Software Update", "");
+  ui_text(F_X32, String("HeySticky v") + FW_VERSION, 40, 144, 42);
+  const String v = g_otaTag.startsWith("v") ? g_otaTag : "v" + g_otaTag, last = ota_checked_text();
+  String head, l1 = last.length() ? last + " ·" : "", l2 = last.length() ? "over Wi-Fi" : "", btn = "Check for updates";
+  switch (g_ota) {
+    case OTA_IDLE: head = WiFi.status() == WL_CONNECTED ? "Not checked yet" : "No Wi-Fi connection"; break;
+    case OTA_CHECKING: head = "Checking…"; l1 = l2 = ""; break;
+    case OTA_LATEST: head = "You’re up to date"; break;
+    case OTA_AVAIL: head = v + " is available"; btn = "Install " + v; break;
+    case OTA_ERR: head = "Couldn’t check for updates"; break;
+    case OTA_INSTALLING: head = "Installing " + v + "… " + g_otaPct + "%"; l1 = "Don’t turn off the Sticky."; l2 = "It restarts when done."; break;
+    case OTA_FAILED: head = "Update failed"; l1 = "This version is unchanged."; l2 = ""; btn = "Try again"; break;
+  }
+  ui_text(F_B25, head, 40, 194, 33);
+  ui_text(F_R25, l1, 40, 235, 33);
+  ui_text(F_R25, l2, 40, 268, 33);
+  if (update_has_button()) ui_button(40, UPD_BTN_Y, 400, 72, true, nullptr, btn);
 }
 
 // ---------- 04e Configuration (City is display only: set on the phone setup page) ----------
