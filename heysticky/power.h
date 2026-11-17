@@ -1,10 +1,11 @@
-// TASK-11 Sleep after (04l): idle -> Home with the moon (01b/01d), then light sleep.
+// TASK-11 Power. Sleep after (04l): idle -> Home with the moon (01b/01d), then light sleep.
 // Asleep: Wi-Fi and touch off, CPU at 80 MHz; a timer wakes it each minute for the clock and every
 // 30 min Wi-Fi comes on for weather + NTP. Only the top button wakes it fully, to Home.
 #pragma once
 #include <esp_sleep.h>
 #include <driver/gpio.h>
 #include <esp_sntp.h>
+#include <driver/rtc_io.h>
 #include "screens.h"
 
 constexpr uint32_t SYNC_EVERY_MS = 30UL * 60 * 1000, SYNC_TIMEOUT_MS = 40000;
@@ -62,6 +63,43 @@ inline uint64_t us_to_next_minute() {
   return (60 - tv.tv_sec % 60) * 1000000ULL - tv.tv_usec + 100000;  // just after the minute turns
 }
 
+// ---------- shutdown (01e Turned off / 01f Battery empty), like Seeed's: hold UP + DOWN, or battery empty ----------
+constexpr uint32_t OFF_HOLD_MS = 3000;
+constexpr int BATTERY_EMPTY_PCT = 3;  // calibration knob: gauge % at which it turns itself off (on battery only)
+
+// The message stays on the e-paper after the power is cut.
+[[noreturn]] inline void power_off(bool empty) {
+  Serial.printf("[power] off: %s\n", empty ? "battery empty" : "UP+DOWN held");
+  hw_beep(300);
+  display.fillScreen(PAPER);
+  ui_icon(empty ? ICON_BAT_EMPTY96 : ICON_POWER96, 192, 232);
+  ui_text(F_X40, empty ? TR("Battery empty", "Hết pin") : TR("Turned off", "Đã tắt"), W / 2, 360, 52, AL_CENTER);
+  ui_text(F_R30, empty ? TR("Charge the Sticky", "Sạc Sticky") : TR("Hold the top button", "Giữ nút trên"), W / 2, 428, 40, AL_CENTER);
+  ui_text(F_R30, empty ? TR("to turn it on.", "để bật lại.") : TR("to turn on.", "để bật."), W / 2, 468, 40, AL_CENTER);
+  ui_full();
+  touch_power(false);
+  wifi_off();
+  Serial.flush();
+  digitalWrite(PIN_POWER_HOLD, LOW);  // on battery the power is cut here
+  delay(1000);
+  // Still running: USB powers it. Deep sleep until the top button (a wake restarts the firmware).
+  Serial.println("[power] on USB: deep sleep until the top button");
+  Serial.flush();
+  const gpio_num_t top = gpio_num_t(PIN_BTN_TOP);
+  if (g_btn[0].idle) { rtc_gpio_pullup_en(top); rtc_gpio_pulldown_dis(top); }
+  esp_sleep_enable_ext0_wakeup(top, g_btn[0].idle ? 0 : 1);
+  esp_deep_sleep_start();
+}
+
+// Call about once a minute: two low readings in a row, on battery.
+inline bool battery_empty() {
+  static int low = 0;
+  Battery b;
+  if (!hw_battery_read(b) || b.usb || b.percent > BATTERY_EMPTY_PCT) { low = 0; return false; }
+  Serial.printf("[power] battery low %d%% %d mV (%d)\n", b.percent, b.mV, low + 1);
+  return ++low >= 2;
+}
+
 inline void power_sleep() {
   Battery b0;
   hw_battery_read(b0);
@@ -81,6 +119,7 @@ inline void power_sleep() {
     if (int32_t(millis() - syncAt) >= 0) { sleep_sync(); syncAt = millis() + SYNC_EVERY_MS; }
     home_tick();  // clock each minute; weather, battery and indoor when they changed
     if (top_pressed()) break;
+    if (battery_empty()) power_off(true);
     Serial.printf("[sleep] tick %s\n", g_shown.clock.c_str());
     Serial.flush();
     esp_sleep_enable_timer_wakeup(us_to_next_minute());
@@ -107,5 +146,11 @@ inline void power_sleep() {
 }
 
 inline void power_loop() {
+  static uint32_t both = 0, batAt = 0;  // UP + DOWN held since (0 = not held); last battery check
+  const bool held = digitalRead(PIN_BTN_UP) != g_btn[1].idle && digitalRead(PIN_BTN_DOWN) != g_btn[2].idle;
+  if (!held) both = 0;
+  else if (!both) both = millis() | 1;
+  else if (millis() - both >= OFF_HOLD_MS) power_off(false);
+  if (millis() - batAt >= 60000 && g_ota != OTA_INSTALLING) { batAt = millis(); if (battery_empty()) power_off(true); }
   if (may_sleep()) power_sleep();
 }
