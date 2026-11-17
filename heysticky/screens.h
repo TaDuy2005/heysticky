@@ -519,31 +519,34 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
 // ---------- page moves + Home (PLAN.md §3) ----------
 // DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
 // Note editor: UP/DOWN hide the keyboard; with it hidden they scroll the body.
-inline void note_updown(int dir) { if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
+// Every page or screen change beeps (swipe or UP / DOWN alike); nothing to move = silent.
+inline void go(Screen s) { hw_beep(30); show(s); }
+inline void turn(int &page, int d) { hw_beep(30); page += d; g_redraw = true; }
+inline void note_updown(int dir) { hw_beep(30); if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
 inline void page_back() {
   if (settings_screen(g_screen)) {
-    if (g_screen == SCR_FILES && g_filesPage > 0) { g_filesPage--; g_redraw = true; }
-    else show(settings_parent());
-  } else if (g_screen == SCR_APPS) show(SCR_HOME);
+    if (g_screen == SCR_FILES && g_filesPage > 0) turn(g_filesPage, -1);
+    else go(settings_parent());
+  } else if (g_screen == SCR_APPS) go(SCR_HOME);
   else if (g_screen == SCR_NOTES) {
-    if (g_notesPage > 0) { g_notesPage--; g_redraw = true; }
-    else show(SCR_APPS);
+    if (g_notesPage > 0) turn(g_notesPage, -1);
+    else go(SCR_APPS);
   } else if (g_screen == SCR_NOTE) {
-    if (g_viewPage > 0) { g_viewPage--; g_redraw = true; }
-    else show(SCR_NOTES);
+    if (g_viewPage > 0) turn(g_viewPage, -1);
+    else go(SCR_NOTES);
   } else if (g_screen == SCR_NOTEED) note_updown(-1);
   else if (g_screen == SCR_TODO) {
-    if (g_todoPage > 0) { g_todoPage--; g_redraw = true; }
-    else show(SCR_APPS);
+    if (g_todoPage > 0) turn(g_todoPage, -1);
+    else go(SCR_APPS);
   }
 }
 inline void page_fwd() {
-  if (g_screen == SCR_HOME) show(SCR_APPS);
-  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
-  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) { g_notesPage++; g_redraw = true; }
-  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
+  if (g_screen == SCR_HOME) go(SCR_APPS);
+  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) turn(g_todoPage, 1);
+  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) turn(g_notesPage, 1);
+  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) turn(g_viewPage, 1);
   else if (g_screen == SCR_NOTEED) note_updown(1);
-  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) { g_filesPage++; g_redraw = true; }
+  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) turn(g_filesPage, 1);
 }
 // Home asks first (02i / 03h) instead of losing work: a new task / note with text typed in it,
 // or an edit that changed something.
@@ -680,7 +683,7 @@ inline void screens_input() {
 
   if (HwButton b = hw_buttons_poll()) {
     g_lastInput = millis();
-    hw_beep(b == BTN_TOP_LONG ? 120 : 30);
+    if (b == BTN_TOP || b == BTN_TOP_LONG) hw_beep(b == BTN_TOP_LONG ? 120 : 30);  // UP / DOWN beep in page_back / page_fwd
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();
     else if (b == BTN_UP) page_fwd();
