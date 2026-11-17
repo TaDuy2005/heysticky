@@ -44,7 +44,8 @@ FONTS = {
     "X48": ("ExtraBold", 48, "0123456789-°CF "),
     "X120": ("ExtraBold", 120, "0123456789:- "),
     "X64": ("ExtraBold", 64, "0123456789:"),
-    "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"),
+    "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"  # 02f/03f, 02i/03h titles
+                            "Discard task?Discard note?Discard changes?Bỏ việc này?Bỏ ghi chú?Bỏ thay đổi?"),
     "I25": ("Italic", 25, "Title Start typing… or hold ● to speak and let AI write it."
                           "Tiêu đề Bắt đầu gõ… hoặc giữ ● để nói và để AI viết."),  # placeholders only
 }

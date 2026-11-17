@@ -211,6 +211,12 @@ inline void draw_websetup() {
 inline Screen g_discardBack = SCR_TASK;  // 02i/03h Cancel returns here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
+inline const char *discard_question() {
+  const bool note = g_discardBack == SCR_NOTEED;
+  if (note ? g_ne.n.num != 0 : g_ed.idx >= 0) return "Discard changes?";
+  return note ? "Discard note?" : "Discard task?";
+}
+
 inline void draw_screen() {
   switch (g_screen) {
     case SCR_HOME: draw_home(); break;
@@ -226,7 +232,7 @@ inline void draw_screen() {
     case SCR_NOTE: draw_note_view(); break;
     case SCR_NOTEED: draw_note_editor(); break;
     case SCR_DELNOTE: draw_delete("Delete note?"); break;
-    case SCR_DISCARD: draw_delete(g_discardBack == SCR_NOTEED ? "Discard note?" : "Discard task?", "Discard"); break;
+    case SCR_DISCARD: draw_delete(discard_question(), "Discard"); break;
   }
 }
 
@@ -283,7 +289,7 @@ inline void open_editor(int idx) {  // idx -1 = new task
   g_ed = TaskEdit();
   g_ed.idx = idx;
   if (idx >= 0) { g_ed.text = g_tasks[idx].text; g_ed.kbOpen = false; }
-  g_ed.dl = dl_from(idx >= 0 ? g_tasks[idx].due : String(""));
+  g_ed.dl = g_ed.dl0 = dl_from(idx >= 0 ? g_tasks[idx].due : String(""));
   show(SCR_TASK);
 }
 
@@ -449,17 +455,23 @@ inline void page_fwd() {
   else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTEED) note_updown(1);
 }
-// A new task / note with text typed in it: Home asks first (02i / 03h) instead of losing it.
-inline bool unsaved_new() {
+// Home asks first (02i / 03h) instead of losing work: a new task / note with text typed in it,
+// or an edit that changed something.
+inline bool unsaved() {
   String t;
-  if (g_screen == SCR_NOTEED && !g_ne.n.num) t = g_ne.n.title + g_ne.n.body;
-  else if ((g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME) && g_ed.idx < 0) t = g_ed.text;
+  if (g_screen == SCR_NOTEED) {
+    if (g_ne.n.num) return g_ne.n.title != g_note.title || g_ne.n.body != g_note.body;
+    t = g_ne.n.title + g_ne.n.body;
+  } else if (g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME) {
+    if (g_ed.idx >= 0) return g_ed.text != g_tasks[g_ed.idx].text || !dl_same(g_ed.dl, g_ed.dl0);
+    t = g_ed.text;
+  } else return false;
   t.trim();
   return t.length();
 }
 inline void go_home() {
   if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) return;  // on the warning, only its buttons act
-  if (unsaved_new()) { g_discardBack = g_screen; show(SCR_DISCARD); }
+  if (unsaved()) { g_discardBack = g_screen; show(SCR_DISCARD); }
   else show(SCR_HOME);
 }
 

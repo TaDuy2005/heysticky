@@ -96,7 +96,7 @@ struct Deadline {
 struct TaskEdit {
   int idx = -1;  // -1 = new task
   String text;
-  Deadline dl;
+  Deadline dl, dl0;  // dl0: as opened, to tell an edit from no change
   bool kbOpen = true, dirty = false;
   bool touched = false;  // tapped or typed in: an empty field then shows only the cursor
   uint32_t dirtyAt = 0;
@@ -117,6 +117,10 @@ inline Deadline dl_from(const String &due) {
   int day;
   civil(d.sel, d.y, d.m, day);
   return d;
+}
+
+inline bool dl_same(const Deadline &a, const Deadline &b) {  // same deadline (the month shown doesn't count)
+  return a.dateOn == b.dateOn && a.timeOn == b.timeOn && (!a.dateOn || a.sel == b.sel) && (!a.timeOn || a.mins == b.mins);
 }
 
 inline bool dl_due(const Deadline &d, String &due) {  // false: Time only, but no clock for "today" yet
