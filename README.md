@@ -119,7 +119,7 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | English / Vietnamese switch; user font from the phone page | Pass |
 | Sleep after 2 min idle, clock updates each minute, top button wakes | Pass (on USB) |
 | UP + DOWN shutdown; 2 s top-button hold turns on, a tap does not (USB and battery) | Pass |
-| Software Update from GitHub Releases | See release notes |
+| Software Update from GitHub Releases (v1.0.0 → v1.0.1 over Wi-Fi, marked good, settings and SD kept) | Pass |
 
 ## Credits and licences
 
