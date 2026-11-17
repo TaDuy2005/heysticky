@@ -124,11 +124,17 @@ inline void draw_langfont() {
 inline void draw_syslang() { draw_choices(TR("System Language", "Ngôn ngữ hệ thống"), {"English", "Tiếng Việt"}, g_vi); }
 
 inline std::vector<String> g_fontNames;  // 04c rows after "Default", read when 04c opens
-inline void draw_userfont() {
+// sel: the row just tapped (ticked at once); loading: "Loading..." card while the font is read from the card.
+inline void draw_userfont(int sel = -1, bool loading = false) {
   std::vector<String> rows = {TR("Default (built-in)", "Mặc định (có sẵn)")};
   rows.insert(rows.end(), g_fontNames.begin(), g_fontNames.end());
   const auto it = std::find(g_fontNames.begin(), g_fontNames.end(), cfg_get("font"));
-  draw_choices(TR("User Font", "Phông chữ"), rows, it == g_fontNames.end() ? 0 : 1 + int(it - g_fontNames.begin()));
+  if (sel < 0) sel = it == g_fontNames.end() ? 0 : 1 + int(it - g_fontNames.begin());
+  draw_choices(TR("User Font", "Phông chữ"), rows, sel);
+  if (loading) {  // a card over the rows, so it fits however many fonts are listed
+    ui_card(110, 352, 260, 96, 12, 3);
+    ui_text(F_B25, TR("Loading...", "Đang tải..."), W / 2, 352 + (96 - 33) / 2, 33, AL_CENTER);
+  }
 }
 
 // ---------- 04h About ----------
