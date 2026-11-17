@@ -57,6 +57,14 @@ inline String note_tag(int num) {  // "#09"
   return b;
 }
 
+// Keyboard auto-capital: at the start of a field or line, and after ". ", "! ", "? ".
+inline bool cap_next(const String &s) {
+  int i = s.length();
+  while (i > 0 && s[i - 1] == ' ') i--;
+  if (i == 0 || s[i - 1] == '\n') return true;
+  return i < int(s.length()) && (s[i - 1] == '.' || s[i - 1] == '!' || s[i - 1] == '?');
+}
+
 // Word wrap to lines no wider than w (width() measures a String). Keeps the body's own line
 // breaks; a word wider than the line is split by character (UTF-8 safe).
 template <class Width>

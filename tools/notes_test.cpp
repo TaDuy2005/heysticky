@@ -62,5 +62,9 @@ int main() {
   w = wrap_lines("end\n", 10, chars);
   assert(w.size() == 2 && w[1] == "");
 
+  // auto-capital
+  assert(cap_next("") && cap_next("  ") && cap_next("Done. ") && cap_next("Why?  ") && cap_next("Hi!\n") && cap_next("a\n "));
+  assert(!cap_next("Done.") && !cap_next("word ") && !cap_next("e.g") && !cap_next("x"));
+
   puts("notes_test OK");
 }

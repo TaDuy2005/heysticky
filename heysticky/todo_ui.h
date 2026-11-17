@@ -163,6 +163,7 @@ inline void draw_task_editor() {
   link_row(ROW_DATE_Y, "Date", g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : "Off");
   link_row(ROW_TIME_Y, "Time", g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : "Off");
   if (g_ed.kbOpen) {
+    g_ed.kb.shift = cap_next(g_ed.text);
     g_ed.kb.draw();
   } else if (g_ed.idx < 0) {
     ui_button(40, 717, 400, 67, true, &ICON_CHECK24, "Save");
