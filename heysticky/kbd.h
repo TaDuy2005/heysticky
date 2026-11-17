@@ -1,6 +1,7 @@
 // HeySticky on-screen keyboard (Figma 02a): y 510..800, letters / 123 pages, one-shot shift.
 #pragma once
 #include "ui.h"
+#include "notes.h"  // cap_next()
 
 enum KeyKind : uint8_t { K_CHAR, K_SHIFT, K_BKSP, K_MODE, K_SPACE, K_DONE };
 struct KbKey { int16_t x, y, w; KeyKind kind; char ch; };
@@ -67,6 +68,7 @@ struct Keyboard {
 };
 
 // One key into a text field. Shift / 123 redraw the keyboard here; the caller refreshes the field.
+// Shift turns itself on where a sentence starts (cap_next) and off after one letter.
 constexpr int KBD_FULL_EVERY = 20;  // full refresh after this many typing refreshes
 enum KbResult : uint8_t { KB_TEXT, KB_NONE, KB_DONE };
 
@@ -74,14 +76,15 @@ inline KbResult kb_apply(Keyboard &kb, String &s, unsigned cap, const KbKey &k) 
   switch (k.kind) {
     case K_CHAR:
     case K_SPACE:
-      if (s.length() < cap) s += kb.shift ? char(toupper(k.ch)) : k.ch;
-      if (kb.shift) { kb.shift = false; kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
+    case K_BKSP: {
+      if (k.kind == K_BKSP) { if (s.length()) utf8_pop(s); }
+      else if (s.length() < cap) s += kb.shift ? char(toupper(k.ch)) : k.ch;
+      const bool sh = cap_next(s);
+      if (sh != kb.shift) { kb.shift = sh; kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
       return KB_TEXT;
-    case K_BKSP:
-      if (s.length()) utf8_pop(s);
-      return KB_TEXT;
+    }
     case K_SHIFT: kb.shift = !kb.shift; break;
-    case K_MODE: kb.numbers = !kb.numbers; kb.shift = false; break;
+    case K_MODE: kb.numbers = !kb.numbers; kb.shift = !kb.numbers && cap_next(s); break;
     case K_DONE: return KB_DONE;
   }
   kb.draw();

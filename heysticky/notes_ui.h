@@ -142,6 +142,7 @@ inline void draw_note_editor() {
   note_fields();
   if (g_ne.kbOpen) {
     g_ne.kb.enter = g_ne.field == 1;
+    g_ne.kb.shift = cap_next(g_ne.field ? g_ne.n.body : g_ne.n.title);
     g_ne.kb.draw();
   } else if (!g_ne.n.num) {
     ui_button(40, 717, 400, 67, true, &ICON_CHECK24, "Save");
