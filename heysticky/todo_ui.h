@@ -147,16 +147,7 @@ inline void toggle_row(int y, const String &label, bool on) {
 
 inline void editor_field() {
   ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
-  const int maxW = FIELD_W - 2 * 19 - 6;  // show the tail when the text is wider than the field
-  String shown = g_ed.text;
-  bool cut = false;
-  while (shown.length() && ui_width(F_B26, (cut ? "…" : "") + shown) > maxW) {
-    int n = 1;
-    while (n < int(shown.length()) && (uint8_t(shown[n]) & 0xC0) == 0x80) n++;
-    shown.remove(0, n);
-    cut = true;
-  }
-  if (cut) shown = "…" + shown;
+  const String shown = ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
   const int tw = ui_text(F_B26, shown, 59, 153, 34);
   if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
 }
@@ -292,24 +283,25 @@ inline void draw_time() {
   }
 }
 
-// ---------- 02f Delete task ----------
-inline void draw_delete_task() {
+// ---------- 02f Delete task / 03f Delete note ----------
+inline void draw_delete(const char *question) {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   display.fillCircle(240, 337, 80, INK);  // badge 160x160, 5 px ring
   display.fillCircle(240, 337, 75, PAPER);
   ui_icon(ICON_TRASH64, 208, 305);
-  ui_text(F_X40, "Delete task?", W / 2, 435, 53, AL_CENTER);
+  ui_text(F_X40, question, W / 2, 435, 53, AL_CENTER);
   ui_button(40, 705, 193, 79, false, &ICON_TRASH24, "Delete");
   ui_button(247, 705, 193, 79, true, &ICON_X24, "Cancel");
 }
 
 // ---------- No microSD card ----------
 // ponytail: no Figma frame yet (PLAN.md §10 open question); plain layout in the house style.
+inline bool g_nosdNotes = false;  // which app sent us here: Retry returns to it
 inline void draw_nosd() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("To-do", "Back");
+  ui_topbar(g_nosdNotes ? "Notes" : "To-do", "Back");
   ui_text(F_X30, "No microSD card", W / 2, 318, 40, AL_CENTER);
   ui_wrap(F_R25, "Insert a FAT32 card, then tap Retry.", 40, 374, 400, 35, 3, AL_CENTER);
   ui_button(40, 712, 400, 72, true, nullptr, "Retry");

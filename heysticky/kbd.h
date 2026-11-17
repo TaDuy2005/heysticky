@@ -63,3 +63,26 @@ struct Keyboard {
     return false;
   }
 };
+
+// One key into a text field. Shift / 123 redraw the keyboard here; the caller refreshes the field.
+constexpr int KBD_FULL_EVERY = 20;  // full refresh after this many typing refreshes
+enum KbResult : uint8_t { KB_TEXT, KB_NONE, KB_DONE };
+
+inline KbResult kb_apply(Keyboard &kb, String &s, unsigned cap, const KbKey &k) {
+  switch (k.kind) {
+    case K_CHAR:
+    case K_SPACE:
+      if (s.length() < cap) s += kb.shift ? char(toupper(k.ch)) : k.ch;
+      if (kb.shift) { kb.shift = false; kb.draw(); ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY); }
+      return KB_TEXT;
+    case K_BKSP:
+      if (s.length()) utf8_pop(s);
+      return KB_TEXT;
+    case K_SHIFT: kb.shift = !kb.shift; break;
+    case K_MODE: kb.numbers = !kb.numbers; kb.shift = false; break;
+    case K_DONE: return KB_DONE;
+  }
+  kb.draw();
+  ui_partial(0, KB_TOP, W, KB_H, KBD_FULL_EVERY);
+  return KB_NONE;
+}
