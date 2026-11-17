@@ -24,7 +24,7 @@ ASCII = "".join(chr(c) for c in range(0x21, 0x7F))
 VI_BASES = "aăâeêioôơuưyAĂÂEÊIOÔƠUƯY"
 VI_TONES = ["", "̀", "́", "̉", "̃", "̣"]  # none, huyền, sắc, hỏi, ngã, nặng
 VIETNAMESE = "đĐ" + "".join(unicodedata.normalize("NFC", b + t) for b in VI_BASES for t in VI_TONES)
-EXTRA = " °·…“”‘’–—•●×"
+EXTRA = " °·…“”‘’–—•●×−"  # − (U+2212): UTC−3
 TEXT = ASCII + VIETNAMESE + EXTRA
 
 # name: (style, px size, characters)
@@ -44,6 +44,7 @@ FONTS = {
     "X48": ("ExtraBold", 48, "0123456789-°CF "),
     "X120": ("ExtraBold", 120, "0123456789:- "),
     "X64": ("ExtraBold", 64, "0123456789:"),
+    "X42": ("ExtraBold", 42, "0123456789.HeySticky-Setup"),  # 04j address box
     "X40": ("ExtraBold", 40, "Delete task?Xoá việc này?Delete note?Xoá ghi chú?"  # 02f/03f, 02i/03h titles
                             "Discard task?Discard note?Discard changes?Bỏ việc này?Bỏ ghi chú?Bỏ thay đổi?"),
     "I25": ("Italic", 25, "Title Start typing… or hold ● to speak and let AI write it."

@@ -32,6 +32,8 @@ inline const Font F_X48 = {X48_vlw, 49, 15};
 inline const Font F_X120 = {X120_vlw, 123, 36};
 #include "X64.h"
 inline const Font F_X64 = {X64_vlw, 66, 20};
+#include "X42.h"
+inline const Font F_X42 = {X42_vlw, 43, 13};
 #include "X40.h"
 inline const Font F_X40 = {X40_vlw, 41, 12};
 #include "I25.h"

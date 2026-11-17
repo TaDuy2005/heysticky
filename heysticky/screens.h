@@ -1,15 +1,16 @@
-// HeySticky screens: 01 Home, 01a Apps, 04j Web setup, To-do (todo_ui.h), Notes (notes_ui.h); navigation and touch.
+// HeySticky screens: 01 Home, 01a Apps, To-do (todo_ui.h), Notes (notes_ui.h), Settings (settings_ui.h); navigation and touch.
 // Coordinates from the Figma frames.
 #pragma once
-#include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include "ui.h"
 #include "kbd.h"
 #include "net.h"
 #include "todo_ui.h"
 #include "notes_ui.h"
+#include "settings_ui.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD };
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
+                       SCR_SETTINGS, SCR_CONFIG, SCR_LOCATION, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -174,39 +175,6 @@ inline int apps_hit(int x, int y) {
   return -1;
 }
 
-// ---------- Web setup (04j) ----------
-// ponytail: interim layout in the app fonts; the Figma-exact 04j comes with TASK-10.
-static int s_qrY;
-static void qr_modules(esp_qrcode_handle_t q) {
-  const int n = esp_qrcode_get_size(q), s = 220 / n, x0 = (W - n * s) / 2;
-  for (int y = 0; y < n; y++)
-    for (int x = 0; x < n; x++)
-      if (esp_qrcode_get_module(q, x, y)) display.fillRect(x0 + x * s, s_qrY + y * s, s, s, INK);
-}
-
-inline void draw_websetup() {
-  const bool ap = g_ap;
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_text(F_X32, "Web setup", 40, 64, 42);
-  display.fillRect(40, 118, 400, 3, INK);
-  ui_text(F_R25, ap ? "Join this Wi-Fi" : "Open this on your phone", W / 2, 150, 33, AL_CENTER);
-  display.fillRoundRect(40, 192, 400, 72, 12, INK);
-  ui_text(ap ? F_B25 : F_B35, ap ? AP_SSID : net_ip(), W / 2, 192, 72, AL_CENTER, PAPER, INK);
-  s_qrY = 290;
-  const String qr = ap ? String("WIFI:T:nopass;S:") + AP_SSID + ";;" : "http://" + net_ip() + "/";
-  esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
-  cfg.display_func = qr_modules;
-  esp_qrcode_generate(&cfg, qr.c_str());
-  if (ap) {
-    ui_text(F_R25, "Scan to join, then open", W / 2, 540, 33, AL_CENTER);
-    ui_text(F_B25, net_ip(), W / 2, 576, 33, AL_CENTER);
-  } else {
-    ui_text(F_R25, "Use the same Wi-Fi.", W / 2, 540, 33, AL_CENTER);
-  }
-}
-
-
 // ---------- navigation ----------
 inline Screen g_discardBack = SCR_TASK;  // 02i/03h Cancel returns here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
@@ -233,6 +201,13 @@ inline void draw_screen() {
     case SCR_NOTEED: draw_note_editor(); break;
     case SCR_DELNOTE: draw_delete("Delete note?"); break;
     case SCR_DISCARD: draw_delete(discard_question(), "Discard"); break;
+    case SCR_SETTINGS: draw_settings(); break;
+    case SCR_CONFIG: draw_config(); break;
+    case SCR_LOCATION: draw_location(); break;
+    case SCR_TEMP: draw_temp(); break;
+    case SCR_ABOUT: draw_about(); break;
+    case SCR_SDCARD: draw_sdcard(); break;
+    case SCR_FILES: draw_files(); break;
   }
 }
 
@@ -329,7 +304,62 @@ inline void note_key(const KbKey &k) {
   else if (r == KB_TEXT) { g_ne.touched[g_ne.field] = g_ne.follow = g_ne.dirty = true; g_ne.dirtyAt = millis(); }
 }
 
-inline void key_down(const KbKey &k) { if (g_screen == SCR_NOTEED) note_key(k); else editor_key(k); }
+// ---------- Settings (04) ----------
+inline bool settings_screen(Screen s) { return s >= SCR_SETTINGS || s == SCR_WEBSETUP; }
+inline Screen settings_parent() {  // DOWN / swipe right goes up one level
+  switch (g_screen) {
+    case SCR_SETTINGS: return SCR_APPS;
+    case SCR_LOCATION: case SCR_TEMP: return SCR_CONFIG;
+    case SCR_SDCARD: return SCR_ABOUT;
+    case SCR_FILES: return SCR_SDCARD;
+    default: return SCR_SETTINGS;  // Configuration, About, Web setup
+  }
+}
+
+inline void open_location() { g_loc = LocEdit(); show(SCR_LOCATION); }
+inline void open_sdcard() { sd_files_scan(); show(SCR_SDCARD); }  // mounts a card put in since boot
+
+// ↵ in Location: hide the keyboard, say "Searching…", then list the places (the request blocks ~1-2 s).
+inline void loc_search() {
+  String q = g_loc.q;
+  q.trim();
+  g_loc.kbOpen = g_loc.dirty = false;
+  g_loc.res.clear();
+  g_loc.msg = q.length() ? "Searching…" : "";
+  draw_screen();
+  ui_partial(0, 0, W, H);
+  if (!q.length()) return;
+  const bool ok = net_search(q, g_loc.res);
+  g_loc.msg = !ok ? (WiFi.status() == WL_CONNECTED ? "Search failed" : "Offline") : g_loc.res.empty() ? "No match" : "";
+  loc_results();
+  ui_partial(0, LRES_Y, W, H - LRES_Y);
+}
+
+inline void loc_pick(int i) {
+  hw_beep(30);
+  net_set_place(g_loc.res[i]);
+  g_wx_next = net_weather() ? millis() + WX_EVERY_MS : 0;  // weather + UTC offset for the new city now
+  show(SCR_CONFIG);
+}
+
+inline void loc_key(const KbKey &k) {
+  const KbResult r = kb_apply(g_loc.kb, g_loc.q, 40, k);
+  if (r == KB_DONE) loc_search();
+  else if (r == KB_TEXT) { g_loc.dirty = true; g_loc.dirtyAt = millis(); }
+}
+
+inline void loc_flush() {
+  if (!g_loc.dirty || millis() - g_loc.dirtyAt < KEY_BATCH_MS) return;
+  g_loc.dirty = false;
+  loc_field();
+  ui_partial(40, LF_Y, 400, LF_H, KBD_FULL_EVERY);
+}
+
+inline void key_down(const KbKey &k) {
+  if (g_screen == SCR_NOTEED) note_key(k);
+  else if (g_screen == SCR_LOCATION) loc_key(k);
+  else editor_key(k);
+}
 
 inline void note_flush() {
   if (!g_ne.dirty || millis() - g_ne.dirtyAt < KEY_BATCH_MS) return;
@@ -374,6 +404,47 @@ inline void editor_tap(int x, int y) {
 }
 
 inline Screen g_delBack = SCR_NOTE;  // 03f Cancel returns to the view or the editor
+
+inline void settings_tap(int x, int y) {
+  if (x < 40 || x >= 440) return;
+  switch (srow_at(y, SROW_H, SR_COUNT)) {
+    case SR_ROTATE: cfg_set("rotate", set_rotate() ? "0" : "1"); g_redraw = true; break;
+    case SR_SOUND: g_sound = !g_sound; cfg_set("sound", g_sound ? "1" : "0"); hw_beep(30); g_redraw = true; break;
+    case SR_CONFIG: hw_beep(30); show(SCR_CONFIG); break;
+    case SR_WEB: hw_beep(30); show(SCR_WEBSETUP); break;
+    case SR_ABOUT: hw_beep(30); show(SCR_ABOUT); break;
+    default: break;  // Language & Font (TASK-14), Software Update (TASK-13): not yet
+  }
+}
+
+inline void config_tap(int y) {
+  const int r = srow_at(y, SROW_H, 4);
+  if (r == 0) { hw_beep(30); open_location(); }
+  else if (r == 3) { hw_beep(30); show(SCR_TEMP); }
+}
+
+inline void temp_tap(int y) {
+  const int r = srow_at(y, SROW_H, 2);
+  if (r < 0) return;
+  const String u = r ? "F" : "C";
+  if (u != units()) { cfg_set("units", u); g_wx_next = 0; }  // weather again, in the new units
+  hw_beep(30);
+  g_redraw = true;
+}
+
+inline void location_tap(int x, int y) {
+  if (in(x, y, 40, LF_Y, 400, LF_H)) { if (!g_loc.kbOpen) g_loc.kbOpen = g_redraw = true; return; }
+  const int i = loc_row_at(y);
+  if (i >= 0) loc_pick(i);
+}
+
+inline void websetup_tap(int x, int y) {
+  if (!top_right(x, y)) return;
+  if (g_ap) { hw_beep(80, 1200); return; }  // hotspot mode: the page is the only way to set up, it stays on
+  hw_beep(30);
+  net_web(!g_webOn);
+  g_redraw = true;
+}
 
 inline void notes_tap(int x, int y) {
   if (in(x, y, 40, g_newBtnY, 400, 72)) { hw_beep(30); open_note_editor(true); return; }
@@ -435,7 +506,10 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
 // Note editor: UP/DOWN hide the keyboard; with it hidden they scroll the body.
 inline void note_updown(int dir) { if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
 inline void page_back() {
-  if (g_screen == SCR_APPS) show(SCR_HOME);
+  if (settings_screen(g_screen)) {
+    if (g_screen == SCR_FILES && g_filesPage > 0) { g_filesPage--; g_redraw = true; }
+    else show(settings_parent());
+  } else if (g_screen == SCR_APPS) show(SCR_HOME);
   else if (g_screen == SCR_NOTES) {
     if (g_notesPage > 0) { g_notesPage--; g_redraw = true; }
     else show(SCR_APPS);
@@ -454,6 +528,7 @@ inline void page_fwd() {
   else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) { g_notesPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTEED) note_updown(1);
+  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) { g_filesPage++; g_redraw = true; }
 }
 // Home asks first (02i / 03h) instead of losing work: a new task / note with text typed in it,
 // or an edit that changed something.
@@ -489,15 +564,21 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     note_scroll(dy < 0 ? 1 : -1);  // drag the text up = see later lines, like a phone
     return;
   }
-  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE)) {
+  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE ||
+                settings_screen(g_screen))) {
     if (dx < 0) page_fwd();
     else page_back();
     return;
   }
   switch (g_screen) {
-    case SCR_WEBSETUP:
-      if (!g_ap) show(SCR_HOME);
-      return;
+    case SCR_WEBSETUP: websetup_tap(x0, y0); return;
+    case SCR_SETTINGS: settings_tap(x0, y0); return;
+    case SCR_CONFIG: config_tap(y0); return;
+    case SCR_LOCATION: location_tap(x0, y0); return;
+    case SCR_TEMP: temp_tap(y0); return;
+    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(30); open_sdcard(); } return;
+    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(30); g_filesPage = 0; show(SCR_FILES); } return;
+    case SCR_FILES: return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
       return;
@@ -505,7 +586,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       const int t = apps_hit(x0, y0);
       if (t == 0) { hw_beep(30); open_todo(); }
       else if (t == 1) { hw_beep(30); open_notes(); }
-      else if (t == 2) { hw_beep(30); show(SCR_WEBSETUP); }  // Settings -> Web setup for now
+      else if (t == 2) { hw_beep(30); show(SCR_SETTINGS); }
       return;
     }
     case SCR_TODO: todo_tap(x0, y0); return;
@@ -558,7 +639,8 @@ inline void screens_input() {
       int k;
       if (e.y >= EDGE_Y) {}  // may be the Home gesture: no key acts down here
       else if ((g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) ||
-               (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held))) { holding = consumed = true; key_down(held); }
+               (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held)) ||
+               (g_screen == SCR_LOCATION && g_loc.kbOpen && g_loc.kb.hit(e.x, e.y, held))) { holding = consumed = true; key_down(held); }
       else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
       holding = pressing = false;
@@ -596,6 +678,7 @@ inline void screens_loop() {
   if (g_screen == SCR_HOME) home_tick();
   else if (g_screen == SCR_TASK) editor_flush();
   else if (g_screen == SCR_NOTEED) note_flush();
+  else if (g_screen == SCR_LOCATION) loc_flush();
   else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one
     g_timeDirty = false;
     time_fields();
