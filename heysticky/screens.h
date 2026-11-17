@@ -305,8 +305,16 @@ inline void editor_save() {
 
 // ---------- typing ----------
 constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are applied together anyway
-// Full refresh: a partial one leaves a ghost of the black keyboard on the panel.
-inline void kb_hide(bool &open, bool &dirty) { open = dirty = false; show(g_screen); }
+// A plain partial refresh leaves a ghost of the black keyboard. The library has no full refresh of
+// one area, so the keyboard area is flashed black first (like a full refresh, only there), then redrawn.
+inline void kb_hide(bool &open, bool &dirty) {
+  open = dirty = false;
+  g_redraw = false;
+  display.fillRect(0, KB_TOP, W, KB_H, INK);
+  ui_partial(0, KB_TOP, W, KB_H);
+  draw_screen();
+  ui_partial(0, 0, W, H);
+}
 
 inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
   const KbResult r = kb_apply(g_ed.kb, g_ed.text, 120, k);
