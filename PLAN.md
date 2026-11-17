@@ -121,7 +121,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
 - [ ] REQ-14 OTA: on Wi-Fi connect and on "Check for updates", compare with the latest GitHub Release; download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [ ] REQ-15 Language English/Vietnamese; user fonts loaded from `/fonts/*.fpack`; built-in font covers Vietnamese diacritics
-- [ ] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
+- [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
 
 ## 7. V1 task list
@@ -136,7 +136,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
 - [x] TASK-09 Notes: list, view, new, edit, delete
 - [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
-- [ ] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
+- [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
 - [ ] TASK-11 Power: idle sleep, minute clock wake, button wake
