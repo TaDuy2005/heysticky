@@ -100,14 +100,14 @@ inline void power_on_check() {
   if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT0 &&
       !(esp_reset_reason() == ESP_RST_POWERON && !digitalRead(PIN_USB_PRESENT))) return;
   while (millis() < ON_HOLD_MS) { if (digitalRead(PIN_BTN_TOP)) power_cut(); delay(10); }
-  tone(PIN_BUZZER, 2700, 80);  // startup confirm, even with Sound off
+  hw_tune(TUNE_ON);
   while (!digitalRead(PIN_BTN_TOP) && millis() < ON_HOLD_MS + 3000) delay(10);  // this hold only turns it on
 }
 
 // The message stays on the e-paper after the power is cut.
 [[noreturn]] inline void power_off(bool empty) {
   Serial.printf("[power] off: %s\n", empty ? "battery empty" : "UP+DOWN held");
-  hw_beep(300);
+  hw_tune(TUNE_OFF);
   display.fillScreen(PAPER);
   ui_icon(empty ? ICON_BAT_EMPTY96 : ICON_POWER96, 192, 232);
   ui_text(F_X40, empty ? TR("Battery empty", "Hết pin") : TR("Turned off", "Đã tắt"), W / 2, 360, 52, AL_CENTER);
