@@ -82,7 +82,7 @@ inline void draw_note_view() {
 // ---------- 03a/03b New note, 03d/03e Edit note ----------
 struct NoteEdit {
   Note n;         // a copy: g_note only changes on Save
-  int field = 1;  // 0 title, 1 body
+  int field = 0;  // 0 title, 1 body
   bool kbOpen = true, dirty = false;
   uint32_t dirtyAt = 0;
   Keyboard kb;
@@ -95,35 +95,26 @@ inline int g_nbBottom = NB_BOTTOM;                  // body field bottom as draw
 inline void note_fields() {
   const bool cur = g_ne.kbOpen;
   display.fillRect(0, 112, W, (cur ? KB_TOP : NB_BOTTOM + 1) - 112, PAPER);
-  // Title (ExtraBold 25), placeholder in Italic
+  // Title (ExtraBold 25). An empty field shows its Italic placeholder, or only the cursor while typing in it.
+  const bool titleCur = cur && g_ne.field == 0;
   ui_card(40, NT_Y, 400, NT_H, 10, 3);
-  if (g_ne.n.title.length()) {
-    const String t = cur && g_ne.field == 0 ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
-    const int tw = ui_text(F_X25, t, 57, 149, 33);
-    if (cur && g_ne.field == 0) display.fillRect(57 + tw + 2, 150, 3, 32, INK);
+  if (g_ne.n.title.length() || titleCur) {
+    const String t = titleCur ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
+    const int tw = t.length() ? ui_text(F_X25, t, 57, 149, 33) : 0;
+    if (titleCur) display.fillRect(57 + tw + 2, 150, 3, 32, INK);
   } else {
-    const bool c = cur && g_ne.field == 0;
-    if (c) display.fillRect(57, 150, 3, 32, INK);
-    ui_text(F_I25, "Title", c ? 65 : 57, 149, 33);
+    ui_text(F_I25, "Title", 57, 149, 33);
   }
   // Body (Regular 25, 35 px lines): grows with the text; while typing in it, the tail stays in view
-  const bool empty = !g_ne.n.body.length();
-  std::vector<String> lines = empty ? wrap(F_I25, "Start typing… or hold ● to speak and let AI write it.", NB_W)
-                                    : wrap(F_R25, g_ne.n.body, NB_W);
-  const bool bodyCur = cur && g_ne.field == 1;
+  const bool bodyCur = cur && g_ne.field == 1, hint = !g_ne.n.body.length() && !bodyCur;
+  const std::vector<String> lines = hint ? wrap(F_I25, "Start typing…\nor hold ● to speak and let AI write it.", NB_W)
+                                         : wrap(F_R25, g_ne.n.body, NB_W);
   const int maxLines = ((cur ? NB_BOTTOM_KB : NB_BOTTOM) - NB_Y - 28) / NB_LH;
-  int shown = min<int>(lines.size() + (bodyCur && empty), maxLines);  // empty + typing: cursor on its own line
-  const int from = bodyCur && !empty ? max(0, int(lines.size()) - maxLines) : 0;
-  shown = max(shown, 3);
-  g_nbBottom = NB_Y + 28 + shown * NB_LH;
+  const int shown = min<int>(lines.size(), maxLines), from = bodyCur ? int(lines.size()) - shown : 0;
+  g_nbBottom = NB_Y + 28 + max(shown, 3) * NB_LH;
   ui_card(40, NB_Y, 400, g_nbBottom - NB_Y, 10, 2);
-  for (int i = 0; i < shown && from + i < int(lines.size()); i++)
-    ui_text(empty ? F_I25 : F_R25, lines[from + i], NB_X, NB_Y + 14 + i * NB_LH, NB_LH);
-  if (bodyCur) {
-    const int last = empty ? 3 : min<int>(lines.size(), maxLines) - 1;
-    const int cx = empty ? NB_X : NB_X + ui_width(F_R25, lines.back()) + 2;
-    display.fillRect(cx, NB_Y + 14 + last * NB_LH + 1, 3, 32, INK);
-  }
+  for (int i = 0; i < shown; i++) ui_text(hint ? F_I25 : F_R25, lines[from + i], NB_X, NB_Y + 14 + i * NB_LH, NB_LH);
+  if (bodyCur) display.fillRect(NB_X + ui_width(F_R25, lines.back()) + 2, NB_Y + 14 + (shown - 1) * NB_LH + 1, 3, 32, INK);
 }
 
 inline void draw_note_editor() {
