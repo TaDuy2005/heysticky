@@ -60,7 +60,7 @@ Pin map (from the open-source sticky-2048 firmware):
 
 | Row | Screens |
 |---|---|
-| Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) |
+| Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) · 01e Turned off · 01f Battery empty |
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task (confirm) · 02j Discard changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note (confirm) · 03i Discard changes (confirm) |
 | Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 04l Sleep after |
@@ -78,6 +78,7 @@ Pin map (from the open-source sticky-2048 firmware):
 
 **Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Sleep after › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Sleep after and Web setup.
 - **Sleep after (04l):** 1 / 2 / 5 / 10 min / Never checkboxes (flash key `sleep_min`, default 2). After that long with no touch or button, on battery and on USB: Home with the moon (01b / 01d), then light sleep with Wi-Fi and touch off and the CPU at 80 MHz. A timer wakes it just after each minute to update the clock (partial refresh); indoor temp/humidity every 10 min; every 30 min Wi-Fi comes on for weather and an NTP reply (light sleep's clock drifts), then off. Only the top button wakes it fully, to Home (that press does nothing else). Never sleeps while a task or note editor (incl. Date, Time, Discard) is open, while Web setup is On, or while an update is checking or installing. Serial logs `[sleep] in`, `[sleep] tick hh:mm`, `[sleep] sync …` and, after waking, the battery used (`[sleep] last: … mAh, … mA avg`, from the gauge's remaining capacity; repeated in the minute log).
+- **Shutdown (01e / 01f), like Seeed's:** hold **UP + DOWN** together for 3 s on any awake screen → long beep → 01e *Turned off* / *Hold the top button to turn on.* → power hold pin low (on battery the power is cut). On battery at ≤ 3 % (`BATTERY_EMPTY_PCT`, two readings a minute apart, awake or asleep, not during an update install) → 01f *Battery empty* / *Charge the Sticky to turn it on.* → off. The message stays on the e-paper. Still powered (USB): deep sleep until the top button, which restarts the firmware.
 - **Language & Font (04a):** System Language › and User Font ›. **04b System Language:** English / Tiếng Việt checkboxes; every string on the Sticky and on the phone page follows it (§13). **04c User Font:** "Default (built-in)" + up to 8 fonts found in `/fonts/` on the microSD. Tapping a font ticks it at once and shows a "Loading..." card while it loads; tapping the font in use does nothing. A user font replaces the 13 text font slots (R20/25/30, B20/25/26/28/35, X25/30/32/40, I25); the digit-only fonts (clock, temperatures, 04j address) stay built-in. A missing or bad slot file falls back to the built-in font.
 - **Fonts (06m) / Add font (06n), phone page:** 06m lists the fonts on the card (Delete each). 06n picks a TTF/OTF per style (Regular, Bold, ExtraBold, Italic); the browser renders it 1-bit (threshold 128, same characters as `tools/make_fonts.py`) into the 13 VLW slots and uploads them. A missing style warns and uses Regular; a font without Vietnamese letters warns. A 1-bit preview shows each style. Fonts are added only from the phone page; Seeed `.fpack` files are not read.
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9). Figma 04d shows only the up-to-date state; the others reuse its layout: Not checked yet / No Wi-Fi connection, Checking…, "v1.1.0 is available" + **Install v1.1.0**, Installing v1.1.0… 40% (refreshed every 10%, no button), Couldn’t check for updates, Update failed + **Try again**.
@@ -142,7 +143,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [ ] TASK-13 OTA (`feature/ota`): 32 MB two-slot OTA partition table (`tools/build.sh`), version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [x] TASK-14 Language & Font (`feature/lang`): `TR(en, vi)` string table on the Sticky and `L(en, vi)` on the phone page, 04a/04b/04c screens, user fonts as `/fonts/<Name>/<slot>.vlw` (checked by `vlw_ok()`, read into PSRAM), phone 06m Fonts + 06n Add font (TTF/OTF converted in the browser), `/api/fonts`, `/api/font`, `/api/font_del`
-- [ ] TASK-11 Power (`feature/power`): Sleep after (04l, `sleep_min`), idle light sleep, minute clock wake, 30-min Wi-Fi sync, top-button wake, sleep battery report (`power.h`)
+- [ ] TASK-11 Power (`feature/power`): Sleep after (04l, `sleep_min`), idle light sleep, minute clock wake, 30-min Wi-Fi sync, top-button wake, sleep battery report, UP + DOWN shutdown and battery-empty shutdown with 01e / 01f (`power.h`)
 - [ ] TASK-12 README (controls, SD layout, device test record), LICENSE (MIT), export merged `.bin`
 
 ## 8. Data formats
@@ -197,7 +198,7 @@ HeySticky/
     screens.h       all screens
     store.h         SD files + Preferences
     ota.h           Software Update: GitHub release check, HTTPUpdate install, rollback mark
-    power.h         Sleep after: idle light sleep, minute clock wake, 30-min sync, top-button wake
+    power.h         Sleep after (light sleep, minute clock wake, 30-min sync) and shutdown (UP + DOWN, battery empty)
     lang.h          English / Vietnamese: g_vi + TR(en, vi)
     userfont.h      user fonts from /fonts/<Name>/ on the card (04c)
   release/          exported .bin (git-ignored)
