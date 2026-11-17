@@ -47,7 +47,7 @@ Pin map (from the open-source sticky-2048 firmware):
 
 ## 3. Interaction model
 
-- **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do pages; right on To-do page 1 → Apps).
+- **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do and Notes pages, a note's pages; right on To-do / Notes page 1 → Apps, on a note's page 1 → Notes).
 - **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. They only move between pages; on screens without pages they do nothing (they are never Cancel).
 - **Press top button = Home**, from any screen. **Swipe up from the bottom edge = Home** too (start in the bottom 15 px, y ≥ 785; keys ignore touches that start there).
 - **Hold top button = talk to AI** (V2). Sleep is by idle timer, not a button hold.
@@ -106,7 +106,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Today count, dock
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
 - [x] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Date and Time, each on/off); overdue first, then by due date
-- [ ] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
+- [x] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
 - [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city search, auto timezone, 30-min refresh, °C/°F), About
 - [ ] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
@@ -128,7 +128,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-06 Home screen
 - [x] TASK-07 On-screen keyboard
 - [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
-- [ ] TASK-09 Notes: list, view, new, edit, delete
+- [x] TASK-09 Notes: list, view, new, edit, delete
 - [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup, Location screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
