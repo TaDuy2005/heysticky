@@ -118,7 +118,8 @@ inline String ui_fit_tail(const Font &f, String s, int maxW) {  // cut the start
 }
 
 // Word-wrapped text, one line per lineH; x is the left edge (or the box's left edge when centred).
-inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT) {
+// Word-wraps s into lines of width w; returns how many lines it takes (draw = false only counts them).
+inline int ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT, bool draw = true) {
   const int ax = a == AL_CENTER ? x + w / 2 : x;
   String line;
   int n = 0, i = 0;
@@ -126,11 +127,18 @@ inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lin
     int j = s.indexOf(' ', i);
     if (j < 0) j = s.length();
     const String word = s.substring(i, j), next = line.length() ? line + " " + word : word;
-    if (line.length() && ui_width(f, next) > w) { ui_text(f, line, ax, y + lineH * n++, lineH, a); line = word; }
-    else line = next;
+    if (line.length() && ui_width(f, next) > w) {
+      if (draw) ui_text(f, line, ax, y + lineH * n, lineH, a);
+      n++;
+      line = word;
+    } else line = next;
     i = j + 1;
   }
-  if (line.length() && n < maxLines) ui_text(f, line, ax, y + lineH * n, lineH, a);
+  if (line.length() && n < maxLines) {
+    if (draw) ui_text(f, line, ax, y + lineH * n, lineH, a);
+    n++;
+  }
+  return n;
 }
 
 // Figma Toggle (68x38): On = black pill, white knob right; Off = outline, black knob left.

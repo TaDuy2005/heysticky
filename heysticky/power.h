@@ -14,7 +14,7 @@ inline String g_sleepReport;  // last sleep's battery use, repeated in the minut
 inline bool may_sleep() {
   if (!g_sleepMin || g_webOn || g_ota == OTA_CHECKING || g_ota == OTA_INSTALLING) return false;
   switch (g_screen) {  // an editor is open (typed work would be lost) or the mic is recording
-    case SCR_TASK: case SCR_DATE: case SCR_TIME: case SCR_NOTEED: case SCR_DISCARD: case SCR_LISTEN: return false;
+    case SCR_TASK: case SCR_DATE: case SCR_TIME: case SCR_NOTEED: case SCR_DISCARD: case SCR_LISTEN: case SCR_WORKING: return false;
     default: return millis() - g_lastInput >= g_sleepMin * 60000UL;
   }
 }

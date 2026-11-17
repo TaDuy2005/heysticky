@@ -8,9 +8,10 @@
 #include "notes_ui.h"
 #include "settings_ui.h"
 #include "ai_ui.h"
+#include "ai.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN,
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
@@ -220,6 +221,10 @@ inline void draw_screen() {
     case SCR_SLEEP: draw_sleep(); break;
     case SCR_SOUND: draw_sound(); break;
     case SCR_LISTEN: draw_listen(); break;
+    case SCR_WORKING: draw_working(); break;
+    case SCR_REVIEW: draw_review(); break;
+    case SCR_DONE: draw_done(); break;
+    case SCR_FAILED: draw_failed(); break;
   }
 }
 
@@ -576,13 +581,126 @@ inline bool unsaved() {
   t.trim();
   return t.length();
 }
-// ---------- AI voice (PLAN_AI.md): hold the top button = 05 Listening, release = stop ----------
-inline Screen g_listenBack = SCR_HOME;  // the take returns here until AI-04..06 add Working / Review / Done / Failed
+// ---------- AI voice (PLAN_AI.md): hold top = 05 Listening -> 05a Working -> 05c Done / 05b Review / 05d Failed ----------
+inline void go_home();
+inline Screen g_listenBack = SCR_HOME;          // where the AI screens return to (editors keep their state)
+inline size_t g_lastWav = 0;                    // the take, kept for Try again on 05d
+
+inline bool ai_screen(Screen s) { return s >= SCR_LISTEN && s <= SCR_FAILED; }
 
 inline void listen_start() {
-  if (!mic_start()) { hw_beep(BEEP_MS, 1200); return; }
-  g_listenBack = g_screen;  // editors keep their state, so going back shows them as they were
-  show(SCR_LISTEN);         // recording already runs in the mic task during this full refresh
+  if (g_screen == SCR_WORKING || !mic_start()) { hw_beep(BEEP_MS, 1200); return; }  // the job still reads the last take
+  if (!ai_screen(g_screen)) g_listenBack = g_screen;
+  show(SCR_LISTEN);  // recording already runs in the mic task during this full refresh
+}
+
+inline void ai_fail(AiFail f, int code) {
+  g_failKind = f;
+  g_failCode = code;
+  Serial.printf("[ai] failed: %d (HTTP %d)\n", f, code);
+  hw_beep(BEEP_MS, 1200);
+  show(SCR_FAILED);
+}
+
+inline void ai_begin() {  // 05a opens with Heard you ticked; the calls run in their task
+  const AiFail f = ai_start(g_lastWav);
+  if (f) return ai_fail(f, 0);
+  g_aiStep = 1;
+  show(SCR_WORKING);
+}
+
+inline void working_steps(int step) {
+  g_aiStep = step;
+  draw_working_steps();
+  ui_partial(40, WORK_Y, 400, WORK_H, INT_MAX);
+}
+
+// Saves on the main loop (the card shares the panel's SPI bus), ticks Saving on 05a, then 05c.
+inline void ai_save(const AiResult &r) {
+  g_doneItems.clear();
+  g_doneNote = r.kind == AI_NOTE;
+  if (r.kind == AI_TODO) {
+    for (const Task &t : r.todos) { g_tasks.push_back(t); g_doneItems.push_back(t.text); }
+    if (!todo_save()) return nosd(false);
+  } else {
+    notes_scan();  // the next note number comes from the list, which is only read when Notes opens
+    const Note keep = g_note;  // the note being viewed, if any: Done goes back to it
+    g_note = r.note;
+    g_note.num = 0;
+    const bool ok = note_save();
+    g_doneItems.push_back(g_note.title.length() ? g_note.title : note_preview(g_note.body));
+    g_note = keep;
+    if (!ok) return nosd(true);
+  }
+  if (g_screen == SCR_WORKING) working_steps(3);
+  hw_beep();
+  show(SCR_DONE);
+}
+
+// Runs instead of the normal loop on 05a: the dots move until the calls finish; taps and buttons are dropped.
+inline void working_loop() {
+  static uint32_t last = 0;
+  static int frame = 0;
+  g_lastInput = millis();
+  TouchEv e;
+  while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {}
+  hw_buttons_poll();
+  if (!g_job.done) {
+    if (millis() - last >= 300) {
+      last = millis();
+      draw_working_dots(++frame);
+      ui_partial(DOTS_X, DOTS_Y, DOTS_W, DOTS_H, INT_MAX);
+    }
+    return;
+  }
+  if (g_job.fail) return ai_fail(g_job.fail, g_job.code);
+  g_aiText = g_job.text;
+  g_aiSecs = mic_seconds();
+  if (g_job.r.kind == AI_UNSURE) { hw_beep(); show(SCR_REVIEW); return; }
+  working_steps(2);  // Sorting it out ticked, Saving in progress
+  ai_save(g_job.r);
+}
+
+// 05b: save the transcript as it is (no AI) as one to-do or a note, or go back to record again.
+inline void review_tap(int x, int y) {
+  AiResult r;
+  if (in(x, y, 40, 619, 193, 72)) {
+    Task t;
+    t.text = one_line(g_aiText, AI_TASK_MAX);
+    r.kind = AI_TODO;
+    r.todos.push_back(t);
+  } else if (in(x, y, 247, 619, 193, 72)) {
+    r.kind = AI_NOTE;
+    r.note.title = one_line(clip_chars(g_aiText, 30), TITLE_MAX);
+    r.note.body = utf8_cut(g_aiText, NOTE_BYTES - 3 - r.note.title.length());
+  } else if (in(x, y, 40, 705, 400, 79)) { hw_beep(); show(g_listenBack); return; }  // then hold the top button again
+  else return;
+  hw_beep();
+  ai_save(r);
+}
+
+inline void ai_home() {  // Home from an AI screen, as if from the screen the take started on (Discard asks first)
+  g_screen = g_listenBack;
+  if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) show(g_screen);
+  else go_home();
+}
+
+// 05c: Go to To-do / Notes opens the list it went into; Done goes back.
+inline void done_tap(int x, int y) {
+  if (in(x, y, 40, 705, 193, 79)) {
+    hw_beep();
+    if (g_doneNote) open_notes();
+    else open_todo();
+  } else if (in(x, y, 247, 705, 193, 79)) { hw_beep(); show(g_listenBack); }
+}
+
+// 05d: Try again resends the same take when the network or the service failed; otherwise it goes back to record again.
+inline void failed_tap(int x, int y) {
+  if (in(x, y, 40, 705, 193, 79)) {
+    hw_beep();
+    if (g_lastWav && (g_failKind == AF_NONET || g_failKind == AF_STT || g_failKind == AF_AI || g_failKind == AF_REPLY)) ai_begin();
+    else show(g_listenBack);
+  } else if (in(x, y, 247, 705, 193, 79)) { hw_beep(); ai_home(); }
 }
 
 // Runs instead of the normal loop while listening: touches and other buttons are ignored.
@@ -600,9 +718,9 @@ inline void listen_loop() {
     }
     return;
   }
-  const size_t size = mic_stop();  // released (the button poll ignores this release: it was reported as long)
-  mic_save_last(size);
-  show(g_listenBack);  // AI-04..06: Working -> Done / Review / Failed
+  g_lastWav = mic_stop();  // released (the button poll ignores this release: it was reported as long)
+  mic_save_last(g_lastWav);
+  ai_begin();
 }
 
 inline void go_home() {
@@ -675,6 +793,9 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       }
       return;
     case SCR_NOTES: notes_tap(x0, y0); return;
+    case SCR_REVIEW: review_tap(x0, y0); return;
+    case SCR_DONE: done_tap(x0, y0); return;
+    case SCR_FAILED: failed_tap(x0, y0); return;
     case SCR_NOTE: note_view_tap(x0, y0); return;
     case SCR_NOTEED: note_editor_tap(x0, y0); return;
     case SCR_DELNOTE:
@@ -737,6 +858,7 @@ inline void screens_input() {
 
 inline void screens_loop() {
   if (g_screen == SCR_LISTEN) { listen_loop(); return; }
+  if (g_screen == SCR_WORKING) { working_loop(); return; }
   screens_input();
   if (g_fontDirty) { g_fontDirty = false; show(g_screen); }  // the font in use changed from the phone page
   if (g_redraw) {
