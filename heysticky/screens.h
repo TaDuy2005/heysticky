@@ -9,7 +9,7 @@
 #include "notes_ui.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE };
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD };
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -208,6 +208,7 @@ inline void draw_websetup() {
 
 
 // ---------- navigation ----------
+inline Screen g_discardBack = SCR_TASK;  // 02i/03h Cancel returns here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
 inline void draw_screen() {
@@ -225,6 +226,7 @@ inline void draw_screen() {
     case SCR_NOTE: draw_note_view(); break;
     case SCR_NOTEED: draw_note_editor(); break;
     case SCR_DELNOTE: draw_delete("Delete note?"); break;
+    case SCR_DISCARD: draw_delete(g_discardBack == SCR_NOTEED ? "Discard note?" : "Discard task?", "Discard"); break;
   }
 }
 
@@ -447,7 +449,19 @@ inline void page_fwd() {
   else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTEED) note_updown(1);
 }
-inline void go_home() { if (g_screen != SCR_HOME) show(SCR_HOME); }
+// A new task / note with text typed in it: Home asks first (02i / 03h) instead of losing it.
+inline bool unsaved_new() {
+  String t;
+  if (g_screen == SCR_NOTEED && !g_ne.n.num) t = g_ne.n.title + g_ne.n.body;
+  else if ((g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME) && g_ed.idx < 0) t = g_ed.text;
+  t.trim();
+  return t.length();
+}
+inline void go_home() {
+  if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) return;  // on the warning, only its buttons act
+  if (unsaved_new()) { g_discardBack = g_screen; show(SCR_DISCARD); }
+  else show(SCR_HOME);
+}
 
 constexpr int EDGE_Y = 785;      // calibration knob: a swipe starting below this line is the Home gesture
 constexpr int EDGE_SWIPE = 100;  // ...and must travel this far up
@@ -510,6 +524,10 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
         if (note_delete(g_note.num)) { g_notesPage = 0; show(SCR_NOTES); }
         else nosd(true);
       } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(g_delBack); }
+      return;
+    case SCR_DISCARD:
+      if (in(x0, y0, 40, 705, 193, 79)) { hw_beep(30); show(SCR_HOME); }  // Discard: the typed text is dropped
+      else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(g_discardBack); }  // Cancel: back as it was
       return;
   }
 }
