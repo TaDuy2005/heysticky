@@ -211,7 +211,7 @@ HeySticky/
   - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
 - [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
-- [ ] BQ27220 current (reg 0x0C) reads about +5 A while charging, which is implausible: the scale or register is unverified. Charging itself is confirmed by voltage and % rising. The bolt uses USB-present, not the current
+- [x] BQ27220 runs at 10× scale (factory config: design/full-charge capacity 7500 mAh for the 750 mAh cell), so its mA are divided by `GAUGE_SCALE` = 10 in `hw.h`. Its data memory is sealed (read-only check, 2026-11-17); we never write to the gauge. Charging stops by itself at full (100%, 0 mA, FC flag set)
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
 
 ## 13. Strings (EN / VI)
