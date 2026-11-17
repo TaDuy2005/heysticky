@@ -10,7 +10,7 @@
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
-                       SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES };  // Settings last
+                       SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -207,6 +207,7 @@ inline void draw_screen() {
     case SCR_ABOUT: draw_about(); break;
     case SCR_SDCARD: draw_sdcard(); break;
     case SCR_FILES: draw_files(); break;
+    case SCR_UPDATE: draw_update(); break;
   }
 }
 
@@ -383,7 +384,8 @@ inline void settings_tap(int x, int y) {
     case SR_CONFIG: hw_beep(30); show(SCR_CONFIG); break;
     case SR_WEB: hw_beep(30); show(SCR_WEBSETUP); break;
     case SR_ABOUT: hw_beep(30); show(SCR_ABOUT); break;
-    default: break;  // Language & Font (TASK-14), Software Update (TASK-13): not yet
+    case SR_UPDATE: hw_beep(30); show(SCR_UPDATE); break;
+    default: break;  // Language & Font (TASK-14): not yet
   }
 }
 
@@ -392,6 +394,19 @@ inline void websetup_tap(int x, int y) {
   hw_beep(30);
   if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
   net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
+  g_redraw = true;
+}
+
+inline void update_redraw() { draw_update(); ui_partial(0, 0, W, H); }
+inline void update_tap(int x, int y) {  // Check / Install / Try again; both block until done (install restarts)
+  if (!update_has_button() || !in(x, y, 40, UPD_BTN_Y, 400, 72)) return;
+  hw_beep(30);
+  const bool install = g_ota == OTA_AVAIL || g_ota == OTA_FAILED;
+  g_ota = install ? OTA_INSTALLING : OTA_CHECKING;
+  g_otaPct = 0;
+  update_redraw();
+  if (install) ota_install(update_redraw);
+  else ota_check();
   g_redraw = true;
 }
 
@@ -527,6 +542,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(30); open_sdcard(); } return;
     case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(30); g_filesPage = 0; show(SCR_FILES); } return;
     case SCR_FILES: return;
+    case SCR_UPDATE: update_tap(x0, y0); return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
       return;

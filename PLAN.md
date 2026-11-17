@@ -34,7 +34,7 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 2. Tech stack
 
 - **Arduino C++** built with `arduino-cli`; core + libraries pinned in `sketch.yaml`
-- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,CDCOnBoot=cdc`. `cdc` means USB CDC *Disabled*, which is what we want: the USB-C port goes through a USB-UART bridge ("USB Single Serial"), so `Serial` must be UART0. The board menu only offers 8 MB flash; the 32 MB partition table comes with TASK-13
+- Board: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,CDCOnBoot=cdc`. `cdc` means USB CDC *Disabled*, which is what we want: the USB-C port goes through a USB-UART bridge ("USB Single Serial"), so `Serial` must be UART0. The board menu only offers 8 MB flash, so `tools/build.sh` (compile; `-u -p <port>` upload; `-e` export) adds `build.flash_size=32MB` + `default_32MB` (two 12.5 MB OTA slots). Always build through it: OTA can never change the partition table, so a release fixes it for every device
 - Seeed_GFX2 is not in the Arduino index: cloned into `libs/Seeed_GFX2` (git-ignored) at a pinned commit, referenced from `sketch.yaml`
 - Libraries: **Seeed_GFX2**, **ArduinoJson**, a small QR-code library; core built-ins `WiFi`, `WebServer`, `DNSServer`, `HTTPClient`, `Preferences`, `SD`
 - Sensors/touch over raw I2C (no extra libraries)
@@ -78,7 +78,7 @@ Pin map (from the open-source sticky-2048 firmware):
 
 **Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
 - **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
-- **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9).
+- **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9). Figma 04d shows only the up-to-date state; the others reuse its layout: Not checked yet / No Wi-Fi connection, Checking…, "v1.1.0 is available" + **Install v1.1.0**, Installing v1.1.0… 40% (refreshed every 10%, no button), Couldn’t check for updates, Update failed + **Try again**.
 - **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
 - **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until V2 (its fields would save keys nothing uses yet).
 - **City suggestions (06a):** from 2 letters, after a 0.3 s pause, up to 5 places ("{name}" + "{region}, {country}"). The Sticky looks them up through its own Wi-Fi; if it has no internet yet, the phone tries Open-Meteo itself; if neither works there is no list and the typed name is used (top match). Picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Units is set only on the Sticky (04g).
@@ -119,7 +119,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [ ] REQ-11 No secrets in source or in the `.bin`
 - [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
 - [ ] REQ-13 Release build is one merged `.bin` written at `0x0`
-- [ ] REQ-14 OTA: on Wi-Fi connect and on "Check for updates", compare with the latest GitHub Release; download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
+- [ ] REQ-14 OTA: on Wi-Fi connect (at most hourly) and on "Check for updates", compare with the latest GitHub Release; on **Install**, download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [ ] REQ-15 Language English/Vietnamese; user fonts loaded from `/fonts/*.fpack`; built-in font covers Vietnamese diacritics
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
@@ -137,7 +137,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-09 Notes: list, view, new, edit, delete
 - [x] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
 - [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
-- [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
+- [ ] TASK-13 OTA (`feature/ota`): 32 MB two-slot OTA partition table (`tools/build.sh`), version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
 - [ ] TASK-11 Power: idle sleep, minute clock wake, button wake
 - [ ] TASK-12 README (controls, SD layout, device test record), LICENSE (MIT), export merged `.bin`
@@ -176,7 +176,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
 - **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
 - **HTTPS:** certificates checked with the ESP32 core's built-in root CA bundle (`useBuiltinCACertBundle()`)
-- **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes both the app `.bin` (OTA) and the merged `.bin` (first install at `0x0`)
+- **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes both the app `.bin` (OTA) and the merged `.bin` (first install at `0x0`): `tools/build.sh -e` writes `heysticky/build/<fqbn>/heysticky.ino.bin` (upload it as `heysticky-app.bin`) and `heysticky.ino.merged.bin`. The tag is `vX.Y.Z` and must match `FW_VERSION` in `settings.h`. The repo is `OTA_REPO` in `ota.h` (placeholder `OWNER/heysticky` until the public repo exists). Rollback: the new image marks itself good at the end of `setup()`; a reset before that boots the old slot
 
 ## 10. Project layout
 
@@ -193,7 +193,9 @@ HeySticky/
     ui.h            bars, rows, keyboard, focus drawing
     screens.h       all screens
     store.h         SD files + Preferences
+    ota.h           Software Update: GitHub release check, HTTPUpdate install, rollback mark
   release/          exported .bin (git-ignored)
+  tools/build.sh    compile / upload / export for 32 MB flash
 ```
 
 ## 11. Publishing (after V1 is tested)

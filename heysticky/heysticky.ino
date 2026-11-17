@@ -7,6 +7,8 @@ Seeed_GFX display(Seeed_Product::reTerminal_Sticky);
 
 #include "screens.h"
 
+extern "C" bool verifyRollbackLater() { return true; }  // a new OTA image confirms itself at the end of setup()
+
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 3000) delay(10);
@@ -19,12 +21,14 @@ void setup() {
   display.refresh();
   todo_load();  // after display.begin(): the card shares the panel's SPI bus
   show(net_begin() ? SCR_HOME : SCR_WEBSETUP);  // Wi-Fi joins in the background; no saved network -> hotspot + 04j
+  ota_mark_good();  // display, touch and SD came up: keep this image (no rollback)
 }
 
 void loop() {
   static uint32_t batLog = 0;  // battery state on serial every minute
   if (millis() - batLog > 60000 || !batLog) { batLog = millis() | 1; hw_battery_log(); }
   net_loop();
+  if (ota_loop() && g_screen == SCR_UPDATE) g_redraw = true;
   screens_loop();
   delay(5);
 }
