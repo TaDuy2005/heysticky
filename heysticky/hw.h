@@ -156,11 +156,14 @@ inline bool hw_sht40_read(float &tempC, float &rh) {
 }
 
 // ---------- BQ27220 (0x55 on Wire1) ----------
+// The factory setup runs the gauge at 10x scale: its design / full-charge capacity read 7500 mAh for the
+// 750 mAh cell, so its current is 10x too. Measured 2026-11-17: SoC rose ~0.7 %/min at "3000 mA" = 300 mA real.
+constexpr int GAUGE_SCALE = 10;  // calibration knob: gauge mA / real mA
 struct Battery { int percent; int mV; int mA; bool usb; };  // mA > 0 = charging
 inline bool hw_battery_read(Battery &b) {
   uint8_t v[2];
   auto rd = [&](uint8_t reg) { return i2c_read(Wire1, 0x55, reg, false, v, 2) ? int16_t(v[0] | v[1] << 8) : INT16_MIN; };
-  b.percent = rd(0x2C); b.mV = rd(0x08); b.mA = rd(0x0C);
+  b.percent = rd(0x2C); b.mV = rd(0x08); b.mA = rd(0x0C) / GAUGE_SCALE;
   b.usb = digitalRead(PIN_USB_PRESENT);
   return b.percent != INT16_MIN;
 }
