@@ -11,7 +11,7 @@
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
-                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP };  // Settings last
+                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -217,6 +217,7 @@ inline void draw_screen() {
     case SCR_SYSLANG: draw_syslang(); break;
     case SCR_USERFONT: draw_userfont(); break;
     case SCR_SLEEP: draw_sleep(); break;
+    case SCR_SOUND: draw_sound(); break;
   }
 }
 
@@ -261,7 +262,7 @@ inline void note_editor_save() {
   n.title.trim();
   String body = n.body;
   body.trim();
-  hw_beep(30);
+  hw_beep();
   if (!n.num && !n.title.length() && !body.length()) { show(SCR_NOTES); return; }  // nothing typed: nothing saved
   g_note = n;
   if (!note_save()) { nosd(true); return; }
@@ -282,7 +283,7 @@ inline void editor_save() {
   s.trim();
   String due;
   if (!s.length() || !dl_due(g_ed.dl, due)) { hw_beep(120, 1200); return; }  // no text / Time-only before NTP
-  hw_beep(30);
+  hw_beep();
   if (g_ed.idx < 0) {
     Task t;
     t.text = s;
@@ -352,14 +353,14 @@ inline void temp_tap(int y) {
   if (r < 0) return;
   const String u = r ? "F" : "C";
   if (u != units()) { cfg_set("units", u); g_wx_next = 0; }  // weather again, in the new units
-  hw_beep(30);
+  hw_beep();
   g_redraw = true;
 }
 
 inline void sleep_tap(int y) {
   const int r = srow_at(y, SROW_H, SLEEP_N);
   if (r < 0) return;
-  hw_beep(30);
+  hw_beep();
   g_sleepMin = SLEEP_CHOICES[r];
   cfg_set("sleep_min", String(g_sleepMin));
   g_redraw = true;
@@ -370,25 +371,25 @@ inline bool in(int x, int y, int x0, int y0, int w, int h) { return x >= x0 && x
 inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  // Cancel / Clear / Back
 
 inline void todo_tap(int x, int y) {
-  if (in(x, y, 40, g_addBtnY, 400, 72)) { hw_beep(30); open_editor(-1); return; }
+  if (in(x, y, 40, g_addBtnY, 400, 72)) { hw_beep(); open_editor(-1); return; }
   const int idx = todo_row_at(y);
   if (idx < 0 || x < 40 || x >= 440) return;
-  hw_beep(30);
+  hw_beep();
   g_tasks[idx].done = !g_tasks[idx].done;
   if (!todo_save()) { nosd(false); return; }
   g_redraw = true;
 }
 
 inline void editor_tap(int x, int y) {
-  if (top_right(x, y)) { hw_beep(30); show(SCR_TODO); return; }
+  if (top_right(x, y)) { hw_beep(); show(SCR_TODO); return; }
   if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back, placeholder gone
     if (!g_ed.kbOpen || !g_ed.touched) g_ed.kbOpen = g_ed.touched = g_redraw = true;
     return;
   }
-  if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(30); g_dlUndo = g_ed.dl; show(SCR_DATE); }
-  else if (in(x, y, 40, ROW_TIME_Y, 400, ROW_H)) { hw_beep(30); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
+  if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
+  else if (in(x, y, 40, ROW_TIME_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
   else if (!g_ed.kbOpen && y >= 717 && y < 784) {
-    if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(30); show(SCR_DELTASK); }
+    if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(); show(SCR_DELTASK); }
     else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
   }
 }
@@ -399,20 +400,31 @@ inline void settings_tap(int x, int y) {
   if (x < 40 || x >= 440) return;
   switch (srow_at(y, SROW_H, SR_COUNT)) {
     case SR_ROTATE: cfg_set("rotate", set_rotate() ? "0" : "1"); g_redraw = true; break;
-    case SR_SOUND: g_sound = !g_sound; cfg_set("sound", g_sound ? "1" : "0"); hw_beep(30); g_redraw = true; break;
-    case SR_CONFIG: hw_beep(30); show(SCR_CONFIG); break;
-    case SR_SLEEP: hw_beep(30); show(SCR_SLEEP); break;
-    case SR_WEB: hw_beep(30); show(SCR_WEBSETUP); break;
-    case SR_ABOUT: hw_beep(30); show(SCR_ABOUT); break;
-    case SR_UPDATE: hw_beep(30); show(SCR_UPDATE); break;
-    case SR_LANG: hw_beep(30); show(SCR_LANGFONT); break;
+    case SR_SOUND: hw_beep(); show(SCR_SOUND); break;
+    case SR_CONFIG: hw_beep(); show(SCR_CONFIG); break;
+    case SR_SLEEP: hw_beep(); show(SCR_SLEEP); break;
+    case SR_WEB: hw_beep(); show(SCR_WEBSETUP); break;
+    case SR_ABOUT: hw_beep(); show(SCR_ABOUT); break;
+    case SR_UPDATE: hw_beep(); show(SCR_UPDATE); break;
+    case SR_LANG: hw_beep(); show(SCR_LANGFONT); break;
     default: break;
   }
 }
 
+// 04m Sound: the top-bar toggle turns sound on / off; a volume row saves it and plays a sample at that level.
+inline void sound_tap(int x, int y) {
+  if (top_right(x, y)) { g_sound = !g_sound; cfg_set("sound", g_sound ? "1" : "0"); hw_beep(); g_redraw = true; return; }
+  const int r = g_sound ? srow_at(y, SROW_H, VOL_N) : -1;
+  if (r < 0) return;
+  g_vol = r;
+  cfg_set("vol", String(r));
+  hw_beep();  // sample at the new volume
+  g_redraw = true;
+}
+
 inline void websetup_tap(int x, int y) {
   if (!top_right(x, y)) return;
-  hw_beep(30);
+  hw_beep();
   if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
   net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
   g_redraw = true;
@@ -421,7 +433,7 @@ inline void websetup_tap(int x, int y) {
 inline void langfont_tap(int y) {
   const int r = srow_at(y, SROW_H, 2);
   if (r < 0) return;
-  hw_beep(30);
+  hw_beep();
   if (r == 0) { show(SCR_SYSLANG); return; }
   g_fontNames = font_list();  // a card put in since boot, or fonts added from the phone
   show(SCR_USERFONT);
@@ -430,7 +442,7 @@ inline void langfont_tap(int y) {
 inline void syslang_tap(int y) {
   const int r = srow_at(y, SROW_H, 2);
   if (r < 0 || (r == 1) == g_vi) return;
-  hw_beep(30);
+  hw_beep();
   g_vi = r == 1;
   cfg_set("lang", g_vi ? "vi" : "en");
   show(SCR_SYSLANG);  // every word changes: full refresh
@@ -439,7 +451,7 @@ inline void syslang_tap(int y) {
 inline void userfont_tap(int y) {
   const int r = srow_at(y, SROW_H, 1 + int(g_fontNames.size()));
   if (r < 0) return;
-  hw_beep(30);
+  hw_beep();
   const String name = r ? g_fontNames[r - 1] : "";
   if (name == cfg_get("font")) return;
   draw_userfont(r, true);
@@ -451,7 +463,7 @@ inline void userfont_tap(int y) {
 inline void update_redraw() { draw_update(); ui_partial(0, 0, W, H); }
 inline void update_tap(int x, int y) {  // Check / Install / Try again; both block until done (install restarts)
   if (!update_has_button() || !in(x, y, 40, UPD_BTN_Y, 400, 72)) return;
-  hw_beep(30);
+  hw_beep();
   const bool install = g_ota == OTA_AVAIL || g_ota == OTA_FAILED;
   g_ota = install ? OTA_INSTALLING : OTA_CHECKING;
   g_otaPct = 0;
@@ -462,18 +474,18 @@ inline void update_tap(int x, int y) {  // Check / Install / Try again; both blo
 }
 
 inline void notes_tap(int x, int y) {
-  if (in(x, y, 40, g_newBtnY, 400, 72)) { hw_beep(30); open_note_editor(true); return; }
+  if (in(x, y, 40, g_newBtnY, 400, 72)) { hw_beep(); open_note_editor(true); return; }
   const int num = notes_row_at(y);
-  if (num && x >= 40 && x < 440) { hw_beep(30); open_note(num); }
+  if (num && x >= 40 && x < 440) { hw_beep(); open_note(num); }
 }
 
 inline void note_view_tap(int x, int y) {
-  if (in(x, y, 40, g_viewBtnY, 192, 64)) { hw_beep(30); open_note_editor(false); }
-  else if (in(x, y, 248, g_viewBtnY, 192, 64)) { hw_beep(30); g_delBack = SCR_NOTE; show(SCR_DELNOTE); }
+  if (in(x, y, 40, g_viewBtnY, 192, 64)) { hw_beep(); open_note_editor(false); }
+  else if (in(x, y, 248, g_viewBtnY, 192, 64)) { hw_beep(); g_delBack = SCR_NOTE; show(SCR_DELNOTE); }
 }
 
 inline void note_editor_tap(int x, int y) {
-  if (top_right(x, y)) { hw_beep(30); show(g_ne.n.num ? SCR_NOTE : SCR_NOTES); return; }  // Cancel: g_note untouched
+  if (top_right(x, y)) { hw_beep(); show(g_ne.n.num ? SCR_NOTE : SCR_NOTES); return; }  // Cancel: g_note untouched
   const int field = in(x, y, 40, NT_Y, 400, NT_H) ? 0 : in(x, y, 40, NB_Y, 400, g_nbBottom - NB_Y) ? 1 : -1;
   if (field >= 0) {  // tap a field: type into it
     if (field != g_ne.field || !g_ne.kbOpen || !g_ne.touched[field]) {
@@ -484,13 +496,13 @@ inline void note_editor_tap(int x, int y) {
     return;
   }
   if (g_ne.kbOpen || y < 717 || y >= 784) return;
-  if (g_ne.n.num && in(x, y, 40, 717, 194, 67)) { hw_beep(30); g_delBack = SCR_NOTEED; show(SCR_DELNOTE); }
+  if (g_ne.n.num && in(x, y, 40, 717, 194, 67)) { hw_beep(); g_delBack = SCR_NOTEED; show(SCR_DELNOTE); }
   else if (g_ne.n.num ? in(x, y, 246, 717, 194, 67) : in(x, y, 40, 717, 400, 67)) note_editor_save();
 }
 
 // 02c / 02h: the toggle row flips; Cancel restores what the editor had; Done keeps the change.
 inline bool dl_common_tap(int x, int y, bool &on) {
-  if (top_right(x, y)) { hw_beep(30); g_ed.dl = g_dlUndo; show(SCR_TASK); return true; }
+  if (top_right(x, y)) { hw_beep(); g_ed.dl = g_dlUndo; show(SCR_TASK); return true; }
   if (in(x, y, 40, 112, 400, 72)) { on = !on; g_redraw = true; return true; }
   return false;
 }
@@ -499,18 +511,18 @@ inline void date_tap(int x, int y) {
   if (dl_common_tap(x, y, g_ed.dl.dateOn)) return;
   if (g_ed.dl.dateOn && y >= 184 && y < 244 && (x < 110 || x >= 370)) { date_month(x < 110 ? -1 : 1); g_redraw = true; }
   else if (g_ed.dl.dateOn && date_day_at(x, y)) g_redraw = true;
-  else if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); show(SCR_TASK); }
+  else if (in(x, y, 40, 711, 400, 73)) { hw_beep(); show(SCR_TASK); }
 }
 
 inline void time_tap(int x, int y) {
   if (dl_common_tap(x, y, g_ed.dl.timeOn)) { if (g_ed.dl.timeOn) time_begin(); return; }
-  if (!g_ed.dl.timeOn) { if (in(x, y, 40, 711, 400, 73)) { hw_beep(30); show(SCR_TASK); } return; }
+  if (!g_ed.dl.timeOn) { if (in(x, y, 40, 711, 400, 73)) { hw_beep(); show(SCR_TASK); } return; }
   for (int i = 0; i < 2; i++)
     if (in(x, y, TF_X[i], TF_Y, TF_W, TF_H)) { g_te.active = i; g_te.fresh = true; g_timeDirty = true; }
 }
 
 inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
-  if (k == 11) { hw_beep(30); time_commit(); show(SCR_TASK); return; }
+  if (k == 11) { hw_beep(); time_commit(); show(SCR_TASK); return; }
   if (k == 9) time_back(g_te);
   else if (!time_digit(g_te, k == 10 ? '0' : char('1' + k))) hw_beep(80, 1200);  // would be an invalid time
   g_timeDirty = true;
@@ -519,31 +531,34 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
 // ---------- page moves + Home (PLAN.md §3) ----------
 // DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
 // Note editor: UP/DOWN hide the keyboard; with it hidden they scroll the body.
-inline void note_updown(int dir) { if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
+// Every page or screen change beeps (swipe or UP / DOWN alike); nothing to move = silent.
+inline void go(Screen s) { hw_beep(); show(s); }
+inline void turn(int &page, int d) { hw_beep(); page += d; g_redraw = true; }
+inline void note_updown(int dir) { hw_beep(); if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
 inline void page_back() {
   if (settings_screen(g_screen)) {
-    if (g_screen == SCR_FILES && g_filesPage > 0) { g_filesPage--; g_redraw = true; }
-    else show(settings_parent());
-  } else if (g_screen == SCR_APPS) show(SCR_HOME);
+    if (g_screen == SCR_FILES && g_filesPage > 0) turn(g_filesPage, -1);
+    else go(settings_parent());
+  } else if (g_screen == SCR_APPS) go(SCR_HOME);
   else if (g_screen == SCR_NOTES) {
-    if (g_notesPage > 0) { g_notesPage--; g_redraw = true; }
-    else show(SCR_APPS);
+    if (g_notesPage > 0) turn(g_notesPage, -1);
+    else go(SCR_APPS);
   } else if (g_screen == SCR_NOTE) {
-    if (g_viewPage > 0) { g_viewPage--; g_redraw = true; }
-    else show(SCR_NOTES);
+    if (g_viewPage > 0) turn(g_viewPage, -1);
+    else go(SCR_NOTES);
   } else if (g_screen == SCR_NOTEED) note_updown(-1);
   else if (g_screen == SCR_TODO) {
-    if (g_todoPage > 0) { g_todoPage--; g_redraw = true; }
-    else show(SCR_APPS);
+    if (g_todoPage > 0) turn(g_todoPage, -1);
+    else go(SCR_APPS);
   }
 }
 inline void page_fwd() {
-  if (g_screen == SCR_HOME) show(SCR_APPS);
-  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
-  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) { g_notesPage++; g_redraw = true; }
-  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
+  if (g_screen == SCR_HOME) go(SCR_APPS);
+  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) turn(g_todoPage, 1);
+  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) turn(g_notesPage, 1);
+  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) turn(g_viewPage, 1);
   else if (g_screen == SCR_NOTEED) note_updown(1);
-  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) { g_filesPage++; g_redraw = true; }
+  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) turn(g_filesPage, 1);
 }
 // Home asks first (02i / 03h) instead of losing work: a new task / note with text typed in it,
 // or an edit that changed something.
@@ -573,7 +588,7 @@ constexpr int EDGE_SWIPE = 100;  // ...and must travel this far up
 inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const int dx = x1 - x0;
   const bool swipe = abs(dx) > 80 && abs(dx) > abs(y1 - y0);
-  if (y0 >= EDGE_Y && y0 - y1 >= EDGE_SWIPE) { hw_beep(30); go_home(); return; }  // swipe up from the bottom edge
+  if (y0 >= EDGE_Y && y0 - y1 >= EDGE_SWIPE) { hw_beep(); go_home(); return; }  // swipe up from the bottom edge
   const int dy = y1 - y0;
   if (g_screen == SCR_NOTEED && in(x0, y0, 40, NB_Y, 400, g_nbBottom - NB_Y) && abs(dy) > 60 && abs(dy) > abs(dx)) {
     note_scroll(dy < 0 ? 1 : -1);  // drag the text up = see later lines, like a phone
@@ -588,24 +603,25 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   switch (g_screen) {
     case SCR_WEBSETUP: websetup_tap(x0, y0); return;
     case SCR_SETTINGS: settings_tap(x0, y0); return;
-    case SCR_CONFIG: if (srow_at(y0, SROW_H, 4) == 3) { hw_beep(30); show(SCR_TEMP); } return;  // City: set on the phone setup page
+    case SCR_CONFIG: if (srow_at(y0, SROW_H, 4) == 3) { hw_beep(); show(SCR_TEMP); } return;  // City: set on the phone setup page
     case SCR_TEMP: temp_tap(y0); return;
-    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(30); open_sdcard(); } return;
-    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(30); g_filesPage = 0; show(SCR_FILES); } return;
+    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(); open_sdcard(); } return;
+    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(); g_filesPage = 0; show(SCR_FILES); } return;
     case SCR_FILES: return;
     case SCR_UPDATE: update_tap(x0, y0); return;
     case SCR_LANGFONT: langfont_tap(y0); return;
     case SCR_SYSLANG: syslang_tap(y0); return;
     case SCR_USERFONT: userfont_tap(y0); return;
     case SCR_SLEEP: sleep_tap(y0); return;
+    case SCR_SOUND: sound_tap(x0, y0); return;
     case SCR_HOME:
-      if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
+      if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(); open_todo(); }
       return;
     case SCR_APPS: {
       const int t = apps_hit(x0, y0);
-      if (t == 0) { hw_beep(30); open_todo(); }
-      else if (t == 1) { hw_beep(30); open_notes(); }
-      else if (t == 2) { hw_beep(30); show(SCR_SETTINGS); }
+      if (t == 0) { hw_beep(); open_todo(); }
+      else if (t == 1) { hw_beep(); open_notes(); }
+      else if (t == 2) { hw_beep(); show(SCR_SETTINGS); }
       return;
     }
     case SCR_TODO: todo_tap(x0, y0); return;
@@ -614,15 +630,15 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_TIME: time_tap(x0, y0); return;
     case SCR_DELTASK:
       if (in(x0, y0, 40, 705, 193, 79)) {
-        hw_beep(30);
+        hw_beep();
         g_tasks.erase(g_tasks.begin() + g_ed.idx);
         todo_commit(SCR_TODO);
-      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(SCR_TASK); }
+      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(SCR_TASK); }
       return;
     case SCR_NOSD:
-      if (top_right(x0, y0)) { hw_beep(30); show(SCR_APPS); }
+      if (top_right(x0, y0)) { hw_beep(); show(SCR_APPS); }
       else if (in(x0, y0, 40, 712, 400, 72)) {
-        hw_beep(30);
+        hw_beep();
         if (g_nosdNotes ? notes_retry() : todo_retry()) show(g_nosdNotes ? SCR_NOTES : SCR_TODO);
         else show(SCR_NOSD);
       }
@@ -632,14 +648,14 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_NOTEED: note_editor_tap(x0, y0); return;
     case SCR_DELNOTE:
       if (in(x0, y0, 40, 705, 193, 79)) {
-        hw_beep(30);
+        hw_beep();
         if (note_delete(g_note.num)) { g_notesPage = 0; show(SCR_NOTES); }
         else nosd(true);
-      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(g_delBack); }
+      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(g_delBack); }
       return;
     case SCR_DISCARD:
-      if (in(x0, y0, 40, 705, 193, 79)) { hw_beep(30); show(SCR_HOME); }  // Discard: the typed text is dropped
-      else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(30); show(g_discardBack); }  // Cancel: back as it was
+      if (in(x0, y0, 40, 705, 193, 79)) { hw_beep(); show(SCR_HOME); }  // Discard: the typed text is dropped
+      else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(g_discardBack); }  // Cancel: back as it was
       return;
   }
 }
@@ -670,7 +686,7 @@ inline void screens_input() {
   if (pressing && !consumed && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS) {
     consumed = true;
     const int idx = todo_row_at(y0);
-    if (idx >= 0) { hw_beep(60); open_editor(idx); }
+    if (idx >= 0) { hw_beep(); open_editor(idx); }
   }
   // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
   if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
@@ -680,7 +696,7 @@ inline void screens_input() {
 
   if (HwButton b = hw_buttons_poll()) {
     g_lastInput = millis();
-    hw_beep(b == BTN_TOP_LONG ? 120 : 30);
+    if (b == BTN_TOP || b == BTN_TOP_LONG) hw_beep(b == BTN_TOP_LONG ? 120 : BEEP_MS);  // UP / DOWN beep in page_back / page_fwd
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();
     else if (b == BTN_UP) page_fwd();
