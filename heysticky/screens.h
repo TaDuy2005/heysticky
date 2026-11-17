@@ -7,6 +7,7 @@
 #include "todo_ui.h"
 #include "notes_ui.h"
 #include "settings_ui.h"
+#include "mic.h"  // after ui.h: the bring-up card draws with it
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
@@ -700,7 +701,7 @@ inline void screens_input() {
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();
     else if (b == BTN_UP) page_fwd();
-    // BTN_TOP_LONG: hold to talk to the AI (V2); the long beep is all it does in V1
+    else if (b == BTN_TOP_LONG) mic_bringup();  // AI-01; becomes 05 Listening in AI-02
   }
 }
 
