@@ -305,9 +305,12 @@ inline void editor_save() {
 
 // ---------- typing ----------
 constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are applied together anyway
+// Full refresh: a partial one leaves a ghost of the black keyboard on the panel.
+inline void kb_hide(bool &open, bool &dirty) { open = dirty = false; show(g_screen); }
+
 inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
   const KbResult r = kb_apply(g_ed.kb, g_ed.text, 120, k);
-  if (r == KB_DONE) { g_ed.kbOpen = false; g_redraw = true; }  // §4: Done only hides the keyboard
+  if (r == KB_DONE) kb_hide(g_ed.kbOpen, g_ed.dirty);  // §4: Done only hides the keyboard
   else if (r == KB_TEXT) { g_ed.touched = g_ed.dirty = true; g_ed.dirtyAt = millis(); }
 }
 
@@ -315,7 +318,7 @@ inline void note_key(const KbKey &k) {
   String &s = g_ne.field ? g_ne.n.body : g_ne.n.title;
   const unsigned cap = g_ne.field ? NOTE_BYTES - 3 - g_ne.n.title.length() : TITLE_MAX;
   const KbResult r = kb_apply(g_ne.kb, s, cap, k);
-  if (r == KB_DONE) { g_ne.kbOpen = false; g_redraw = true; }
+  if (r == KB_DONE) kb_hide(g_ne.kbOpen, g_ne.dirty);
   else if (r == KB_TEXT) { g_ne.touched[g_ne.field] = g_ne.follow = g_ne.dirty = true; g_ne.dirtyAt = millis(); }
 }
 
@@ -546,8 +549,7 @@ inline void screens_input() {
   }
   if (enterDown && g_touchHeld && millis() - t0 >= ENTER_HOLD_MS) {  // hold ↵ = hide the keyboard
     enterDown = false;
-    g_ne.kbOpen = false;
-    g_redraw = true;
+    kb_hide(g_ne.kbOpen, g_ne.dirty);
   }
   // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
   if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
