@@ -9,6 +9,7 @@
 #include <NetworkClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <vector>
 #include "store.h"
 
 constexpr char AP_SSID[] = "HeySticky-Setup";
@@ -17,6 +18,7 @@ constexpr uint32_t WIFI_TIMEOUT_MS = 15000;
 inline WebServer g_web(80);
 inline DNSServer g_dns;
 inline bool g_ap = false;   // true = hotspot mode
+inline bool g_webOn = false;  // phone setup page served: 04j toggle on Wi-Fi (off after boot), always in hotspot mode
 
 inline String html_esc(const String &s) {
   String o;
@@ -88,6 +90,15 @@ inline void web_save() {
   ESP.restart();
 }
 
+// The phone setup page is plain HTTP on the local network, so on Wi-Fi it is served only while 04j's toggle is on.
+inline void net_web(bool on) {
+  if (on == g_webOn) return;
+  if (on) g_web.begin();
+  else g_web.stop();
+  g_webOn = on;
+  Serial.printf("[net] setup page %s\n", on ? "on" : "off");
+}
+
 // Returns true when joined to the saved Wi-Fi; false = hotspot mode.
 inline bool net_begin() {
   const String ssid = cfg_get("wifi_ssid");
@@ -112,7 +123,7 @@ inline bool net_begin() {
     g_web.sendHeader("Location", "http://" + net_ip() + "/");
     g_web.send(302, "text/plain", "");
   });
-  g_web.begin();
+  if (g_ap) net_web(true);
   if (!g_ap) configTime(0, 0, "pool.ntp.org", "time.google.com");  // UTC until the weather reply gives the offset
   Serial.printf("[net] %s %s  ip=%s\n", g_ap ? "hotspot" : "wifi", g_ap ? AP_SSID : ssid.c_str(), net_ip().c_str());
   return !g_ap;
@@ -159,6 +170,35 @@ inline bool net_geocode() {
   return true;
 }
 
+// 04f Location search: up to 5 places for a typed name. False = no network / request failed.
+struct Place { String name, area, tz; float lat = 0, lon = 0; };  // area: "California, United States"
+inline bool net_search(const String &q, std::vector<Place> &out) {
+  out.clear();
+  if (WiFi.status() != WL_CONNECTED) return false;
+  JsonDocument d;
+  if (!http_json("https://geocoding-api.open-meteo.com/v1/search?count=5&name=" + url_enc(q), d)) return false;
+  for (JsonObject r : d["results"].as<JsonArray>()) {
+    Place p;
+    p.name = r["name"].as<String>();
+    const String a1 = r["admin1"] | "", c = r["country"] | "";
+    p.area = a1.length() && c.length() ? a1 + ", " + c : a1 + c;
+    p.tz = r["timezone"] | "";
+    p.lat = r["latitude"];
+    p.lon = r["longitude"];
+    out.push_back(p);
+  }
+  return true;
+}
+
+// Saves a picked place as the city (no second lookup by name).
+inline void net_set_place(const Place &p) {
+  cfg_set("city", p.name);
+  cfg_set("lat", String(p.lat, 4));
+  cfg_set("lon", String(p.lon, 4));
+  cfg_set("tz", p.tz);
+  cfg_set("geo_city", p.name);
+}
+
 // ---------- weather ----------
 enum WxIcon : uint8_t { WX_SUN, WX_PARTLY, WX_CLOUD, WX_FOG, WX_RAIN, WX_SNOW, WX_STORM };
 struct WxInfo { const char *label; WxIcon icon; };
@@ -202,7 +242,7 @@ inline bool net_weather() {
 
 inline void net_loop() {
   if (g_ap) g_dns.processNextRequest();
-  g_web.handleClient();
+  if (g_webOn) g_web.handleClient();
   if (!g_ap && millis() >= g_wx_next) {
     const bool ok = net_weather();
     if (!ok && millis() - g_wx.at > WX_EVERY_MS) g_wx.ok = false;  // stale or never fetched -> Offline

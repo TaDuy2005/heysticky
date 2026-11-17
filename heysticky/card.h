@@ -2,6 +2,7 @@
 // Mount sequence follows Seeed's reTerminal_Sticky_SDcard_BW example.
 #pragma once
 #include <SD.h>
+#include <algorithm>
 #include <bus/Bus_SPI.h>
 #include <driver/gpio.h>
 #include "pins.h"
@@ -169,4 +170,32 @@ inline bool note_delete(int num) {
 inline bool notes_retry() {
   if (!sd_mount()) return false;
   return g_noteUnsaved ? note_save() : notes_scan();
+}
+
+// ---------- 04i SD Card / SD Files ----------
+inline bool sd_inserted() { return digitalRead(PIN_SD_DETECT) == LOW; }  // card-detect switch pulls the pin low
+
+struct SdFile { String path; uint32_t size; };
+inline std::vector<SdFile> g_files;  // filled by sd_files_scan(), sorted by path
+constexpr size_t SD_FILES_MAX = 500;  // ponytail: list cap, keeps RAM bounded on a full card
+
+inline void sd_walk(File dir, int depth) {
+  for (File f = dir.openNextFile(); f && g_files.size() < SD_FILES_MAX; f = dir.openNextFile()) {
+    const String name = f.name();
+    if (name.startsWith(".") || name == "System Volume Information") { f.close(); continue; }  // hidden / OS files
+    if (f.isDirectory()) { if (depth < 4) sd_walk(f, depth + 1); }
+    else g_files.push_back({f.path(), uint32_t(f.size())});
+    f.close();
+  }
+}
+
+inline bool sd_files_scan() {
+  g_files.clear();
+  if (!g_sdOk && !sd_mount()) return false;
+  File root = SD.open("/");
+  if (!root) return sd_fail("open /");
+  sd_walk(root, 0);
+  root.close();
+  std::sort(g_files.begin(), g_files.end(), [](const SdFile &a, const SdFile &b) { return a.path < b.path; });
+  return true;
 }
