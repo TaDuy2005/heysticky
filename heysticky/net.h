@@ -207,18 +207,24 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .sheet input{height:54px;border-radius:27px;padding:0 22px;font-size:17px;margin-bottom:12px}
 .al{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:300px;max-width:calc(100% - 40px);background:#fff;border:2px solid #000;border-radius:14px;z-index:8;text-align:center;overflow:hidden}
 .al h3{font-size:17px;margin:20px 16px 4px}.al p{font-size:14px;margin:0 16px 18px}.al div{display:flex;border-top:2px solid #000}
+.warn{border:2px solid #000;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:600;margin:0 0 22px}
+.pv{border:1px solid #000;border-radius:8px;padding:16px;margin:0 0 22px}.pv small{display:block;font-size:12px;margin:12px 0 2px}.pv small:first-child{margin-top:0}
+.pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .x{background:none;border:0;padding:0;font-weight:600}.btn:disabled{opacity:.35}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
 <div class="c" id="v-setup"><div class="g">
-<button class="r" id="rp"><b class="n">Profile</b><span id="pv"></span><span class="ch">›</span></button>
-<button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button></div></div>
+<button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
+<button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
+<button class="r" id="rf"><b class="n" id="lf">Fonts</b><span id="fv"></span><span class="ch">›</span></button></div></div>
 <form class="c" id="v-profile" hidden>
-<label for="name">Your name</label><input id="name" maxlength="32">
-<label for="city">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
+<label for="name" id="lname">Your name</label><input id="name" maxlength="32">
+<label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
 <button class="btn k" id="save">✓&nbsp; Save to Sticky</button></form>
 <div class="c" id="v-wifi" hidden></div>
 <div class="c" id="v-det" hidden></div>
+<div class="c" id="v-fonts" hidden></div>
+<div class="c" id="v-addfont" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -230,53 +236,58 @@ const info=()=>H(svg(20,'<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><c
 const check=()=>H(svg(18,'<path d="M4.5 12.5l5 5L19.5 7"/>'));
 const ENC=['None','WEP','WPA','WPA2','WPA/WPA2','WPA2 Enterprise','WPA3','WPA2/WPA3'];
 const lvl=r=>r>=-60?3:r>=-75?2:1;
+const L=(e,v)=>S.lang==='vi'?v:e;  // English / Tiếng Việt, like TR() on the Sticky
 let S={saved:[],scan:[]},view='setup',det='',pending=false,lat='',lon='';
 const api=(p,b)=>fetch(p,b?{method:'POST',body:new URLSearchParams(b)}:{});
 const seen=s=>S.scan.find(n=>n.ssid===s);
 
 async function load(){try{S=await(await api('/api/status')).json()}catch(e){return}
  if(pending&&S.join&&S.join.state!=='busy'){pending=false;
-  if(S.join.state==='badpass')alertBox('Incorrect password for “'+S.join.ssid+'”');
-  else if(S.join.state==='fail')alertBox('Couldn\'t join “'+S.join.ssid+'”')}
+  if(S.join.state==='badpass')alertBox(L('Incorrect password for “','Sai mật khẩu cho “')+S.join.ssid+'”');
+  else if(S.join.state==='fail')alertBox(L('Couldn\'t join “','Không kết nối được “')+S.join.ssid+'”')}
  render()}
 
 function go(v,d){view=v;det=d||'';
- if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true}
+ if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
+ if(v==='fonts')fontsView();if(v==='addfont')addView();
  render();scrollTo(0,0)}
-$('back').onclick=()=>go(view==='det'?'wifi':'setup');
-$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');
+$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':'setup');
+$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
  const nm=E(o.cur?'b':'span',{className:'n',textContent:n.ssid});r.append(ck,nm);
- if(joining)r.append(E('span',{textContent:'Joining…'}));
+ if(joining)r.append(E('span',{textContent:L('Joining…','Đang kết nối…')}));
  else{if(n.enc)r.append(lock());if(n.rssi!=null)r.append(wifi(lvl(n.rssi)));
   if(o.info){const b=E('button',{className:'i',ariaLabel:'Details'},info());b.onclick=e=>{e.stopPropagation();go('det',n.ssid)};r.append(b)}}
  if(o.tap)r.onclick=o.tap;return r}
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent=view==='setup'?'HeySticky setup':view==='profile'?'Profile':view==='wifi'?'Wi-Fi':det;
- $('pv').textContent=S.name||'';$('wv').textContent=cur||'Not connected';
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông')}[view];
+ $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
+ $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');
+ $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
+ $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');$('fv').textContent=S.font||L('Default','Mặc định');
  if(view==='wifi'){const w=$('v-wifi');w.replaceChildren();
   const net=s=>Object.assign({ssid:s},seen(s)||{});
   if(cur)w.append(E('div',{className:'g'},row(Object.assign(net(cur),{rssi:S.cur.rssi}),{cur:1,info:1})));
   const my=S.saved.filter(s=>s!==cur);
-  if(my.length)w.append(E('h2',{textContent:'MY NETWORKS'}),E('div',{className:'g'},...my.map(s=>row(net(s),{info:1,tap:()=>join(s,'')}))));
+  if(my.length)w.append(E('h2',{textContent:L('MY NETWORKS','MẠNG CỦA TÔI')}),E('div',{className:'g'},...my.map(s=>row(net(s),{info:1,tap:()=>join(s,'')}))));
   const other=S.scan.filter(n=>n.ssid!==cur&&!S.saved.includes(n.ssid));
-  const o=E('div',{className:'r'},E('span',{className:'ck'}),E('span',{className:'n',textContent:'Other…'}));o.onclick=()=>sheet('');
-  w.append(E('h2',{textContent:'OTHER NETWORKS'}),E('div',{className:'g'},...other.map(n=>row(n,{tap:()=>n.enc?sheet(n.ssid):join(n.ssid,'')})),o));
-  const rf=E('button',{textContent:S.scanning?'Looking…':'Refresh'});rf.onclick=async()=>{try{await api('/api/scan',{})}catch(e){}load()};
-  w.append(E('p',{className:'note'},'Found when Web setup was turned on. ',rf))}
+  const o=E('div',{className:'r'},E('span',{className:'ck'}),E('span',{className:'n',textContent:L('Other…','Khác…')}));o.onclick=()=>sheet('');
+  w.append(E('h2',{textContent:L('OTHER NETWORKS','MẠNG KHÁC')}),E('div',{className:'g'},...other.map(n=>row(n,{tap:()=>n.enc?sheet(n.ssid):join(n.ssid,'')})),o));
+  const rf=E('button',{textContent:S.scanning?L('Looking…','Đang tìm…'):L('Refresh','Làm mới')});rf.onclick=async()=>{try{await api('/api/scan',{})}catch(e){}load()};
+  w.append(E('p',{className:'note'},L('Found when Web setup was turned on. ','Tìm thấy lúc bật Cài đặt qua web. '),rf))}
  if(view==='det'){const d=$('v-det');d.replaceChildren();const n=seen(det),on=det===cur;
   const kv=(k,v)=>E('div',{className:'r'},E('b',{className:'n',textContent:k}),E('span',{textContent:v}));
   const rs=on?S.cur.rssi:n?n.rssi:null;
-  const g=E('div',{className:'g'},kv('Status',on?'Connected':'Saved'),kv('Signal',rs==null?'Not in range':['','Weak','Good','Excellent'][lvl(rs)]));
-  if(n)g.append(kv('Security',ENC[n.enc]||'Secured'));if(on)g.append(kv('IP address',S.cur.ip));
-  const f=E('button',{className:'btn',textContent:'Forget This Network'});
-  f.onclick=()=>alertBox('Forget “'+det+'”?','Your Sticky will stop joining it.','Forget',async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}go('wifi');load()});
+  const g=E('div',{className:'g'},kv(L('Status','Trạng thái'),on?L('Connected','Đã kết nối'):L('Saved','Đã lưu')),kv(L('Signal','Tín hiệu'),rs==null?L('Not in range','Ngoài vùng phủ'):L(['','Weak','Good','Excellent'],['','Yếu','Tốt','Rất tốt'])[lvl(rs)]));
+  if(n)g.append(kv(L('Security','Bảo mật'),ENC[n.enc]||L('Secured','Có bảo mật')));if(on)g.append(kv(L('IP address','Địa chỉ IP'),S.cur.ip));
+  const f=E('button',{className:'btn',textContent:L('Forget This Network','Quên mạng này')});
+  f.onclick=()=>alertBox(L('Forget “','Quên “')+det+'”?',L('Your Sticky will stop joining it.','Sticky sẽ không tự kết nối mạng này nữa.'),L('Forget','Quên'),async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}go('wifi');load()});
   d.append(g,f)}}
 
 async function join(ssid,pass){pending=true;S.join={ssid,state:'busy'};render();
@@ -284,19 +295,19 @@ async function join(ssid,pass){pending=true;S.join={ssid,state:'busy'};render();
  }
 
 function close(){$('ov').replaceChildren()}
-function sheet(ssid){const pw=E('input',{type:'password',placeholder:'Password',maxLength:63,autocomplete:'off'});
- const nm=E('input',{placeholder:'Network name',maxLength:32,autocomplete:'off',autocapitalize:'off'});
+function sheet(ssid){const pw=E('input',{type:'password',placeholder:L('Password','Mật khẩu'),maxLength:63,autocomplete:'off'});
+ const nm=E('input',{placeholder:L('Network name','Tên mạng'),maxLength:32,autocomplete:'off',autocapitalize:'off'});
  const x=E('button',{className:'rb',textContent:'✕',ariaLabel:'Cancel'}),ok=E('button',{className:'rb k',textContent:'✓',ariaLabel:'Join'});
  const sub=()=>{const s=ssid||nm.value.trim();if(!s)return;close();join(s,pw.value)};
  x.onclick=close;ok.onclick=sub;pw.onkeydown=nm.onkeydown=e=>{if(e.key==='Enter')sub()};
  const sh=E('div',{className:'sheet'},E('div',{className:'bar'},x,ok),E('div',{className:'big'},wifi(3,88)),
-  E('h3',{textContent:ssid?'Join “'+ssid+'”':'Join another network'}),
-  E('p',{textContent:ssid?'Enter the password to join this Wi-Fi network.':'Enter the name and password of the Wi-Fi network.'}));
+  E('h3',{textContent:ssid?L('Join “','Kết nối “')+ssid+'”':L('Join another network','Kết nối mạng khác')}),
+  E('p',{textContent:ssid?L('Enter the password to join this Wi-Fi network.','Nhập mật khẩu để kết nối mạng Wi-Fi này.'):L('Enter the name and password of the Wi-Fi network.','Nhập tên và mật khẩu của mạng Wi-Fi.')}));
  if(!ssid)sh.append(nm);sh.append(pw);
  $('ov').replaceChildren(E('div',{className:'dim',onclick:close}),sh);(ssid?pw:nm).focus()}
 function alertBox(title,text,yes,fn){const b=E('div'),a=E('div',{className:'al'},E('h3',{textContent:title}));
  if(text)a.append(E('p',{textContent:text}));else a.firstChild.style.marginBottom='18px';
- if(yes){b.append(E('button',{textContent:'Cancel',onclick:close}),E('button',{textContent:yes,onclick:()=>{close();fn()}}))}
+ if(yes){b.append(E('button',{textContent:L('Cancel','Huỷ'),onclick:close}),E('button',{textContent:yes,onclick:()=>{close();fn()}}))}
  else b.append(E('button',{textContent:'OK',onclick:close}));
  a.append(b);$('ov').replaceChildren(E('div',{className:'dim'}),a)}
 
@@ -315,8 +326,79 @@ c.oninput=()=>{lat=lon='';clearTimeout(t);const q=c.value.trim();
 document.addEventListener('click',e=>{if(!l.contains(e.target)&&e.target!==c)l.hidden=true});
 $('v-profile').onsubmit=async e=>{e.preventDefault();const b=$('save');
  try{const r=await api('/api/save',{name:$('name').value,city:c.value,lat,lon});if(!r.ok)throw 0;
-  b.textContent='✓  Saved';await load();setTimeout(()=>{b.textContent='✓  Save to Sticky';go('setup')},900)}
- catch(e){alertBox('Couldn\'t save')}};
+  b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>go('setup'),900)}
+ catch(e){alertBox(L('Couldn\'t save','Không lưu được'))}};
+
+// ---------- Fonts (06m) ----------
+let F={cur:'',list:[],sd:true};
+async function fontsView(){const v=$('v-fonts');try{F=await(await api('/api/fonts')).json()}catch(e){}
+ const tag=t=>E('span',{textContent:t}),rows=[E('div',{className:'r'},E('b',{className:'n',textContent:L('Default (built-in)','Mặc định (có sẵn)')}),tag(F.cur?'':L('In use','Đang dùng')))];
+ for(const n of F.list){const d=E('button',{className:'x',textContent:L('Delete','Xoá')});
+  d.onclick=()=>alertBox(L('Delete “','Xoá “')+n+'”?',L('It is removed from the SD card.','Phông sẽ bị xoá khỏi thẻ SD.'),L('Delete','Xoá'),async()=>{try{await api('/api/font_del',{name:n})}catch(e){}fontsView();load()});
+  rows.push(E('div',{className:'r'},E('b',{className:'n',textContent:n}),n===F.cur?tag(L('In use','Đang dùng')):'',d))}
+ const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>go('addfont');
+ v.replaceChildren(E('div',{className:'g'},...rows),add,E('p',{className:'note',style:'margin-top:12px',textContent:!F.sd?L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.'):
+  L('Pick the font on the Sticky: Settings › Language & Font › User Font.','Chọn phông trên Sticky: Cài đặt › Ngôn ngữ & Phông › Phông chữ.')}))}
+
+// ---------- Add font (06n) ----------
+const NB=' ',CH=(()=>{let s='đĐ'+NB+'°·…“”‘’–—•●×−';for(let c=0x21;c<0x7f;c++)s+=String.fromCharCode(c);  // = tools/make_fonts.py TEXT
+ for(const b of'aăâeêioôơuưyAĂÂEÊIOÔƠUƯY')for(const t of['','̀','́','̉','̃','̣'])s+=(b+t).normalize('NFC');
+ return[...new Set(s)].sort((a,b)=>a.codePointAt(0)-b.codePointAt(0))})();
+const STY=[['r','Regular','Thường'],['b','Bold','Đậm'],['x','ExtraBold','Rất đậm'],['i','Italic','Nghiêng']];
+// Sticky font slots (userfont.h): style letter + px. Digit-only fonts stay built-in.
+const SLOTS=[['R20','r',20],['R25','r',25],['R30','r',30],['B20','b',20],['B25','b',25],['B26','b',26],['B28','b',28],['B35','b',35],['X25','x',25],['X30','x',30],['X32','x',32],['X40','x',40],['I25','i',25]];
+let FF={};  // style -> {file, fam}
+const fam=k=>FF[k]?FF[k].fam:FF.r.fam;  // a missing style falls back to Regular
+const cx=document.createElement('canvas').getContext('2d',{willReadFrequently:true});
+function has(f,ch){cx.font='40px "'+f+'",monospace';const a=cx.measureText(ch).width;cx.font='40px "'+f+'",serif';return a===cx.measureText(ch).width}
+function ink(c,g,w,h){const d=g.getImageData(0,0,w,h),a=d.data,o=new Uint8Array(w*h);  // 1-bit, like the panel
+ for(let i=0;i<w*h;i++){o[i]=a[i*4+3]>=128?255:0;a[i*4]=a[i*4+1]=a[i*4+2]=0;a[i*4+3]=o[i]}g.putImageData(d,0,0);return o}
+function vlw(f,px){const c=document.createElement('canvas'),g=c.getContext('2d',{willReadFrequently:true}),font=px+'px "'+f+'"';
+ g.font=font;const m=g.measureText('Hg'),rec=[],bm=[];
+ for(const ch of CH){if(ch!==NB&&!has(f,ch))continue;g.font=font;const t=g.measureText(ch===NB?' ':ch),adv=Math.round(t.width);
+  if(ch===NB){rec.push([0xa0,0,0,adv,0,0,0]);continue}
+  const x0=Math.floor(-t.actualBoundingBoxLeft),y0=Math.floor(-t.actualBoundingBoxAscent);
+  const w=Math.max(Math.ceil(t.actualBoundingBoxRight)-x0,0),h=Math.max(Math.ceil(t.actualBoundingBoxDescent)-y0,0);
+  if(w>255||h>255||adv>255)throw new Error(ch);
+  let b=new Uint8Array(0);if(w&&h){c.width=w;c.height=h;g.font=font;g.fillText(ch,-x0,-y0);b=ink(c,g,w,h)}
+  rec.push([ch.codePointAt(0),h,w,adv,-y0,Math.max(-128,Math.min(127,x0)),0]);bm.push(b)}
+ const u=new Uint8Array(24+rec.length*28+bm.reduce((n,b)=>n+b.length,0)),dv=new DataView(u.buffer);let o=0;
+ for(const v of[rec.length,11,px,0,Math.round(m.fontBoundingBoxAscent),Math.round(m.fontBoundingBoxDescent)].concat(...rec)){dv.setInt32(o,v);o+=4}
+ for(const b of bm){u.set(b,o);o+=b.length}return u}
+function sample(f,px,text){const c=document.createElement('canvas'),g=c.getContext('2d',{willReadFrequently:true}),font=px+'px "'+f+'"';
+ g.font=font;const m=g.measureText(text);c.width=Math.ceil(m.width)+2;c.height=Math.ceil(m.fontBoundingBoxAscent+m.fontBoundingBoxDescent);
+ g.font=font;g.fillText(text,0,Math.round(m.fontBoundingBoxAscent));ink(c,g,c.width,c.height);return c}
+
+function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLength:24,autocomplete:'off',autocapitalize:'off'});
+ const warn=E('p',{className:'warn',hidden:true}),pv=E('div',{className:'pv',hidden:true}),msg=E('p',{className:'note',style:'margin-top:12px'});
+ const upb=E('button',{className:'btn k',textContent:L('✓  Upload to Sticky','✓  Tải lên Sticky'),disabled:true});
+ const okName=()=>/^[A-Za-z0-9_.-][A-Za-z0-9 _.-]{0,23}$/.test(nm.value);
+ const rows=STY.map(([k,en,vi])=>{const val=E('span',{textContent:L('Choose file…','Chọn tệp…')}),inp=E('input',{type:'file',accept:'.ttf,.otf',hidden:true});
+  const r=E('div',{className:'r',role:'button',tabIndex:0},E('b',{className:'n',textContent:L(en,vi)+(k==='r'?L(' (required)',' (bắt buộc)'):'')}),val,inp);
+  r.onclick=()=>inp.click();inp.onclick=e=>e.stopPropagation();
+  inp.onchange=async()=>{const f=inp.files[0];if(!f)return;val.textContent=f.name;
+   try{const fm='hs-'+k+'-'+Date.now(),face=new FontFace(fm,await f.arrayBuffer());await face.load();document.fonts.add(face);FF[k]={file:f.name,fam:fm}}
+   catch(e){delete FF[k];val.textContent=L('Not a font file','Không phải tệp phông')}
+   if(k==='r'&&FF.r&&!nm.value)nm.value=f.name.replace(/\.[^.]*$/,'').replace(/[-_ ]?Regular$/i,'').replace(/[^A-Za-z0-9 _.-]/g,'').slice(0,24);
+   show()};return r});
+ function show(){upb.disabled=!FF.r||!okName();if(!FF.r){warn.hidden=pv.hidden=true;return}
+  const miss=STY.filter(([k])=>!FF[k]).map(s=>L(s[1],s[2])),noVi=!has(FF.r.fam,'ệ');
+  warn.textContent=[miss.length?L('⚠  No '+miss.join(' or ')+' file. Text in those styles will use Regular.','⚠  Thiếu tệp '+miss.join(' và ')+'. Chữ kiểu đó sẽ dùng kiểu Thường.'):'',
+   noVi?L('⚠  This font has no Vietnamese letters; they will be missing.','⚠  Phông này không có chữ tiếng Việt; các chữ đó sẽ bị thiếu.'):''].filter(Boolean).join(' ');
+  warn.hidden=!warn.textContent;const who=S.name||'David';
+  const ex=[['r',25,L('Hello, ','Xin chào, ')+who+' · 27.4°C'],['b',28,L('Settings · To-do','Cài đặt · Việc cần làm')],['x',32,L('Software Update','Cập nhật phần mềm')],['i',25,L('Start typing…','Bắt đầu gõ…')]];
+  pv.replaceChildren(...ex.flatMap(([k,px,t])=>{const s=STY.find(x=>x[0]===k);
+   return[E('small',{textContent:L(s[1],s[2])+' · '+px+' px'+(FF[k]?'':'  →  '+L('Regular','Thường'))}),sample(fam(k),px,t)]}));pv.hidden=false}
+ nm.oninput=show;
+ upb.onclick=async()=>{const name=nm.value;upb.disabled=true;
+  try{for(let i=0;i<SLOTS.length;i++){const[slot,k,px]=SLOTS[i];msg.textContent=L('Uploading ','Đang tải lên ')+(i+1)+'/'+SLOTS.length+'…';
+    const fd=new FormData();fd.append('f',new Blob([vlw(fam(k),px)]),slot+'.vlw');
+    const r=await fetch('/api/font?name='+encodeURIComponent(name)+'&slot='+slot,{method:'POST',body:fd});if(!r.ok)throw 0}
+   msg.textContent='';alertBox(L('“'+name+'” is on the Sticky','Đã lưu “'+name+'” vào Sticky'),L('Pick it in Settings › Language & Font › User Font.','Chọn trong Cài đặt › Ngôn ngữ & Phông › Phông chữ.'));go('fonts')}
+  catch(e){msg.textContent='';upb.disabled=false;alertBox(L('Couldn\'t upload the font','Không tải lên được phông'))}};
+ v.replaceChildren(E('label',{htmlFor:'fname',textContent:L('Font name','Tên phông')}),nm,E('h2',{style:'margin-top:22px',textContent:L('Font files','Tệp phông')}),E('div',{className:'g'},...rows),warn,
+  E('h2',{textContent:L('Preview — as on the Sticky','Xem trước — như trên Sticky')}),pv,
+  E('p',{className:'note',style:'margin:0',textContent:L('Numbers on Home and the clock keep the built-in font.','Số trên Trang chủ và đồng hồ vẫn dùng phông có sẵn.')}),upb,msg)}
 load();setInterval(load,1500);
 </script></body></html>)HTML";
 
@@ -363,6 +445,7 @@ inline void api_status() {
   }
   d["scanning"] = g_ns == NS_SCAN;
   d["lang"] = g_vi ? "vi" : "en";
+  d["font"] = cfg_get("font");
   if (g_jr != JR_NONE) {
     static const char *const ST[] = {"", "busy", "ok", "badpass", "fail"};
     d["join"]["ssid"] = g_jrSsid;
