@@ -425,6 +425,8 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
 
 // ---------- page moves + Home (PLAN.md §3) ----------
 // DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
+// Note editor: UP/DOWN hide the keyboard; with it hidden they scroll the body.
+inline void note_updown(int dir) { if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
 inline void page_back() {
   if (g_screen == SCR_APPS) show(SCR_HOME);
   else if (g_screen == SCR_NOTES) {
@@ -433,7 +435,7 @@ inline void page_back() {
   } else if (g_screen == SCR_NOTE) {
     if (g_viewPage > 0) { g_viewPage--; g_redraw = true; }
     else show(SCR_NOTES);
-  } else if (g_screen == SCR_NOTEED) note_scroll(-1);
+  } else if (g_screen == SCR_NOTEED) note_updown(-1);
   else if (g_screen == SCR_TODO) {
     if (g_todoPage > 0) { g_todoPage--; g_redraw = true; }
     else show(SCR_APPS);
@@ -444,7 +446,7 @@ inline void page_fwd() {
   else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) { g_todoPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) { g_notesPage++; g_redraw = true; }
   else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) { g_viewPage++; g_redraw = true; }
-  else if (g_screen == SCR_NOTEED) note_scroll(1);
+  else if (g_screen == SCR_NOTEED) note_updown(1);
 }
 inline void go_home() { if (g_screen != SCR_HOME) show(SCR_HOME); }
 
@@ -514,30 +516,23 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
 }
 
 constexpr uint32_t ROW_HOLD_MS = 500;    // to-do row: hold = edit
-constexpr uint32_t ENTER_HOLD_MS = 500;  // note body: hold ↵ Done = hide the keyboard, tap = new line
 
 inline void screens_input() {
   static int16_t x0, y0;
   static uint32_t t0 = 0, lastRepeat = 0;
   static KbKey held;
   static bool holding = false, pressing = false, consumed = false;  // consumed: DOWN already acted
-  static bool enterDown = false;  // ↵ in the note body: acts on UP (tap) or after ENTER_HOLD_MS (hold)
   TouchEv e;
   while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
     if (e.down) {
       x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; consumed = false;
       int k;
       if (e.y >= EDGE_Y) {}  // may be the Home gesture: no key acts down here
-      else if (g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) { holding = consumed = true; editor_key(held); }
-      else if (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held)) {
-        holding = consumed = true;
-        if (held.kind == K_DONE && g_ne.field == 1) enterDown = true;
-        else note_key(held);
-      }
+      else if ((g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) ||
+               (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held))) { holding = consumed = true; key_down(held); }
       else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
       holding = pressing = false;
-      if (enterDown) { enterDown = false; note_key({0, 0, 0, K_CHAR, '\n'}); }  // tap ↵ = new line
       if (!consumed) on_touch_up(x0, y0, e.x, e.y);
     }
   }
@@ -546,10 +541,6 @@ inline void screens_input() {
     consumed = true;
     const int idx = todo_row_at(y0);
     if (idx >= 0) { hw_beep(60); open_editor(idx); }
-  }
-  if (enterDown && g_touchHeld && millis() - t0 >= ENTER_HOLD_MS) {  // hold ↵ = hide the keyboard
-    enterDown = false;
-    kb_hide(g_ne.kbOpen, g_ne.dirty);
   }
   // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
   if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {

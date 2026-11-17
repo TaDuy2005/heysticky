@@ -257,8 +257,7 @@ inline void draw_keypad() {
     const int x = pad_x(i), y = pad_y(i);
     if (i == 11) {
       display.fillRoundRect(x, y, 146, 60, 6, INK);
-      ui_icon(ICON_KB_ENTER, x + 28, y + 18, PAPER);
-      ui_text(F_X25, "Done", x + 58, y + 14, 33, AL_LEFT, PAPER, INK);
+      ui_icon(ICON_KB_ENTER, x + 61, y + 18, PAPER);  // ↵ only, like the letter keyboard
       continue;
     }
     ui_card(x, y, 146, 60, 6, 2);
