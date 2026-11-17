@@ -104,6 +104,7 @@ Hold top button → record → speech-to-text → **Working** → **Done**. Only
 
 ### V3 — later (each its own feature branch)
 Notion daily sync · Home Assistant dashboard · Reader · deadline reminder beeps (wake from sleep at due time) · Tailscale (experimental, community ESP-IDF libs only).
+- **Bluetooth (BLE) link to a phone app** (noted 2026-11-17): the ESP32-S3 has BLE 5 and can run it next to Wi-Fi. Seeed's factory firmware uses it for "Bluetooth connect" with the SenseCraft app (notes, to-dos, photos, fonts, OTA). For us: send fonts, notes and to-dos from our own app without the hotspot. The app converts TTF/OTF into the 13 `.vlw` slots (the Sticky has no TrueType renderer); about 1.1 MB per font, so roughly 20–40 s at a realistic 30–60 KB/s. iPhone needs a native app (Safari has no Web Bluetooth); Chrome on Android / desktop could reuse the phone page's converter via Web Bluetooth. Costs a few hundred KB of flash for the BLE stack.
 
 ## 6. V1 requirements
 
