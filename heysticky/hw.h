@@ -6,7 +6,8 @@
 #include "pins.h"
 
 // ---------- buzzer ----------
-inline void hw_beep(int ms = 40, int hz = 2700) { tone(PIN_BUZZER, hz, ms); }
+inline bool g_sound = false;  // ponytail: muted until TASK-10's Settings › Sound toggle (Preferences "sound") sets it
+inline void hw_beep(int ms = 40, int hz = 2700) { if (g_sound) tone(PIN_BUZZER, hz, ms); }
 
 // ---------- buttons ----------
 enum HwButton : uint8_t { BTN_NONE, BTN_TOP, BTN_UP, BTN_DOWN, BTN_TOP_LONG };
