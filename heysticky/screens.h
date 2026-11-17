@@ -10,7 +10,8 @@
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
-                       SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE };  // Settings last
+                       SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
+                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -210,6 +211,9 @@ inline void draw_screen() {
     case SCR_SDCARD: draw_sdcard(); break;
     case SCR_FILES: draw_files(); break;
     case SCR_UPDATE: draw_update(); break;
+    case SCR_LANGFONT: draw_langfont(); break;
+    case SCR_SYSLANG: draw_syslang(); break;
+    case SCR_USERFONT: draw_userfont(); break;
   }
 }
 
@@ -314,6 +318,7 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
     case SCR_TEMP: return SCR_CONFIG;
     case SCR_SDCARD: return SCR_ABOUT;
     case SCR_FILES: return SCR_SDCARD;
+    case SCR_SYSLANG: case SCR_USERFONT: return SCR_LANGFONT;
     default: return SCR_SETTINGS;  // Configuration, About, Web setup
   }
 }
@@ -387,7 +392,8 @@ inline void settings_tap(int x, int y) {
     case SR_WEB: hw_beep(30); show(SCR_WEBSETUP); break;
     case SR_ABOUT: hw_beep(30); show(SCR_ABOUT); break;
     case SR_UPDATE: hw_beep(30); show(SCR_UPDATE); break;
-    default: break;  // Language & Font (TASK-14): not yet
+    case SR_LANG: hw_beep(30); show(SCR_LANGFONT); break;
+    default: break;
   }
 }
 
@@ -397,6 +403,33 @@ inline void websetup_tap(int x, int y) {
   if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
   net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
   g_redraw = true;
+}
+
+inline void langfont_tap(int y) {
+  const int r = srow_at(y, SROW_H, 2);
+  if (r < 0) return;
+  hw_beep(30);
+  if (r == 0) { show(SCR_SYSLANG); return; }
+  g_fontNames = font_list();  // a card put in since boot, or fonts added from the phone
+  show(SCR_USERFONT);
+}
+
+inline void syslang_tap(int y) {
+  const int r = srow_at(y, SROW_H, 2);
+  if (r < 0 || (r == 1) == g_vi) return;
+  hw_beep(30);
+  g_vi = r == 1;
+  cfg_set("lang", g_vi ? "vi" : "en");
+  show(SCR_SYSLANG);  // every word changes: full refresh
+}
+
+inline void userfont_tap(int y) {
+  const int r = srow_at(y, SROW_H, 1 + int(g_fontNames.size()));
+  if (r < 0) return;
+  hw_beep(30);
+  const String name = r ? g_fontNames[r - 1] : "";
+  cfg_set("font", font_apply(name) ? name : "");  // a bad or missing font file falls back to built-in
+  show(SCR_USERFONT);
 }
 
 inline void update_redraw() { draw_update(); ui_partial(0, 0, W, H); }
@@ -545,6 +578,9 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(30); g_filesPage = 0; show(SCR_FILES); } return;
     case SCR_FILES: return;
     case SCR_UPDATE: update_tap(x0, y0); return;
+    case SCR_LANGFONT: langfont_tap(y0); return;
+    case SCR_SYSLANG: syslang_tap(y0); return;
+    case SCR_USERFONT: userfont_tap(y0); return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
       return;
@@ -635,6 +671,7 @@ inline void screens_input() {
 
 inline void screens_loop() {
   screens_input();
+  if (g_fontDirty) { g_fontDirty = false; show(g_screen); }  // the font in use changed from the phone page
   if (g_redraw) {
     g_redraw = false;
     draw_screen();

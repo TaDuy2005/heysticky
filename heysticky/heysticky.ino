@@ -21,6 +21,7 @@ void setup() {
   display.fillScreen(TFT_WHITE);  // clear any ghost of the previous image before the first draw
   display.refresh();
   todo_load();  // after display.begin(): the card shares the panel's SPI bus
+  font_apply(cfg_get("font"));  // user font from the card; built-in if it is missing
   show(net_begin() ? SCR_HOME : SCR_WEBSETUP);  // Wi-Fi joins in the background; no saved network -> hotspot + 04j
   ota_mark_good();  // display, touch and SD came up: keep this image (no rollback)
 }

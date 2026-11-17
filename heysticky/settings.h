@@ -18,6 +18,26 @@ inline bool ver_newer(const char *tag, const char *cur) {
   return false;
 }
 
+// A .vlw font from the card (made on the phone page, so untrusted): every glyph record and bitmap must fit
+// inside the file, in the ranges the display library stores them in, before it is ever loaded.
+// Layout: tools/make_fonts.py. All int32 big-endian.
+inline uint32_t be32(const uint8_t *p) { return uint32_t(p[0]) << 24 | uint32_t(p[1]) << 16 | uint32_t(p[2]) << 8 | p[3]; }
+inline bool vlw_ok(const uint8_t *d, size_t n) {
+  if (n < 24 || be32(d + 4) != 11) return false;
+  const uint32_t count = be32(d);
+  if (count == 0 || count > 2000 || be32(d + 16) > 255 || be32(d + 20) > 255) return false;
+  size_t need = 24 + size_t(count) * 28;
+  if (need > n) return false;
+  for (uint32_t i = 0; i < count; i++) {
+    const uint8_t *g = d + 24 + i * 28;
+    const uint32_t h = be32(g + 4), w = be32(g + 8), adv = be32(g + 12);
+    const int32_t dy = int32_t(be32(g + 16)), dx = int32_t(be32(g + 20));
+    if (h > 255 || w > 255 || adv > 255 || dy < -255 || dy > 255 || dx < -128 || dx > 127) return false;
+    need += size_t(h) * w;
+  }
+  return need <= n;
+}
+
 // SN: eFuse user block (BLOCK3), first 8 bytes little-endian, 18 digits like the factory firmware (%018llu).
 inline String sn_text(const uint8_t *b) {
   unsigned long long v = 0;
