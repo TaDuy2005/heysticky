@@ -8,12 +8,13 @@
 constexpr uint32_t MIC_RATE = 16000;
 constexpr uint32_t MIC_MAX_S = 60;
 constexpr size_t MIC_MAX_PCM = MIC_RATE * 2 * MIC_MAX_S;  // 1.92 MB
+constexpr size_t MIC_PRE = 512, MIC_POST = 64;  // room around the WAV for the upload's multipart head and tail (ai.h)
 constexpr uint32_t MIC_SETTLE_MS = 300;  // PDM filter warm-up, thrown away (clip01: first 250 ms was a transient)
 constexpr float MIC_GAIN = 2;            // calibration knob: x4 peaked at -3 dBFS on normal speech; x2 leaves ~9 dB headroom
 constexpr float MIC_HP = 0.995f;         // DC blocker pole (~13 Hz); the raw PDM output sits ~1500 off zero
 
 inline I2SClass g_mic;
-inline uint8_t *g_wav = nullptr;      // 44-byte header + PCM
+inline uint8_t *g_wav = nullptr;      // 44-byte header + PCM, with MIC_PRE bytes free before and MIC_POST after
 inline volatile size_t g_pcmLen = 0;  // PCM bytes recorded so far
 inline volatile int g_micLevel = 0;   // mean |sample| of the last 32 ms chunk (0..32767)
 inline volatile int g_micPeak = 0;    // loudest |sample| of the whole take
@@ -63,7 +64,10 @@ inline void mic_power(bool on) {
 }
 
 inline bool mic_start() {
-  if (!g_wav) g_wav = (uint8_t *)ps_malloc(PCM_WAV_HEADER_SIZE + MIC_MAX_PCM);
+  if (!g_wav) {
+    uint8_t *b = (uint8_t *)ps_malloc(MIC_PRE + PCM_WAV_HEADER_SIZE + MIC_MAX_PCM + MIC_POST);
+    if (b) g_wav = b + MIC_PRE;
+  }
   if (!g_wav) { Serial.println("[mic] no PSRAM buffer"); return false; }
   g_pcmLen = 0; g_micLevel = 0; g_micPeak = 0; g_micLevelMax = 0;
   mic_power(true);
