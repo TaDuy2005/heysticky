@@ -84,6 +84,8 @@ struct NoteEdit {
   Note n;         // a copy: g_note only changes on Save
   int field = 0;  // 0 title, 1 body
   bool touched[2] = {false, false};  // tapped or typed in: an empty field then shows only the cursor
+  bool follow = true;                // body shows its last lines (typing); false: scrolled to `top`
+  int top = 0;                       // first body line shown when !follow
   bool kbOpen = true, dirty = false;
   uint32_t dirtyAt = 0;
   Keyboard kb;
@@ -92,6 +94,7 @@ inline NoteEdit g_ne;
 constexpr int NT_Y = 132, NT_H = 67, NB_Y = 211, NB_X = 56, NB_W = 368, NB_LH = 35;
 constexpr int NB_BOTTOM_KB = 498, NB_BOTTOM = 701;  // body field bottom with / without the keyboard
 inline int g_nbBottom = NB_BOTTOM;                  // body field bottom as drawn (tap target)
+inline int g_nbMax = 0, g_nbStep = 1;               // body scroll limits, set by note_fields()
 
 inline void note_fields() {
   const bool cur = g_ne.kbOpen;
@@ -107,11 +110,29 @@ inline void note_fields() {
   const std::vector<String> lines = hint ? wrap(F_I25, "Start typing…\nor hold ● to speak and let AI write it.", NB_W)
                                          : wrap(F_R25, g_ne.n.body, NB_W);
   const int maxLines = ((cur ? NB_BOTTOM_KB : NB_BOTTOM) - NB_Y - 28) / NB_LH;
-  const int shown = min<int>(lines.size(), maxLines), from = bodyCur ? int(lines.size()) - shown : 0;
+  const int n = lines.size(), shown = min(n, maxLines);
+  g_ne.top = g_ne.follow ? n - shown : constrain(g_ne.top, 0, n - shown);
+  g_nbMax = n - shown;
+  g_nbStep = max(1, maxLines - 1);  // scroll a box-full, keeping one line for context
   g_nbBottom = NB_Y + 28 + max(shown, 3) * NB_LH;
   ui_card(40, NB_Y, 400, g_nbBottom - NB_Y, 10, 2);
-  for (int i = 0; i < shown; i++) ui_text(hint ? F_I25 : F_R25, lines[from + i], NB_X, NB_Y + 14 + i * NB_LH, NB_LH);
-  if (bodyCur) display.fillRect(NB_X + ui_width(F_R25, lines.back()) + 2, NB_Y + 14 + (shown - 1) * NB_LH + 1, 3, 32, INK);
+  for (int i = 0; i < shown; i++) ui_text(hint ? F_I25 : F_R25, lines[g_ne.top + i], NB_X, NB_Y + 14 + i * NB_LH, NB_LH);
+  if (bodyCur && g_ne.top + shown == n)  // cursor at the end, when the end is in view
+    display.fillRect(NB_X + ui_width(F_R25, lines.back()) + 2, NB_Y + 14 + (shown - 1) * NB_LH + 1, 3, 32, INK);
+  if (n > shown) {  // scrollbar: track + thumb inside the right edge
+    const int ty = NB_Y + 12, th = g_nbBottom - NB_Y - 24, bh = max(24, th * shown / n);
+    display.fillRect(431, ty, 1, th, INK);
+    display.fillRect(429, ty + (th - bh) * g_ne.top / (n - shown), 5, bh, INK);
+  }
+}
+
+inline void note_scroll(int dir) {  // -1 = earlier lines, +1 = later lines
+  const int t = constrain(g_ne.top + dir * g_nbStep, 0, g_nbMax);
+  if (t == g_ne.top) return;
+  g_ne.follow = false;
+  g_ne.top = t;
+  g_ne.dirty = true;  // note_flush() redraws the fields with one partial refresh
+  g_ne.dirtyAt = 0;
 }
 
 inline void draw_note_editor() {
@@ -120,6 +141,7 @@ inline void draw_note_editor() {
   ui_topbar(g_ne.n.num ? "Edit note" : "New note", "Cancel");
   note_fields();
   if (g_ne.kbOpen) {
+    g_ne.kb.enter = g_ne.field == 1;
     g_ne.kb.draw();
   } else if (!g_ne.n.num) {
     ui_button(40, 717, 400, 67, true, &ICON_CHECK24, "Save");
