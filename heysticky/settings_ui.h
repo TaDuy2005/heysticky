@@ -147,10 +147,17 @@ static int s_qrX, s_qrY, s_qrS;
 static void qr_modules(esp_qrcode_handle_t q) {
   const int n = esp_qrcode_get_size(q);
   s_qrS = 157 / n;  // whole pixels per module inside the 181 px frame
-  const int x0 = 150 + (181 - n * s_qrS) / 2, y0 = 274 + (181 - n * s_qrS) / 2;
+  const int x0 = 150 + (181 - n * s_qrS) / 2, y0 = 175 + (181 - n * s_qrS) / 2;
   for (int y = 0; y < n; y++)
     for (int x = 0; x < n; x++)
       if (esp_qrcode_get_module(q, x, y)) display.fillRect(x0 + x * s_qrS, y0 + y * s_qrS, s_qrS, s_qrS, INK);
+}
+
+// "Wi-Fi  HeySticky-Setup": bold label + value, centred as one line.
+static void kv_center(const String &k, const String &v, int y) {
+  const int gap = 2 * ui_width(F_R25, " "), w = ui_width(F_B25, k) + gap + ui_width(F_R25, v), x = (W - w) / 2;
+  ui_text(F_B25, k, x, y, 35);
+  ui_text(F_R25, v, x + w - ui_width(F_R25, v), y, 35);
 }
 
 inline void draw_websetup() {
@@ -159,21 +166,17 @@ inline void draw_websetup() {
   ui_text(F_X32, "Web setup", 40, 54, 42);
   ui_toggle(372, 56, g_webOn);
   display.fillRect(40, 109, 400, 3, INK);
-  if (!g_webOn) return;  // Off: page not served, nothing to show
-  const bool ap = g_ap;
-  ui_text(F_B25, ap ? "Join this Wi-Fi" : "Open this on your phone", W / 2, 130, 33, AL_CENTER);
-  display.fillRoundRect(40, 175, 400, 87, 12, INK);
-  ui_text(F_X42, ap ? AP_SSID : net_ip(), W / 2, 191, 55, AL_CENTER, PAPER, INK);
-  ui_card(150, 274, 181, 181, 6, 2);
-  const String qr = ap ? String("WIFI:T:nopass;S:") + AP_SSID + ";;" : "http://" + net_ip() + "/";
+  if (!g_webOn) return;  // Off: no hotspot, nothing to show
+  ui_text(F_B25, "Scan to join", W / 2, 130, 33, AL_CENTER);
+  ui_card(150, 175, 181, 181, 6, 2);
+  const String qr = String("WIFI:T:WPA;S:") + AP_SSID + ";P:" + g_apPass + ";;";  // the phone camera joins the hotspot
   esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
   cfg.display_func = qr_modules;
   esp_qrcode_generate(&cfg, qr.c_str());
-  if (ap) {
-    ui_text(F_R25, "Scan to join, then open", W / 2, 467, 35, AL_CENTER);
-    ui_text(F_B25, net_ip(), W / 2, 502, 35, AL_CENTER);
-  } else {
-    ui_text(F_R25, "Use the same Wi-Fi.", W / 2, 467, 35, AL_CENTER);
-    ui_wrap(F_R25, "No Wi-Fi yet? Join the hotspot “HeySticky-Setup”, then open 192.168.4.1", 40, 514, 400, 35, 3, AL_CENTER);
-  }
+  kv_center("Wi-Fi", AP_SSID, 368);
+  kv_center("Password", g_apPass, 415);
+  ui_text(F_B25, "Then open", W / 2, 462, 33, AL_CENTER);
+  display.fillRoundRect(40, 507, 400, 87, 12, INK);
+  ui_text(F_X42, WiFi.softAPIP().toString(), W / 2, 523, 55, AL_CENTER, PAPER, INK);
+  ui_text(F_R25, "It may open by itself.", W / 2, 606, 35, AL_CENTER);
 }

@@ -17,3 +17,10 @@ inline void cfg_set(const char *key, const String &value) {
   p.putString(key, value);
   p.end();
 }
+
+inline void cfg_del(const char *key) {
+  Preferences p;
+  p.begin("heysticky", false);
+  if (p.isKey(key)) p.remove(key);
+  p.end();
+}

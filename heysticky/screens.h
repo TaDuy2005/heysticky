@@ -389,9 +389,8 @@ inline void settings_tap(int x, int y) {
 
 inline void websetup_tap(int x, int y) {
   if (!top_right(x, y)) return;
-  if (g_ap) { hw_beep(80, 1200); return; }  // hotspot mode: the page is the only way to set up, it stays on
   hw_beep(30);
-  net_web(!g_webOn);
+  net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
   g_redraw = true;
 }
 
