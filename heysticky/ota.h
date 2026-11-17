@@ -42,8 +42,8 @@ inline String ota_checked_text() {
   localtime_r(&at, &t);
   localtime_r(&now, &n);
   char s[24];
-  strftime(s, sizeof s, t.tm_yday == n.tm_yday && t.tm_year == n.tm_year ? "today %H:%M" : "%d/%m %H:%M", &t);
-  return String("Last checked ") + s;
+  strftime(s, sizeof s, t.tm_yday == n.tm_yday && t.tm_year == n.tm_year ? TR("today %H:%M", "hôm nay %H:%M") : "%d/%m %H:%M", &t);
+  return String(TR("Last checked ", "Kiểm tra lần cuối ")) + s;
 }
 
 // Downloads and installs g_otaUrl; restarts on success. shown() redraws the screen at each 10% step.

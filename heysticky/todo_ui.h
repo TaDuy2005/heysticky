@@ -47,15 +47,15 @@ inline void todo_row(const Task &t, int y, int h, const String &now) {
 inline void draw_todo() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("To-do", String(todo_left(g_tasks)) + " left");
+  ui_topbar(TR("To-do", "Việc cần làm"), TR(String(todo_left(g_tasks)) + " left", "còn " + String(todo_left(g_tasks))));
   g_rows.clear();
   const std::vector<int> o = todo_order(g_tasks);
   if (o.empty()) {
     ui_icon(ICON_CHECK_CIRCLE64, 208, 318);
-    ui_text(F_X30, "No tasks yet", W / 2, 398, 40, AL_CENTER);
-    ui_text(F_R25, "Tap Add task to make one.", W / 2, 454, 33, AL_CENTER);
+    ui_text(F_X30, TR("No tasks yet", "Chưa có việc nào"), W / 2, 398, 40, AL_CENTER);
+    ui_text(F_R25, TR("Tap Add task to make one.", "Chạm Thêm việc để tạo."), W / 2, 454, 33, AL_CENTER);
     g_todoPages = 1;
-    ui_button(40, g_addBtnY = 712, 400, 72, true, &ICON_PLUS30, "Add task", 10);
+    ui_button(40, g_addBtnY = 712, 400, 72, true, &ICON_PLUS30, TR("Add task", "Thêm việc"), 10);
     return;
   }
   std::vector<int> starts{0};  // first row of each page
@@ -75,7 +75,7 @@ inline void draw_todo() {
     y += h;
   }
   const bool multi = g_todoPages > 1;
-  ui_button(40, g_addBtnY = multi ? 674 : 712, 400, 72, true, &ICON_PLUS30, "Add task", 10);
+  ui_button(40, g_addBtnY = multi ? 674 : 712, 400, 72, true, &ICON_PLUS30, TR("Add task", "Thêm việc"), 10);
   if (multi) ui_page_counter(String(g_todoPage + 1) + "/" + g_todoPages);
 }
 
@@ -153,7 +153,7 @@ inline void toggle_row(int y, const String &label, bool on) {
 inline void editor_field() {
   ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
   const bool hint = !g_ed.text.length() && !(g_ed.kbOpen && g_ed.touched);  // Italic "Task" until tapped
-  const String shown = hint ? String("Task") : ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
+  const String shown = hint ? String(TR("Task", "Việc")) : ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
   const int tw = shown.length() ? ui_text(hint ? F_I25 : F_B26, shown, 59, 153, 34) : 0;
   if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
 }
@@ -161,19 +161,19 @@ inline void editor_field() {
 inline void draw_task_editor() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_ed.idx < 0 ? "New task" : "Edit task", "Cancel");
+  ui_topbar(g_ed.idx < 0 ? TR("New task", "Việc mới") : TR("Edit task", "Sửa việc"), TR("Cancel", "Huỷ"));
   editor_field();
-  ui_text(F_B25, "DEADLINE (OPTIONAL)", 40, 218, 33);
-  link_row(ROW_DATE_Y, "Date", g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : "Off");
-  link_row(ROW_TIME_Y, "Time", g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : "Off");
+  ui_text(F_B25, TR("DEADLINE (OPTIONAL)", "HẠN CHÓT (TUỲ CHỌN)"), 40, 218, 33);
+  link_row(ROW_DATE_Y, TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
+  link_row(ROW_TIME_Y, TR("Time", "Giờ"), g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : TR("Off", "Tắt"));
   if (g_ed.kbOpen) {
     g_ed.kb.shift = cap_next(g_ed.text);
     g_ed.kb.draw();
   } else if (g_ed.idx < 0) {
-    ui_button(40, 717, 400, 67, true, &ICON_CHECK24, "Save");
+    ui_button(40, 717, 400, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
   } else {
-    ui_button(40, 717, 194, 67, false, &ICON_TRASH24, "Delete");
-    ui_button(246, 717, 194, 67, true, &ICON_CHECK24, "Save");
+    ui_button(40, 717, 194, 67, false, &ICON_TRASH24, TR("Delete", "Xoá"));
+    ui_button(246, 717, 194, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
   }
 }
 
@@ -196,14 +196,14 @@ inline void draw_date() {
   const Deadline &dl = g_ed.dl;
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Date", "Cancel");
-  toggle_row(112, "Date", dl.dateOn);
+  ui_topbar(TR("Date", "Ngày"), TR("Cancel", "Huỷ"));
+  toggle_row(112, TR("Date", "Ngày"), dl.dateOn);
   if (dl.dateOn) {
     ui_icon(ICON_LEFT30, 40, 196);
-    ui_text(F_X25, String(MONTHS[dl.m - 1]) + " " + dl.y, W / 2, 194, 33, AL_CENTER);
+    ui_text(F_X25, (g_vi ? "Tháng " + String(dl.m) : String(MONTHS[dl.m - 1])) + " " + dl.y, W / 2, 194, 33, AL_CENTER);
     ui_icon(ICON_RIGHT30, 410, 196);
-    static const char *const WD[] = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
-    for (int c = 0; c < 7; c++) ui_text(F_B25, WD[c], cal_x(c) + CELL_W / 2, 237, 33, AL_CENTER);
+    static const char *const WD[] = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}, *const WD_VI[] = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
+    for (int c = 0; c < 7; c++) ui_text(F_B25, TR(WD[c], WD_VI[c]), cal_x(c) + CELL_W / 2, 237, 33, AL_CENTER);
     const String now = now_key();
     const long first = month_first(), today = now.length() ? ymd_num(now) : -9;
     for (int d = 1, n = month_days(); d <= n; d++) {
@@ -214,7 +214,7 @@ inline void draw_date() {
       ui_text(sel || tod ? F_X25 : F_R25, String(d), x + CELL_W / 2, y + 8, 33, AL_CENTER, sel ? PAPER : INK, sel ? INK : PAPER);
     }
   }
-  ui_button(40, 711, 400, 73, true, nullptr, "Done");
+  ui_button(40, 711, 400, 73, true, nullptr, TR("Done", "Xong"));
 }
 
 inline bool date_day_at(int x, int y) {  // tap on a day cell -> select it
@@ -279,26 +279,26 @@ inline int keypad_hit(int x, int y) {
 inline void draw_time() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Time", "Cancel");
-  toggle_row(112, "Time", g_ed.dl.timeOn);
+  ui_topbar(TR("Time", "Giờ"), TR("Cancel", "Huỷ"));
+  toggle_row(112, TR("Time", "Giờ"), g_ed.dl.timeOn);
   if (g_ed.dl.timeOn) {
     time_fields();
     draw_keypad();
   } else {
-    ui_button(40, 711, 400, 73, true, nullptr, "Done");
+    ui_button(40, 711, 400, 73, true, nullptr, TR("Done", "Xong"));
   }
 }
 
 // ---------- 02f Delete task / 03f Delete note ----------
-inline void draw_delete(const char *question, const char *action = "Delete") {  // also 02i/03h Discard
+inline void draw_delete(const char *question, const char *action = nullptr) {  // also 02i/03h Discard
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   display.fillCircle(240, 337, 80, INK);  // badge 160x160, 5 px ring
   display.fillCircle(240, 337, 75, PAPER);
   ui_icon(ICON_TRASH64, 208, 305);
   ui_text(F_X40, question, W / 2, 435, 53, AL_CENTER);
-  ui_button(40, 705, 193, 79, false, &ICON_TRASH24, action);
-  ui_button(247, 705, 193, 79, true, &ICON_X24, "Cancel");
+  ui_button(40, 705, 193, 79, false, &ICON_TRASH24, action ? action : TR("Delete", "Xoá"));
+  ui_button(247, 705, 193, 79, true, &ICON_X24, TR("Cancel", "Huỷ"));
 }
 
 // ---------- No microSD card ----------
@@ -307,8 +307,8 @@ inline bool g_nosdNotes = false;  // which app sent us here: Retry returns to it
 inline void draw_nosd() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_nosdNotes ? "Notes" : "To-do", "Back");
-  ui_text(F_X30, "No microSD card", W / 2, 318, 40, AL_CENTER);
-  ui_wrap(F_R25, "Insert a FAT32 card, then tap Retry.", 40, 374, 400, 35, 3, AL_CENTER);
-  ui_button(40, 712, 400, 72, true, nullptr, "Retry");
+  ui_topbar(g_nosdNotes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), TR("Back", "Quay lại"));
+  ui_text(F_X30, TR("No microSD card", "Không có thẻ SD"), W / 2, 318, 40, AL_CENTER);
+  ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 374, 400, 35, 3, AL_CENTER);
+  ui_button(40, 712, 400, 72, true, nullptr, TR("Retry", "Thử lại"));
 }

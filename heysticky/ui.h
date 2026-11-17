@@ -6,6 +6,7 @@
 #include "src/fonts/fonts.h"
 #include "src/icons.h"
 #include "hw.h"
+#include "lang.h"
 
 extern Seeed_GFX display;
 constexpr int W = 480, H = 800;

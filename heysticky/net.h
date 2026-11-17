@@ -11,6 +11,7 @@
 #include <time.h>
 #include "store.h"
 #include "wifi_list.h"
+#include "lang.h"
 
 constexpr char AP_SSID[] = "HeySticky-Setup";
 constexpr uint32_t JOIN_TIMEOUT_MS = 15000, SCAN_TIMEOUT_MS = 15000, WIFI_RETRY_MS = 30000;
@@ -530,20 +531,20 @@ inline bool net_geocode() {
 enum WxIcon : uint8_t { WX_SUN, WX_PARTLY, WX_CLOUD, WX_FOG, WX_RAIN, WX_SNOW, WX_STORM };
 struct WxInfo { const char *label; WxIcon icon; };
 
-// WMO weather code -> short label + icon type. ponytail: English only; VI comes with TASK-14.
+// WMO weather code -> short label (EN/VI) + icon type.
 inline WxInfo wx_info(int code) {
-  if (code == 0) return {"Clear", WX_SUN};
-  if (code == 1) return {"Mainly clear", WX_SUN};
-  if (code == 2) return {"Partly cloudy", WX_PARTLY};
-  if (code == 3) return {"Overcast", WX_CLOUD};
-  if (code == 45 || code == 48) return {"Fog", WX_FOG};
-  if (code >= 51 && code <= 57) return {"Drizzle", WX_RAIN};
-  if (code >= 61 && code <= 67) return {"Rain", WX_RAIN};
-  if (code >= 71 && code <= 77) return {"Snow", WX_SNOW};
-  if (code >= 80 && code <= 82) return {"Showers", WX_RAIN};
-  if (code == 85 || code == 86) return {"Snow showers", WX_SNOW};
-  if (code >= 95) return {"Thunderstorm", WX_STORM};
-  return {"Unknown", WX_CLOUD};
+  if (code == 0) return {TR("Clear", "Trời quang"), WX_SUN};
+  if (code == 1) return {TR("Mainly clear", "Ít mây"), WX_SUN};
+  if (code == 2) return {TR("Partly cloudy", "Có mây"), WX_PARTLY};
+  if (code == 3) return {TR("Overcast", "Nhiều mây"), WX_CLOUD};
+  if (code == 45 || code == 48) return {TR("Fog", "Sương mù"), WX_FOG};
+  if (code >= 51 && code <= 57) return {TR("Drizzle", "Mưa phùn"), WX_RAIN};
+  if (code >= 61 && code <= 67) return {TR("Rain", "Mưa"), WX_RAIN};
+  if (code >= 71 && code <= 77) return {TR("Snow", "Tuyết"), WX_SNOW};
+  if (code >= 80 && code <= 82) return {TR("Showers", "Mưa rào"), WX_RAIN};
+  if (code == 85 || code == 86) return {TR("Snow showers", "Mưa tuyết"), WX_SNOW};
+  if (code >= 95) return {TR("Thunderstorm", "Dông"), WX_STORM};
+  return {TR("Unknown", "Không rõ"), WX_CLOUD};
 }
 
 struct Weather { bool ok = false; float temp = 0, hi = 0, lo = 0; int code = 0; uint32_t at = 0; };

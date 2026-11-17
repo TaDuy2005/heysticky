@@ -5,7 +5,7 @@
 #include "kbd.h"
 #include "card.h"
 
-inline String note_title(const String &title, int num) { return title.length() ? title : "Note " + note_tag(num); }
+inline String note_title(const String &title, int num) { return title.length() ? title : TR("Note ", "Ghi chú ") + note_tag(num); }
 inline std::vector<String> wrap(const Font &f, const String &s, int w) {
   return wrap_lines(s, w, [&](const String &t) { return ui_width(f, t); });
 }
@@ -19,12 +19,12 @@ inline int notes_pages() { return max(1, (int(g_notes.size()) + NROWS - 1) / NRO
 inline void draw_notes() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Notes", String(g_notes.size()));
+  ui_topbar(TR("Notes", "Ghi chú"), String(g_notes.size()));
   if (g_notes.empty()) {
     ui_icon(ICON_NOTE64, 208, 301);
-    ui_text(F_X30, "No notes yet", W / 2, 381, 40, AL_CENTER);
-    ui_wrap(F_R25, "Tap New note, or hold ● to speak one.", 40, 437, 400, 33, 2, AL_CENTER);
-    ui_button(40, g_newBtnY = 712, 400, 72, true, &ICON_PLUS30, "New note", 10);
+    ui_text(F_X30, TR("No notes yet", "Chưa có ghi chú"), W / 2, 381, 40, AL_CENTER);
+    ui_wrap(F_R25, TR("Tap New note, or hold ● to speak one.", "Chạm Ghi chú mới, hoặc giữ ● để nói."), 40, 437, 400, 33, 2, AL_CENTER);
+    ui_button(40, g_newBtnY = 712, 400, 72, true, &ICON_PLUS30, TR("New note", "Ghi chú mới"), 10);
     return;
   }
   g_notesPage = constrain(g_notesPage, 0, notes_pages() - 1);
@@ -38,7 +38,7 @@ inline void draw_notes() {
     display.fillRect(40, y + NROW_H - 1, 400, 1, INK);
   }
   const bool multi = notes_pages() > 1;
-  ui_button(40, g_newBtnY = multi ? 674 : 712, 400, 72, true, &ICON_PLUS30, "New note", 10);
+  ui_button(40, g_newBtnY = multi ? 674 : 712, 400, 72, true, &ICON_PLUS30, TR("New note", "Ghi chú mới"), 10);
   if (multi) ui_page_counter(String(g_notesPage + 1) + "/" + notes_pages());
 }
 
@@ -55,7 +55,7 @@ inline int g_viewPage = 0, g_viewPages = 1, g_viewBtnY = 720;
 inline void draw_note_view() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Note", note_tag(g_note.num));
+  ui_topbar(TR("Note", "Ghi chú"), note_tag(g_note.num));
   std::vector<String> title = wrap(F_X30, note_title(g_note.title, g_note.num), 400);
   if (title.size() > VTITLE_MAX) { title.resize(VTITLE_MAX); title.back() = ui_fit(F_X30, title.back() + " …", 400); }
   const std::vector<String> body = wrap(F_R25, g_note.body, 400);
@@ -74,8 +74,8 @@ inline void draw_note_view() {
   for (int i = from; i < from + n && i < int(body.size()); i++, y += VIEW_LH) ui_text(F_R25, body[i], 40, y, VIEW_LH);
   const bool multi = g_viewPages > 1;
   g_viewBtnY = multi ? 682 : 720;
-  ui_button(40, g_viewBtnY, 192, 64, true, &ICON_PENCIL24, "Edit");
-  ui_button(248, g_viewBtnY, 192, 64, false, &ICON_TRASH24, "Delete");
+  ui_button(40, g_viewBtnY, 192, 64, true, &ICON_PENCIL24, TR("Edit", "Sửa"));
+  ui_button(248, g_viewBtnY, 192, 64, false, &ICON_TRASH24, TR("Delete", "Xoá"));
   if (multi) ui_page_counter(String(g_viewPage + 1) + "/" + g_viewPages);
 }
 
@@ -102,12 +102,12 @@ inline void note_fields() {
   // Title (ExtraBold 25). Empty: Italic "Title" (cursor after it when focused) until tapped, then only the cursor.
   const bool titleCur = cur && g_ne.field == 0, titleHint = !g_ne.n.title.length() && !(titleCur && g_ne.touched[0]);
   ui_card(40, NT_Y, 400, NT_H, 10, 3);
-  const String t = titleHint ? String("Title") : titleCur ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
+  const String t = titleHint ? String(TR("Title", "Tiêu đề")) : titleCur ? ui_fit_tail(F_X25, g_ne.n.title, 360) : ui_fit(F_X25, g_ne.n.title, 360);
   const int tw = t.length() ? ui_text(titleHint ? F_I25 : F_X25, t, 57, 149, 33) : 0;
   if (titleCur) display.fillRect(57 + tw + 2, 150, 3, 32, INK);
   // Body (Regular 25, 35 px lines): grows with the text; while typing in it, the tail stays in view
   const bool bodyCur = cur && g_ne.field == 1, hint = !g_ne.n.body.length() && !bodyCur;
-  const std::vector<String> lines = hint ? wrap(F_I25, "Start typing…\nor hold ● to speak and let AI write it.", NB_W)
+  const std::vector<String> lines = hint ? wrap(F_I25, TR("Start typing…\nor hold ● to speak and let AI write it.", "Bắt đầu gõ…\nhoặc giữ ● để nói và để AI viết."), NB_W)
                                          : wrap(F_R25, g_ne.n.body, NB_W);
   const int maxLines = ((cur ? NB_BOTTOM_KB : NB_BOTTOM) - NB_Y - 28) / NB_LH;
   const int n = lines.size(), shown = min(n, maxLines);
@@ -138,16 +138,16 @@ inline void note_scroll(int dir) {  // -1 = earlier lines, +1 = later lines
 inline void draw_note_editor() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_ne.n.num ? "Edit note" : "New note", "Cancel");
+  ui_topbar(g_ne.n.num ? TR("Edit note", "Sửa ghi chú") : TR("New note", "Ghi chú mới"), TR("Cancel", "Huỷ"));
   note_fields();
   if (g_ne.kbOpen) {
     g_ne.kb.enter = g_ne.field == 1;
     g_ne.kb.shift = cap_next(g_ne.field ? g_ne.n.body : g_ne.n.title);
     g_ne.kb.draw();
   } else if (!g_ne.n.num) {
-    ui_button(40, 717, 400, 67, true, &ICON_CHECK24, "Save");
+    ui_button(40, 717, 400, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
   } else {
-    ui_button(40, 717, 194, 67, false, &ICON_TRASH24, "Delete");
-    ui_button(246, 717, 194, 67, true, &ICON_CHECK24, "Save");
+    ui_button(40, 717, 194, 67, false, &ICON_TRASH24, TR("Delete", "Xoá"));
+    ui_button(246, 717, 194, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
   }
 }

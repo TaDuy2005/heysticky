@@ -27,10 +27,10 @@ inline int srow_at(int y, int h, int n) {  // row index under y, or -1
 
 // ---------- 04 Settings ----------
 enum SetRow : uint8_t { SR_ROTATE, SR_SOUND, SR_LANG, SR_UPDATE, SR_CONFIG, SR_WEB, SR_ABOUT, SR_COUNT };
-inline const struct { const Icon *icon; const char *label; } SET_ROWS[SR_COUNT] = {
-  {&ICON_SET_ROTATE, "Auto-rotate"}, {&ICON_SET_SOUND, "Sound"}, {&ICON_SET_LANG, "Language & Font"},
-  {&ICON_SET_UPDATE, "Software Update"}, {&ICON_SET_CONFIG, "Configuration"}, {&ICON_SET_WEB, "Web setup"},
-  {&ICON_SET_ABOUT, "About"},
+inline const struct { const Icon *icon; const char *label, *vi; } SET_ROWS[SR_COUNT] = {
+  {&ICON_SET_ROTATE, "Auto-rotate", "Tự xoay"}, {&ICON_SET_SOUND, "Sound", "Âm thanh"},
+  {&ICON_SET_LANG, "Language & Font", "Ngôn ngữ & Phông"}, {&ICON_SET_UPDATE, "Software Update", "Cập nhật phần mềm"},
+  {&ICON_SET_CONFIG, "Configuration", "Cấu hình"}, {&ICON_SET_WEB, "Web setup", "Cài đặt qua web"}, {&ICON_SET_ABOUT, "About", "Thông tin"},
 };
 
 inline bool set_rotate() { return cfg_get("rotate") == "1"; }  // stored only: no screen rotates yet (needs the IMU)
@@ -38,11 +38,11 @@ inline bool set_rotate() { return cfg_get("rotate") == "1"; }  // stored only: n
 inline void draw_settings() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Settings", "");
+  ui_topbar(TR("Settings", "Cài đặt"), "");
   for (int i = 0; i < SR_COUNT; i++) {
     const int y = SROW_TOP + i * SROW_H;
     ui_icon(*SET_ROWS[i].icon, 40, y + 20);
-    ui_text(F_B28, SET_ROWS[i].label, 86, y + 17, 37);
+    ui_text(F_B28, TR(SET_ROWS[i].label, SET_ROWS[i].vi), 86, y + 17, 37);
     if (i == SR_ROTATE || i == SR_SOUND) ui_toggle(372, y + 17, i == SR_ROTATE ? set_rotate() : g_sound);
     else ui_icon(ICON_CHEV, 414, y + 23);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
@@ -56,18 +56,18 @@ inline bool update_has_button() { return g_ota != OTA_CHECKING && g_ota != OTA_I
 inline void draw_update() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Software Update", "");
+  ui_topbar(TR("Software Update", "Cập nhật phần mềm"), "");
   ui_text(F_X32, String("HeySticky v") + FW_VERSION, 40, 144, 42);
   const String v = g_otaTag.startsWith("v") ? g_otaTag : "v" + g_otaTag, last = ota_checked_text();
-  String head, l1 = last.length() ? last + " ·" : "", l2 = last.length() ? "over Wi-Fi" : "", btn = "Check for updates";
+  String head, l1 = last.length() ? last + " ·" : "", l2 = last.length() ? TR("over Wi-Fi", "qua Wi-Fi") : "", btn = TR("Check for updates", "Kiểm tra cập nhật");
   switch (g_ota) {
-    case OTA_IDLE: head = WiFi.status() == WL_CONNECTED ? "Not checked yet" : "No Wi-Fi connection"; break;
-    case OTA_CHECKING: head = "Checking…"; l1 = l2 = ""; break;
-    case OTA_LATEST: head = "You’re up to date"; break;
-    case OTA_AVAIL: head = v + " is available"; btn = "Install " + v; break;
-    case OTA_ERR: head = "Couldn’t check for updates"; break;
-    case OTA_INSTALLING: head = "Installing " + v + "… " + g_otaPct + "%"; l1 = "Don’t turn off the Sticky."; l2 = "It restarts when done."; break;
-    case OTA_FAILED: head = "Update failed"; l1 = "This version is unchanged."; l2 = ""; btn = "Try again"; break;
+    case OTA_IDLE: head = WiFi.status() == WL_CONNECTED ? TR("Not checked yet", "Chưa kiểm tra") : TR("No Wi-Fi connection", "Không có Wi-Fi"); break;
+    case OTA_CHECKING: head = TR("Checking…", "Đang kiểm tra…"); l1 = l2 = ""; break;
+    case OTA_LATEST: head = TR("You’re up to date", "Đã là bản mới nhất"); break;
+    case OTA_AVAIL: head = TR(v + " is available", "Có bản " + v); btn = TR("Install ", "Cài ") + v; break;
+    case OTA_ERR: head = TR("Couldn’t check for updates", "Không kiểm tra được"); break;
+    case OTA_INSTALLING: head = TR("Installing ", "Đang cài ") + v + "… " + g_otaPct + "%"; l1 = TR("Don’t turn off the Sticky.", "Đừng tắt Sticky."); l2 = TR("It restarts when done.", "Xong sẽ tự khởi động lại."); break;
+    case OTA_FAILED: head = TR("Update failed", "Cập nhật thất bại"); l1 = TR("This version is unchanged.", "Phiên bản hiện tại giữ nguyên."); l2 = ""; btn = TR("Try again", "Thử lại"); break;
   }
   ui_text(F_B25, head, 40, 194, 33);
   ui_text(F_R25, l1, 40, 235, 33);
@@ -81,12 +81,12 @@ inline String units() { return cfg_get("units", "C"); }
 inline void draw_config() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Configuration", "");
+  ui_topbar(TR("Configuration", "Cấu hình"), "");
   const String city = cfg_get("city");
-  info_row(SROW_TOP, SROW_H, F_B28, "City", city.length() ? city : "—", false);
-  info_row(SROW_TOP + SROW_H, SROW_H, F_B28, "Timezone", utc_text(g_utc_off), false);
-  info_row(SROW_TOP + 2 * SROW_H, SROW_H, F_B28, "Refresh interval", "30 min", false);
-  info_row(SROW_TOP + 3 * SROW_H, SROW_H, F_B28, "Temperature", units() == "F" ? "°F" : "°C", true);
+  info_row(SROW_TOP, SROW_H, F_B28, TR("City", "Thành phố"), city.length() ? city : "—", false);
+  info_row(SROW_TOP + SROW_H, SROW_H, F_B28, TR("Timezone", "Múi giờ"), utc_text(g_utc_off), false);
+  info_row(SROW_TOP + 2 * SROW_H, SROW_H, F_B28, TR("Refresh interval", "Làm mới"), TR("30 min", "30 phút"), false);
+  info_row(SROW_TOP + 3 * SROW_H, SROW_H, F_B28, TR("Temperature", "Nhiệt độ"), units() == "F" ? "°F" : "°C", true);
 }
 
 // ---------- 04g Temperature ----------
@@ -98,11 +98,11 @@ inline void checkbox(int x, int y, bool on) {  // Figma checkbox 36x36, 3 px, ra
 inline void draw_temp() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("Temperature", "");
+  ui_topbar(TR("Temperature", "Nhiệt độ"), "");
   const bool f = units() == "F";
   for (int i = 0; i < 2; i++) {
     const int y = SROW_TOP + i * SROW_H;
-    ui_text(F_B28, i ? "Fahrenheit (°F)" : "Celsius (°C)", 40, y + 17, 37);
+    ui_text(F_B28, i ? TR("Fahrenheit (°F)", "Độ F (°F)") : TR("Celsius (°C)", "Độ C (°C)"), 40, y + 17, 37);
     checkbox(404, y + 18, i == f);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
   }
@@ -116,18 +116,19 @@ inline String about_sn() {
 }
 
 inline String sd_free_text() {
-  if (!g_sdOk) return sd_inserted() ? "Not mounted" : "No card";
-  return size_text(SD.totalBytes() - SD.usedBytes()) + " free";
+  if (!g_sdOk) return sd_inserted() ? TR("Not mounted", "Chưa gắn") : TR("No card", "Không có thẻ");
+  const String x = size_text(SD.totalBytes() - SD.usedBytes());
+  return TR(x + " free", "Trống " + x);
 }
 
 constexpr int ABOUT_SD_ROW = 5;
 inline void draw_about() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("About", "");
+  ui_topbar(TR("About", "Thông tin"), "");
   // ponytail: certifications are a static line until the device label's text is confirmed (PLAN §12)
-  const String rows[][2] = {{"Name", "HeySticky"}, {"SN", about_sn()}, {"MAC", WiFi.macAddress()},
-                            {"Software version", FW_VERSION}, {"Certifications", "FCC · CE"}, {"SD card", sd_free_text()}};
+  const String rows[][2] = {{TR("Name", "Tên"), "HeySticky"}, {"SN", about_sn()}, {"MAC", WiFi.macAddress()},
+                            {TR("Software version", "Phiên bản"), FW_VERSION}, {TR("Certifications", "Chứng nhận"), "FCC · CE"}, {TR("SD card", "Thẻ SD"), sd_free_text()}};
   for (int i = 0; i < 6; i++) info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, rows[i][0], rows[i][1], i == ABOUT_SD_ROW);
 }
 
@@ -136,14 +137,14 @@ constexpr int SD_FILES_ROW = 4;
 inline void draw_sdcard() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("SD Card", "");
+  ui_topbar(TR("SD Card", "Thẻ SD"), "");
   const String space = g_sdOk ? size_text(SD.totalBytes() - SD.usedBytes()) + " / " + size_text(SD.totalBytes()) : "—";
-  info_row(SROW_TOP, IROW_H, F_B25, "Inserted", sd_inserted() ? "Yes" : "No", false);
-  info_row(SROW_TOP + IROW_H, IROW_H, F_B25, "Mounted", g_sdOk ? "Yes" : "No", false);
-  info_row(SROW_TOP + 2 * IROW_H, IROW_H, F_B25, "Path", "/sd", false);
-  info_row(SROW_TOP + 3 * IROW_H, IROW_H, F_B25, "Space", space, false);
+  info_row(SROW_TOP, IROW_H, F_B25, TR("Inserted", "Đã lắp"), sd_inserted() ? TR("Yes", "Có") : TR("No", "Không"), false);
+  info_row(SROW_TOP + IROW_H, IROW_H, F_B25, TR("Mounted", "Đã gắn"), g_sdOk ? TR("Yes", "Có") : TR("No", "Không"), false);
+  info_row(SROW_TOP + 2 * IROW_H, IROW_H, F_B25, TR("Path", "Đường dẫn"), "/sd", false);
+  info_row(SROW_TOP + 3 * IROW_H, IROW_H, F_B25, TR("Space", "Dung lượng"), space, false);
   const String n = g_files.size() >= SD_FILES_MAX ? String(SD_FILES_MAX) + "+" : String(g_files.size());
-  info_row(SROW_TOP + 4 * IROW_H, IROW_H, F_B25, "Files", g_sdOk ? n : "—", g_sdOk);
+  info_row(SROW_TOP + 4 * IROW_H, IROW_H, F_B25, TR("Files", "Tệp"), g_sdOk ? n : "—", g_sdOk);
 }
 
 // ---------- SD Files: every file on the card, by path ----------
@@ -154,8 +155,8 @@ inline int files_pages() { return max(1, (int(g_files.size()) + FILES_ROWS - 1) 
 inline void draw_files() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar("SD Files", String(g_files.size()));
-  if (g_files.empty()) { ui_text(F_R25, "No files", W / 2, 318, 33, AL_CENTER); return; }
+  ui_topbar(TR("SD Files", "Tệp trên thẻ SD"), String(g_files.size()));
+  if (g_files.empty()) { ui_text(F_R25, TR("No files", "Không có tệp"), W / 2, 318, 33, AL_CENTER); return; }
   g_filesPage = constrain(g_filesPage, 0, files_pages() - 1);
   for (int r = 0; r < FILES_ROWS; r++) {
     const int i = g_filesPage * FILES_ROWS + r;
@@ -190,21 +191,21 @@ static void kv_center(const String &k, const String &v, int y) {
 inline void draw_websetup(bool loading = false) {  // loading: toggle already On while the hotspot starts
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_text(F_X32, "Web setup", 40, 54, 42);
+  ui_text(F_X32, TR("Web setup", "Cài đặt qua web"), 40, 54, 42);
   ui_toggle(372, 56, g_webOn || loading);
   display.fillRect(40, 109, 400, 3, INK);
-  if (loading) { ui_text(F_B25, "Loading...", W / 2, (H - 33) / 2, 33, AL_CENTER); return; }
+  if (loading) { ui_text(F_B25, TR("Loading...", "Đang tải..."), W / 2, (H - 33) / 2, 33, AL_CENTER); return; }
   if (!g_webOn) return;  // Off: no hotspot, nothing to show
-  ui_text(F_B25, "Scan to join", W / 2, 130, 33, AL_CENTER);
+  ui_text(F_B25, TR("Scan to join", "Quét để kết nối"), W / 2, 130, 33, AL_CENTER);
   ui_card(150, 175, 181, 181, 6, 2);
   const String qr = String("WIFI:T:WPA;S:") + AP_SSID + ";P:" + g_apPass + ";;";  // the phone camera joins the hotspot
   esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
   cfg.display_func = qr_modules;
   esp_qrcode_generate(&cfg, qr.c_str());
   kv_center("Wi-Fi", AP_SSID, 368);
-  kv_center("Password", g_apPass, 415);
-  ui_text(F_B25, "Then open", W / 2, 462, 33, AL_CENTER);
+  kv_center(TR("Password", "Mật khẩu"), g_apPass, 415);
+  ui_text(F_B25, TR("Then open", "Rồi mở"), W / 2, 462, 33, AL_CENTER);
   display.fillRoundRect(40, 507, 400, 87, 12, INK);
   ui_text(F_X42, WiFi.softAPIP().toString(), W / 2, 523, 55, AL_CENTER, PAPER, INK);
-  ui_text(F_R25, "It may open by itself.", W / 2, 606, 35, AL_CENTER);
+  ui_text(F_R25, TR("It may open by itself.", "Trang có thể tự mở."), W / 2, 606, 35, AL_CENTER);
 }

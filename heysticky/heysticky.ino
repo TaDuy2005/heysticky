@@ -14,6 +14,7 @@ void setup() {
   while (!Serial && millis() < 3000) delay(10);
   hw_begin();
   g_sound = cfg_get("sound") == "1";  // Settings › Sound, off by default
+  g_vi = cfg_get("lang") == "vi";     // Settings › Language & Font › System Language
   hw_beep();
   if (!display.begin()) Serial.println(display.lastResult().message);
   display.setRotation(1);  // portrait, confirmed upright on the real panel

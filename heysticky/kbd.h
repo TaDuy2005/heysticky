@@ -40,7 +40,7 @@ struct Keyboard {
       case K_SHIFT: ui_icon(ICON_KB_SHIFT, k.x + 18, k.y + 16, fg); break;
       case K_BKSP: ui_icon(ICON_KB_BACKSPACE, k.x + 17, k.y + 15, fg); break;
       case K_MODE: ui_text(F_B25, numbers ? "ABC" : "123", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
-      case K_SPACE: ui_text(F_R25, "space", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
+      case K_SPACE: ui_text(F_R25, TR("space", "cách"), cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
       case K_DONE: ui_icon(ICON_KB_ENTER, cx - 12, k.y + 18, fg); break;
     }
   }

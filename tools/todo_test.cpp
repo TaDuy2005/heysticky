@@ -52,6 +52,13 @@ int main() {
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "24 Dec 9:00");
+  g_vi = true;
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-16 09:00)"), now) == "Quá hạn · T2");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "24/12 9:00");
+  g_vi = false;
 
   // order: overdue, today, tomorrow, undated (file order), done last
   std::vector<Task> ts;
