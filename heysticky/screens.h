@@ -390,6 +390,7 @@ inline void settings_tap(int x, int y) {
 inline void websetup_tap(int x, int y) {
   if (!top_right(x, y)) return;
   hw_beep(30);
+  if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
   net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
   g_redraw = true;
 }
