@@ -1,10 +1,8 @@
-// Settings screens, Figma 04-04j: Settings, Configuration, Location, Temperature, About, SD Card,
-// SD Files (no Figma frame before TASK-10), Web setup. Drawing and hit areas only; screens.h navigates.
+// Settings screens, Figma 04-04k: Settings, Configuration, Temperature, About, SD Card, SD Files, Web setup. Drawing and hit areas only; screens.h navigates.
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include <esp_efuse.h>
 #include "ui.h"
-#include "kbd.h"
 #include "card.h"
 #include "net.h"
 #include "settings.h"
@@ -50,7 +48,7 @@ inline void draw_settings() {
   }
 }
 
-// ---------- 04e Configuration ----------
+// ---------- 04e Configuration (City is display only: set on the phone setup page) ----------
 inline String units() { return cfg_get("units", "C"); }
 
 inline void draw_config() {
@@ -58,7 +56,7 @@ inline void draw_config() {
   ui_status_bar(ui_battery_pct());
   ui_topbar("Configuration", "");
   const String city = cfg_get("city");
-  info_row(SROW_TOP, SROW_H, F_B28, "City", city.length() ? city : "—", true);
+  info_row(SROW_TOP, SROW_H, F_B28, "City", city.length() ? city : "—", false);
   info_row(SROW_TOP + SROW_H, SROW_H, F_B28, "Timezone", utc_text(g_utc_off), false);
   info_row(SROW_TOP + 2 * SROW_H, SROW_H, F_B28, "Refresh interval", "30 min", false);
   info_row(SROW_TOP + 3 * SROW_H, SROW_H, F_B28, "Temperature", units() == "F" ? "°F" : "°C", true);
@@ -81,61 +79,6 @@ inline void draw_temp() {
     checkbox(404, y + 18, i == f);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
   }
-}
-
-// ---------- 04f Location ----------
-struct LocEdit {
-  String q;                 // typed city name
-  std::vector<Place> res;   // last search
-  String msg;               // "Searching…", "No match", "Offline" instead of results
-  bool kbOpen = true, dirty = false;
-  uint32_t dirtyAt = 0;
-  Keyboard kb;
-};
-inline LocEdit g_loc;
-constexpr int LF_Y = 221, LF_H = 63, LRES_Y = 290, LRES_H = 87;
-
-inline int loc_rows() { return min(int(g_loc.res.size()), ((g_loc.kbOpen ? KB_TOP : 784) - LRES_Y) / LRES_H); }
-
-inline void loc_field() {
-  ui_card(40, LF_Y, 400, LF_H, 10, 3);
-  ui_icon(ICON_SEARCH, 57, LF_Y + 19);
-  const int w = g_loc.q.length() ? ui_text(F_B25, ui_fit_tail(F_B25, g_loc.q, 320), 93, LF_Y + 15, 33) : 0;
-  if (g_loc.kbOpen) display.fillRect(93 + w + 4, LF_Y + 18, 3, 28, INK);
-}
-
-inline void loc_results() {
-  const int bottom = g_loc.kbOpen ? KB_TOP : H;
-  display.fillRect(0, LRES_Y, W, bottom - LRES_Y, PAPER);
-  if (g_loc.msg.length()) { ui_text(F_R25, g_loc.msg, W / 2, LRES_Y + 20, 33, AL_CENTER); return; }
-  for (int i = 0; i < loc_rows(); i++) {
-    const int y = LRES_Y + i * LRES_H;
-    const Place &p = g_loc.res[i];
-    ui_text(F_B25, ui_fit(F_B25, p.name, 400), 40, y + 10, 33);
-    ui_text(F_R25, ui_fit(F_R25, p.area, 400), 40, y + 43, 33);
-    display.fillRect(40, y + LRES_H - 1, 400, 1, INK);
-  }
-}
-
-inline void draw_location() {
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_topbar("Location", "");
-  const String city = cfg_get("city"), tz = cfg_get("tz");
-  ui_icon(ICON_PIN, 40, 144);
-  ui_text(F_X25, ui_fit(F_X25, "Now: " + (city.length() ? city : String("—")), 358), 82, 126, 33);
-  ui_text(F_R25, ui_fit(F_R25, (tz.length() ? tz + " · " : String("")) + utc_text(g_utc_off), 358), 82, 159, 33);
-  loc_field();
-  loc_results();
-  if (g_loc.kbOpen) {
-    g_loc.kb.shift = cap_next(g_loc.q);
-    g_loc.kb.draw();
-  }
-}
-
-inline int loc_row_at(int y) {  // result index under y, or -1
-  const int i = y >= LRES_Y ? (y - LRES_Y) / LRES_H : -1;
-  return i >= 0 && i < loc_rows() && !g_loc.msg.length() ? i : -1;
 }
 
 // ---------- 04h About ----------

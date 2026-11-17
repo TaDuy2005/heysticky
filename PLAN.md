@@ -63,7 +63,7 @@ Pin map (from the open-source sticky-2048 firmware):
 | Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) |
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task / changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note / changes (confirm) |
-| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04f Location · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 06 Phone setup page |
+| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 06 Phone setup page · 06a City suggestions |
 
 **Layout & type (all Sticky screens; not the phone setup page):**
 - Font: **JetBrains Mono** (Regular, Bold, ExtraBold). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
@@ -78,8 +78,8 @@ Pin map (from the open-source sticky-2048 firmware):
 **Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
 - **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9).
-- **Configuration:** City › (Location search) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
-- **Location (04f):** "Now: {city}" + "{timezone} · UTC±h"; type a name, ↵ searches (Open-Meteo geocoding, up to 5 places, keyboard hides to show them; each shows "{region}, {country}"); tap one to save city/lat/lon/timezone and fetch its weather. "Offline" without Wi-Fi.
+- **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
+- **Phone setup page (06):** Wi-Fi (Network, Password) and Profile (Your name, City). Units is set only on the Sticky (04g). **City suggestions (06a):** from 2 letters, after a 0.3 s pause, the phone itself asks Open-Meteo geocoding for up to 5 places ("{name}" + "{region}, {country}"); picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Typed without picking (or no phone internet, e.g. hotspot) → the Sticky uses the top match for the name.
 - **Web setup (04j):** On/Off toggle in the top bar. On = address box, QR code and hotspot hint, and the phone setup page is served; Off = nothing below, page not served. Starts Off after every boot on Wi-Fi; always On in hotspot mode (it is the only way to set up).
 - **About:** Name, SN (eFuse BLOCK3, 18 digits), MAC, Software version, Certifications, SD card › (04i: Inserted, Mounted, Path, Space, Files › → 04k SD Files: every file by path with its size, 9 per page).
 - **Auto-rotate:** setting is stored; no screen supports rotation yet (needs the IMU).
@@ -90,7 +90,7 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 5. Versions
 
 ### V1 — core (offline-capable, Wi-Fi for time & weather)
-Wi-Fi + phone setup page, Home dashboard, To-do with optional deadlines, Notes, Settings/About/Location, power management, release `.bin`.
+Wi-Fi + phone setup page, Home dashboard, To-do with optional deadlines, Notes, Settings/About, power management, release `.bin`.
 
 ### V2 — AI voice
 Hold top button → record → speech-to-text → **Working** → **Done**. Only when the AI can't tell whether it's a to-do or a note does it show **Review** (transcript; choose **To-do** or **Note**, or **Record again**), then Done.
@@ -105,13 +105,13 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 ## 6. V1 requirements
 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
-- [x] REQ-02 Phone setup page saves Wi-Fi, name, city, units — stored on the device only
+- [x] REQ-02 Phone setup page saves Wi-Fi, name, city (with suggestions) — stored on the device only
 - [x] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Today count, dock
 - [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
 - [x] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Date and Time, each on/off); overdue first, then by due date
 - [x] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
-- [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city search, auto timezone, 30-min refresh, °C/°F), About
+- [ ] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city shown, auto timezone, 30-min refresh, °C/°F), About
 - [ ] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [ ] REQ-11 No secrets in source or in the `.bin`
@@ -132,7 +132,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] TASK-07 On-screen keyboard
 - [x] TASK-08 To-do: list, add, tick, edit, delete, deadlines (Date + Time screens), `/todo.md` on microSD
 - [x] TASK-09 Notes: list, view, new, edit, delete
-- [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup, Location screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
+- [ ] TASK-10 Settings, Configuration, Temperature, About, Web setup screens. Sound toggle defaults **off**: wire it to `g_sound` in `hw.h` (all beeps are muted until then)
 - [ ] TASK-13 OTA: two-slot OTA partition table, version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [ ] TASK-14 Language & Font: string table (EN/VI), `/fonts/*.fpack` loader, font picker
 - [ ] TASK-11 Power: idle sleep, minute clock wake, button wake
@@ -168,7 +168,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - **Wi-Fi:** no network scan in hotspot mode (scanning around `softAP()` crashes the Wi-Fi driver on ESP32 core 3.3.12); the user types the network name.
 - **Setup page:** served by the Sticky on its IP (or `192.168.4.1` in hotspot mode). Saved keys are shown masked and never sent back to the browser.
   Known limit: the page is plain HTTP on the local network.
-- **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone
+- **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone (phone page suggestions; the Sticky itself uses count=1 for a typed name)
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
 - **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
 - **HTTPS:** certificates checked with the ESP32 core's built-in root CA bundle (`useBuiltinCACertBundle()`)
@@ -255,7 +255,6 @@ Firmware string table for TASK-14; the Figma "Tiếng Việt (VI)" section uses 
 | sw_update / up_to_date / check | Software Update / You're up to date / Check for updates | Cập nhật phần mềm / Đã là bản mới nhất / Kiểm tra cập nhật |
 | config / city / tz / refresh | Configuration / City / Timezone / Refresh interval | Cấu hình / Thành phố / Múi giờ / Làm mới |
 | temp / c / f | Temperature / Celsius (°C) / Fahrenheit (°F) | Nhiệt độ / Độ C (°C) / Độ F (°F) |
-| location / now | Location / Now: {city} | Vị trí / Hiện tại: {city} |
 | about / name / sw_ver / certs | About / Name / Software version / Certifications | Thông tin / Tên / Phiên bản / Chứng nhận |
 | sd / free / inserted / mounted / path / space / files | SD card / {x} free / Inserted / Mounted / Path / Space / Files | Thẻ SD / Trống {x} / Đã lắp / Đã gắn / Đường dẫn / Dung lượng / Tệp |
 | yes / on | Yes / On | Có / Bật |
