@@ -12,7 +12,7 @@ inline const char *KB_ROWS[2][3] = {{"qwertyuiop", "asdfghjkl", "zxcvbnm"},
 
 struct Keyboard {
   bool numbers = false, shift = false;
-  bool enter = false;  // "↵ Done" (multi-line field: tap = new line, hold = hide) instead of "Done"
+  bool enter = false;  // ↵ types a new line (note body); otherwise ↵ hides the keyboard
 
   // Builds the key list for the current page (max 31 keys).
   int keys(KbKey *out) const {
@@ -41,11 +41,7 @@ struct Keyboard {
       case K_BKSP: ui_icon(ICON_KB_BACKSPACE, k.x + 17, k.y + 15, fg); break;
       case K_MODE: ui_text(F_B25, numbers ? "ABC" : "123", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
       case K_SPACE: ui_text(F_R25, "space", cx, k.y + 14, 33, AL_CENTER, fg, bg); break;
-      case K_DONE:
-        if (!enter) { ui_text(F_X25, "Done", cx, k.y + 14, 33, AL_CENTER, fg, bg); break; }
-        ui_icon(ICON_KB_ENTER, k.x + 3, k.y + 18, fg);
-        ui_text(F_X25, "Done", k.x + 33, k.y + 14, 33, AL_LEFT, fg, bg);
-        break;
+      case K_DONE: ui_icon(ICON_KB_ENTER, cx - 12, k.y + 18, fg); break;
     }
   }
 
@@ -74,6 +70,7 @@ constexpr int KBD_FULL_EVERY = 20;  // full refresh after this many typing refre
 enum KbResult : uint8_t { KB_TEXT, KB_NONE, KB_DONE };
 
 inline KbResult kb_apply(Keyboard &kb, String &s, unsigned cap, const KbKey &k) {
+  if (k.kind == K_DONE && kb.enter) return kb_apply(kb, s, cap, {k.x, k.y, k.w, K_CHAR, '\n'});
   switch (k.kind) {
     case K_CHAR:
     case K_SPACE:
