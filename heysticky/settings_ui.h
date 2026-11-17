@@ -160,12 +160,13 @@ static void kv_center(const String &k, const String &v, int y) {
   ui_text(F_R25, v, x + w - ui_width(F_R25, v), y, 35);
 }
 
-inline void draw_websetup() {
+inline void draw_websetup(bool loading = false) {  // loading: toggle already On while the hotspot starts
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_text(F_X32, "Web setup", 40, 54, 42);
-  ui_toggle(372, 56, g_webOn);
+  ui_toggle(372, 56, g_webOn || loading);
   display.fillRect(40, 109, 400, 3, INK);
+  if (loading) { ui_text(F_B25, "Loading...", W / 2, (H - 33) / 2, 33, AL_CENTER); return; }
   if (!g_webOn) return;  // Off: no hotspot, nothing to show
   ui_text(F_B25, "Scan to join", W / 2, 130, 33, AL_CENTER);
   ui_card(150, 175, 181, 181, 6, 2);
