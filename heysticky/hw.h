@@ -116,6 +116,8 @@ inline QueueHandle_t g_touchQ = nullptr;
 inline volatile bool g_touchHeld = false;     // finger currently on the glass
 constexpr uint32_t TOUCH_LOST_MS = 300;       // fallback release if the chip never reports 0 points
 constexpr int TOUCH_NEW_TAP_PX = 40;          // a jump this far within one contact = a new tap (fast typing)
+inline volatile bool g_touchOff = false;      // asked by sleep (power.h): GT911 powered down
+inline volatile bool g_touchParked = false;   // the task has powered it down and stopped reading
 
 inline void touch_task(void *) {
   bool down = false;
@@ -123,6 +125,13 @@ inline void touch_task(void *) {
   uint32_t last = 0;
   auto push = [](int16_t x, int16_t y, bool d) { TouchEv e{x, y, d}; xQueueSend(g_touchQ, &e, 0); };
   for (;;) {
+    if (g_touchOff != g_touchParked) {  // power the GT911 down for sleep, or back up with a fresh reset
+      if (g_touchOff) digitalWrite(PIN_TP_EN, LOW);
+      else hw_touch_begin();
+      down = false;
+      g_touchParked = g_touchOff;
+    }
+    if (g_touchParked) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
     int16_t x, y;
     const TpState s = hw_touch_get(x, y);
     if (s == TP_POINT) {
@@ -159,18 +168,18 @@ inline bool hw_sht40_read(float &tempC, float &rh) {
 // The factory setup runs the gauge at 10x scale: its design / full-charge capacity read 7500 mAh for the
 // 750 mAh cell, so its current is 10x too. Measured 2026-11-17: SoC rose ~0.7 %/min at "3000 mA" = 300 mA real.
 constexpr int GAUGE_SCALE = 10;  // calibration knob: gauge mA / real mA
-struct Battery { int percent; int mV; int mA; bool usb; };  // mA > 0 = charging
+struct Battery { int percent; int mV; int mA; int mAh; bool usb; };  // mA > 0 = charging; mAh = remaining
 inline bool hw_battery_read(Battery &b) {
   uint8_t v[2];
   auto rd = [&](uint8_t reg) { return i2c_read(Wire1, 0x55, reg, false, v, 2) ? int16_t(v[0] | v[1] << 8) : INT16_MIN; };
-  b.percent = rd(0x2C); b.mV = rd(0x08); b.mA = rd(0x0C) / GAUGE_SCALE;
+  b.percent = rd(0x2C); b.mV = rd(0x08); b.mA = rd(0x0C) / GAUGE_SCALE; b.mAh = rd(0x10) / GAUGE_SCALE;
   b.usb = digitalRead(PIN_USB_PRESENT);
   return b.percent != INT16_MIN;
 }
 
 inline void hw_battery_log() {
   Battery b;
-  if (hw_battery_read(b)) Serial.printf("[bat] %d%% %d mV %+d mA usb=%d\n", b.percent, b.mV, b.mA, b.usb);
+  if (hw_battery_read(b)) Serial.printf("[bat] %d%% %d mV %+d mA %d mAh usb=%d\n", b.percent, b.mV, b.mA, b.mAh, b.usb);
 }
 
 // ---------- all ----------

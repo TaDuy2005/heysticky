@@ -6,6 +6,7 @@
 Seeed_GFX display(Seeed_Product::reTerminal_Sticky);
 
 #include "screens.h"
+#include "power.h"
 
 extern "C" bool verifyRollbackLater() { return true; }  // a new OTA image confirms itself at the end of setup()
 
@@ -15,6 +16,7 @@ void setup() {
   hw_begin();
   g_sound = cfg_get("sound") == "1";  // Settings › Sound, off by default
   g_vi = cfg_get("lang") == "vi";     // Settings › Language & Font › System Language
+  g_sleepMin = cfg_get("sleep_min", "2").toInt();  // Settings › Sleep after, 0 = Never
   hw_beep();
   if (!display.begin()) Serial.println(display.lastResult().message);
   display.setRotation(1);  // portrait, confirmed upright on the real panel
@@ -28,9 +30,10 @@ void setup() {
 
 void loop() {
   static uint32_t batLog = 0;  // battery state on serial every minute
-  if (millis() - batLog > 60000 || !batLog) { batLog = millis() | 1; hw_battery_log(); }
+  if (millis() - batLog > 60000 || !batLog) { batLog = millis() | 1; hw_battery_log(); if (g_sleepReport.length()) Serial.println(g_sleepReport); }
   net_loop();
   if (ota_loop() && g_screen == SCR_UPDATE) g_redraw = true;
   screens_loop();
+  power_loop();
   delay(5);
 }
