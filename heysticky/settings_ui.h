@@ -95,17 +95,40 @@ inline void checkbox(int x, int y, bool on) {  // Figma checkbox 36x36, 3 px, ra
   else ui_card(x, y, 36, 36, 4, 3);
 }
 
-inline void draw_temp() {
+// 04b / 04c / 04g: one checkbox row per choice.
+inline void draw_choices(const String &title, const std::vector<String> &rows, int sel) {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("Temperature", "Nhiệt độ"), "");
-  const bool f = units() == "F";
-  for (int i = 0; i < 2; i++) {
+  ui_topbar(title, "");
+  for (int i = 0; i < int(rows.size()); i++) {
     const int y = SROW_TOP + i * SROW_H;
-    ui_text(F_B28, i ? TR("Fahrenheit (°F)", "Độ F (°F)") : TR("Celsius (°C)", "Độ C (°C)"), 40, y + 17, 37);
-    checkbox(404, y + 18, i == f);
+    ui_text(F_B28, ui_fit(F_B28, rows[i], 352), 40, y + 17, 37);
+    checkbox(404, y + 18, i == sel);
     display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
   }
+}
+
+inline void draw_temp() {
+  draw_choices(TR("Temperature", "Nhiệt độ"), {TR("Celsius (°C)", "Độ C (°C)"), TR("Fahrenheit (°F)", "Độ F (°F)")}, units() == "F");
+}
+
+// ---------- 04a Language & Font, 04b System Language, 04c User Font ----------
+inline void draw_langfont() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar(TR("Language & Font", "Ngôn ngữ & Phông"), "");
+  info_row(SROW_TOP, SROW_H, F_B28, TR("System Language", "Ngôn ngữ hệ thống"), "", true);
+  info_row(SROW_TOP + SROW_H, SROW_H, F_B28, TR("User Font", "Phông chữ"), "", true);
+}
+
+inline void draw_syslang() { draw_choices(TR("System Language", "Ngôn ngữ hệ thống"), {"English", "Tiếng Việt"}, g_vi); }
+
+inline std::vector<String> g_fontNames;  // 04c rows after "Default", read when 04c opens
+inline void draw_userfont() {
+  std::vector<String> rows = {TR("Default (built-in)", "Mặc định (có sẵn)")};
+  rows.insert(rows.end(), g_fontNames.begin(), g_fontNames.end());
+  const auto it = std::find(g_fontNames.begin(), g_fontNames.end(), cfg_get("font"));
+  draw_choices(TR("User Font", "Phông chữ"), rows, it == g_fontNames.end() ? 0 : 1 + int(it - g_fontNames.begin()));
 }
 
 // ---------- 04h About ----------

@@ -12,6 +12,7 @@
 #include "store.h"
 #include "wifi_list.h"
 #include "lang.h"
+#include "userfont.h"
 
 constexpr char AP_SSID[] = "HeySticky-Setup";
 constexpr uint32_t JOIN_TIMEOUT_MS = 15000, SCAN_TIMEOUT_MS = 15000, WIFI_RETRY_MS = 30000;
@@ -361,6 +362,7 @@ inline void api_status() {
     n["enc"] = g_nets[i].enc;
   }
   d["scanning"] = g_ns == NS_SCAN;
+  d["lang"] = g_vi ? "vi" : "en";
   if (g_jr != JR_NONE) {
     static const char *const ST[] = {"", "busy", "ok", "badpass", "fail"};
     d["join"]["ssid"] = g_jrSsid;
@@ -433,6 +435,58 @@ inline void api_scan() {
   api_reply(202, "Scanning");
 }
 
+// ---------- user fonts (06m, 06n): the phone converts, the Sticky only stores and checks ----------
+inline void api_fonts() {
+  if (!ap_only()) return;
+  JsonDocument d;
+  d["cur"] = cfg_get("font");
+  d["sd"] = g_sdOk;
+  JsonArray l = d["list"].to<JsonArray>();
+  for (const String &n : font_list()) l.add(n);
+  send_json(d);
+}
+
+// One slot file per request (multipart): /api/font?name=NotoSans&slot=R25. Written as .tmp, checked, then renamed.
+inline File g_upFile;
+inline bool g_upOk = false;
+inline size_t g_upN = 0;
+inline void api_font_part() {
+  HTTPUpload &u = g_web.upload();
+  const String name = g_web.arg("name"), slot = g_web.arg("slot");
+  const String tmp = font_path(name, slot.c_str(), ".tmp");
+  if (u.status == UPLOAD_FILE_START) {
+    g_upN = 0;
+    g_upOk = g_web.client().localIP() == WiFi.softAPIP() && g_sdOk && font_name_ok(name) && font_slot_ok(slot);
+    if (g_upOk) { SD.mkdir("/fonts"); SD.mkdir("/fonts/" + name); g_upFile = SD.open(tmp, FILE_WRITE); g_upOk = bool(g_upFile); }
+  } else if (u.status == UPLOAD_FILE_WRITE) {
+    g_upN += u.currentSize;
+    if (g_upOk) g_upOk = g_upN <= FONT_FILE_MAX && g_upFile.write(u.buf, u.currentSize) == u.currentSize;
+  } else {  // END or ABORTED
+    if (g_upFile) g_upFile.close();
+    size_t n;
+    uint8_t *b = g_upOk && u.status == UPLOAD_FILE_END ? font_read(tmp, n) : nullptr;
+    g_upOk = b != nullptr;
+    free(b);
+    const String path = font_path(name, slot.c_str());
+    if (g_upOk) { SD.remove(path); g_upOk = SD.rename(tmp, path); }
+    if (!g_upOk && font_name_ok(name) && font_slot_ok(slot)) SD.remove(tmp);
+  }
+}
+inline void api_font_done() {
+  if (!ap_only()) return;
+  if (g_upOk && cfg_get("font") == g_web.arg("name") && g_web.arg("slot") == FONT_SLOTS[FONT_SLOTS_N - 1].file) {
+    font_apply(g_web.arg("name"));  // the font in use was replaced: take the new files after the last slot
+    g_fontDirty = true;
+  }
+  api_reply(g_upOk ? 200 : 400, g_upOk ? "OK" : "Bad font file");
+  g_upOk = false;
+}
+
+inline void api_font_del() {
+  if (!ap_only()) return;
+  api_reply(font_delete(g_web.arg("name")) ? 200 : 400, "");
+}
+
 // City suggestions through the Sticky's own Wi-Fi (the phone on the hotspot has no internet).
 inline void api_city() {
   if (!ap_only()) return;
@@ -476,6 +530,9 @@ inline bool net_begin() {
   g_web.on("/api/forget", HTTP_POST, api_forget);
   g_web.on("/api/save", HTTP_POST, api_save);
   g_web.on("/api/scan", HTTP_POST, api_scan);
+  g_web.on("/api/fonts", HTTP_GET, api_fonts);
+  g_web.on("/api/font", HTTP_POST, api_font_done, api_font_part);
+  g_web.on("/api/font_del", HTTP_POST, api_font_del);
   g_web.onNotFound([] {  // captive portal: any other address -> the page
     if (!ap_only()) return;
     g_web.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/");

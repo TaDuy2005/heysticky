@@ -16,9 +16,9 @@ enum Align : uint8_t { AL_LEFT, AL_CENTER, AL_RIGHT };
 
 // Text in a Figma text box: x = left / centre / right edge, y + h = the box.
 // The glyphs' line box (ascent + descent) is centred in the Figma box, like Figma does.
+inline const uint8_t *g_fontLoaded = nullptr;  // by data, so a swapped-in user font reloads (userfont.h)
 inline void ui_use(const Font &f) {
-  static const Font *loaded = nullptr;
-  if (loaded != &f) { display.loadFont(f.data); loaded = &f; }
+  if (g_fontLoaded != f.data) { display.loadFont(f.data); g_fontLoaded = f.data; }
 }
 
 inline int ui_width(const Font &f, String s) {
