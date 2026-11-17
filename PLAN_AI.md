@@ -11,7 +11,8 @@ Branch `feature/ai`. Spec context: PLAN.md §3 (hold top button = AI), §4 (scre
 - **Provider:** [OpenRouter](https://openrouter.ai), one key for both calls, base URL `https://openrouter.ai/api/v1`. Any OpenAI-compatible server (Groq, OpenAI, Mistral, self-hosted Whisper) works by changing the URL and model names.
 - **Speech-to-text:** `openai/whisper-large-v3` via `POST {url}/audio/transcriptions` (OpenAI-style multipart upload, `file` + `model`).
 - **Sorting / writing:** `~deepseek/deepseek-flash-latest` (alias that follows DeepSeek's newest Flash model) via `POST {url}/chat/completions`. JSON is asked for in the prompt, not with `response_format: json_schema` (only some OpenRouter models support it).
-- **One key, two model names.** Flash keys `ai_url`, `ai_key`, `stt_model`, `ai_model` replace PLAN §8's `stt_url` / `stt_key` / `ai_url` / `ai_model` / `ai_key`. A separate STT provider is dropped; add it back only if someone needs two providers.
+- **Two services, one key by default** (follows Figma 06h, which has a URL / model / key per section). Flash keys `stt_url`, `stt_model`, `stt_key`, `ai_url`, `ai_model`, `ai_key` (PLAN §8). Defaults: `stt_url` = OpenRouter, `stt_model` = `openai/whisper-large-v3`, `ai_model` = `~deepseek/deepseek-flash-latest`; an empty `ai_url` / `ai_key` means "same as speech-to-text", so one OpenRouter key is pasted once. Defaults live in `net.h` (`AI_URL_DEF`, `STT_MODEL_DEF`, `AI_MODEL_DEF`).
+- **Mixed English / Vietnamese:** never send a `language` parameter (Whisper picks one language per 30 s window). English words inside Vietnamese sentences usually survive; whole-sentence switches may come out translated or garbled. Measured in AI-09.
 - **Recording:** 16 kHz, 16-bit mono PCM in PSRAM (32 KB/s). Max **60 s** (1.9 MB; OpenRouter/OpenAI file limit is 25 MB). Under **0.5 s** → "I didn't catch that".
 - **No on-device speech recognition:** Espressif's ESP-SR only does wake words / command lists and has no Vietnamese.
 
@@ -72,7 +73,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 - [ ] AI-05 `ai.h` sorting: chat request (§4), parse the reply, save to-dos / note; 05a Working steps (Heard you → Sorting it out… → Saving…)
 - [ ] AI-06 05b Review (transcript + To-do / Note / Record again), 05c Done (Added + list), 05d Failed (§5); EN + VI from Figma
 - [ ] AI-07 Host test `tools/ai_test.cpp`: WAV header, multipart body, JSON reply parsing (plain, fenced, wrapped in text, broken, each `type`)
-- [ ] AI-08 Phone page 06g Integrations → 06h AI: Base URL, API key (masked, never sent back), Speech model, Chat model, Note instructions (type or upload .txt, 2,000 characters), Plain (no AI); `/api/ai` GET / POST. Notion, Home Assistant, Remote access stay hidden (V3)
+- [x] AI-08 Phone page 06g Integrations → 06h AI (Figma, EN + VI): Speech-to-text and AI sections (Base URL, Model, API key each), Note instructions (type or upload .txt, 2,000 characters, saved to `/ai/note-instructions.txt`); Integrations row + keys footer on 06; `/api/ai` GET / POST. Keys come back only as a hint (`sk-or-••••`); an empty key field keeps the saved key. Notion, Home Assistant, Remote access stay hidden (V3). Device-tested 2026-11-18 (key saved from the phone, shown masked)
 - [ ] AI-09 Device test: 5–10 clips each in English and Vietnamese (to-do, note, unsure, deadlines like "tomorrow at 9"); compare the saved clips against the §3 alternatives with `curl`; then stop writing `/ai/last.wav`
 - [ ] AI-10 Docs: PLAN §2, §5, §8, §12 and the V2 requirement list; README (how to get an OpenRouter key, cost, privacy note: audio goes to OpenRouter and the chosen model provider)
 - [ ] AI-11 Release v1.1.0: `FW_VERSION`, `tools/release.sh v1.1.0`, GitHub Release, OTA test from v1.0.2
@@ -82,4 +83,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 
 - [ ] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06
 - [x] Mic gain: ×2 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
+- [ ] "Plain (no AI)" (PLAN §5): not on Figma 06h; decide where it goes (06h toggle or a 05b choice) before AI-05
+- [ ] No way to delete a saved key yet (only replace it)
+- [ ] AI-09: add mixed English / Vietnamese clips to the model comparison
 - [ ] Battery cost of one clip (mic + Wi-Fi + TLS); read it from the gauge during AI-09
