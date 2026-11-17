@@ -48,7 +48,7 @@ Pin map (from the open-source sticky-2048 firmware):
 ## 3. Interaction model
 
 - **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do and Notes pages, a note's pages; right on To-do / Notes page 1 → Apps, on a note's page 1 → Notes).
-- **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. They only move between pages; in the note editor they hide the keyboard if it is open, otherwise scroll the body (DOWN = earlier, UP = later); elsewhere without pages they do nothing (they are never Cancel).
+- **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. In Settings, back goes up one level (sub-screen → parent → Settings → Apps). They only move between pages; in the note editor they hide the keyboard if it is open, otherwise scroll the body (DOWN = earlier, UP = later); elsewhere without pages they do nothing (they are never Cancel).
 - **Press top button = Home**, from any screen. **Swipe up from the bottom edge = Home** too (start in the bottom 15 px, y ≥ 785; keys ignore touches that start there).
 - **Hold top button = talk to AI** (V2). Sleep is by idle timer, not a button hold.
 - **Long-tap a to-do row = edit.** Tap = tick.
@@ -63,7 +63,7 @@ Pin map (from the open-source sticky-2048 firmware):
 | Home & system | 01 Home · 01a Apps · 01b Sleep (Home with a moon in the status bar) · 01c Home (no tasks today) · 01d Sleep (no tasks today) |
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task / changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note / changes (confirm) |
-| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04f Location · 04g Temperature · 04h About · 04i SD Card · 04j Web setup · 06 Phone setup page |
+| Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04f Location · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 06 Phone setup page |
 
 **Layout & type (all Sticky screens; not the phone setup page):**
 - Font: **JetBrains Mono** (Regular, Bold, ExtraBold). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
@@ -75,11 +75,13 @@ Pin map (from the open-source sticky-2048 firmware):
 - Task deadline: under DEADLINE (OPTIONAL) the editor has two rows, `Date Off ›` and `Time Off ›` (values `17/11/26`, `09:00` once set). Date (02c) = toggle + calendar + Done; Time (02h) = toggle + HH:MM fields + number pad (Done on the pad). Cancel undoes that screen. Date only = date-only `@due`; Time only = today at that time; both off = no deadline.
 - Editing: every keyboard's last key is **↵** (no "Done" text; the 02h time keypad too). In one-line fields (task, note title) ↵ only hides the keyboard; in the note body ↵ = new line and UP/DOWN hide the keyboard. Tap a field to bring the keyboard back. The cursor is always at the end of the text. Shift turns on by itself at the start of a field or line and after ". " / "! " / "? " (one letter, like a phone). Also like a phone: two spaces after a word make ". ", and a space on the 123 page goes back to letters. Empty fields show an Italic placeholder (*Task*, *Title*, body hint); a focused field shows it with the cursor after it until tapped or typed in. Edit task / Edit note have **Save** and **Delete** buttons; New task / New note have **Save**. Delete always opens a confirmation (Cancel / Delete). Home (top button or bottom-edge swipe) in a task or note editor (incl. the task's Date/Time) asks first when work would be lost: a New task / New note with text typed → 02i / 03h *Discard task? / Discard note?*; an Edit that changed the text, title, body or deadline → *Discard changes?*. Discard = drop it and go Home (the saved item stays as it was), Cancel = back exactly as it was. Nothing typed / nothing changed: Home goes straight there. On the warning the top button does nothing.
 
-**Settings (08):** Auto-rotate (toggle) · Sound (toggle) · Language & Font › · Software Update › · Configuration › · About ›. Same layout as Seeed's official Sticky firmware.
+**Settings (04):** Auto-rotate (toggle) · Sound (toggle, off by default) · Language & Font › · Software Update › · Configuration › · Web setup › · About ›. Same layout as Seeed's official Sticky firmware, plus Web setup. Language & Font and Software Update do nothing until TASK-14 / TASK-13.
 - **Language & Font:** System Language › (English / Tiếng Việt checkboxes) · User Font › (built-in or any `.fpack` in `/fonts/` on the microSD, exported with Seeed Font Tool, same as the official firmware).
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9).
-- **Configuration:** City › (Location search) · Timezone (follows the city, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes).
-- **About:** Name, SN, MAC, Software version, Certifications ›, SD card › (Inserted, Mounted, Path, Space, Files ›).
+- **Configuration:** City › (Location search) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
+- **Location (04f):** "Now: {city}" + "{timezone} · UTC±h"; type a name, ↵ searches (Open-Meteo geocoding, up to 5 places, keyboard hides to show them; each shows "{region}, {country}"); tap one to save city/lat/lon/timezone and fetch its weather. "Offline" without Wi-Fi.
+- **Web setup (04j):** On/Off toggle in the top bar. On = address box, QR code and hotspot hint, and the phone setup page is served; Off = nothing below, page not served. Starts Off after every boot on Wi-Fi; always On in hotspot mode (it is the only way to set up).
+- **About:** Name, SN (eFuse BLOCK3, 18 digits), MAC, Software version, Certifications, SD card › (04i: Inserted, Mounted, Path, Space, Files › → 04k SD Files: every file by path with its size, 9 per page).
 - **Auto-rotate:** setting is stored; no screen supports rotation yet (needs the IMU).
 | AI voice (V2) | 05 Listening · 05a Working · 05b Review (only when unsure) · 05c Done · 05d Failed |
 
@@ -203,12 +205,11 @@ HeySticky/
 - [x] AI providers are OpenAI-compatible and user-configurable (DeepSeek for chat; a separate speech-to-text provider, since DeepSeek has no audio API)
 - [ ] Device + microSD card needed on USB-C from TASK-02
 - [ ] Deadline reminder beeps — V3 unless pulled into V1
-- [ ] SN: where the factory firmware stores it is unknown (efuse user block? an NVS/factory partition?). Read the device's partition table before the first flash; if our merged `.bin` would overwrite it, back it up and keep that partition
+- [x] SN: in eFuse BLOCK3 (user data), first 8 bytes little-endian, printed as 18 digits like the factory firmware's `%018llu` (this Sticky: 123456789012345678). eFuse is never touched by flashing
 - [ ] MAC: read from efuse (`esptool read_mac`; `ESP.getEfuseMac()` in firmware) — no unknowns
-- [ ] Certifications: not readable from the chip; show static text copied from the device label / Seeed's regulatory docs
+- [ ] Certifications: not readable from the chip, and the factory firmware has no certification text either. About shows the Figma placeholder "FCC · CE" until the text on the device label is confirmed
 - [ ] `.fpack` format is Seeed's; confirm it is documented or use our own font format
-- [ ] Wi-Fi, Web setup, Your name and Sleep after are no longer in Settings — decide where they live (phone setup page only?)
-  - Interim (TASK-04): Wi-Fi and Your name are set only on the phone setup page.
+- [x] Web setup is a row in Settings (below Configuration). Wi-Fi and Your name are set only on the phone setup page. Sleep after: decide with TASK-11
 - [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
 - [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
 - [x] BQ27220 runs at 10× scale (factory config: design/full-charge capacity 7500 mAh for the 750 mAh cell), so its mA are divided by `GAUGE_SCALE` = 10 in `hw.h`. Its data memory is sealed (read-only check, 2026-11-17); we never write to the gauge. Charging stops by itself at full (100%, 0 mA, FC flag set)
@@ -258,7 +259,10 @@ Firmware string table for TASK-14; the Figma "Tiếng Việt (VI)" section uses 
 | about / name / sw_ver / certs | About / Name / Software version / Certifications | Thông tin / Tên / Phiên bản / Chứng nhận |
 | sd / free / inserted / mounted / path / space / files | SD card / {x} free / Inserted / Mounted / Path / Space / Files | Thẻ SD / Trống {x} / Đã lắp / Đã gắn / Đường dẫn / Dung lượng / Tệp |
 | yes / on | Yes / On | Có / Bật |
-| web_setup / open_phone / same_wifi / stop_web | Web setup / Open this on your phone / Use the same Wi-Fi. / Stop web setup | Cài đặt qua web / Mở trên điện thoại / Dùng cùng mạng Wi-Fi. / Dừng cài đặt web |
+| web_setup / open_phone / same_wifi | Web setup / Open this on your phone / Use the same Wi-Fi. | Cài đặt qua web / Mở trên điện thoại / Dùng cùng mạng Wi-Fi. |
+| join_wifi / scan_join | Join this Wi-Fi / Scan to join, then open | Kết nối Wi-Fi này / Quét để kết nối, rồi mở |
+| sd_files / no_files | SD Files / No files | Tệp trên thẻ SD / Không có tệp |
+| searching / no_match / search_failed | Searching… / No match / Search failed | Đang tìm… / Không tìm thấy / Tìm thất bại |
 | hotspot | No Wi-Fi yet? Join the hotspot "HeySticky-Setup", then open 192.168.4.1 | Chưa có Wi-Fi? Kết nối điểm phát "HeySticky-Setup", rồi mở 192.168.4.1 |
 | ai_listening / ai_working | Listening… / Working on it… | Đang nghe… / Đang xử lý… |
 | ai_steps | Heard you / Sorting it out… / Saving… | Đã nghe / Đang phân loại… / Đang lưu… |
