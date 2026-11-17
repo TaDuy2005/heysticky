@@ -428,6 +428,9 @@ inline void userfont_tap(int y) {
   if (r < 0) return;
   hw_beep(30);
   const String name = r ? g_fontNames[r - 1] : "";
+  if (name == cfg_get("font")) return;
+  draw_userfont(r, true);
+  ui_partial(0, 0, W, H);  // tick + Loading... now; reading 13 files from the card takes a few seconds
   cfg_set("font", font_apply(name) ? name : "");  // a bad or missing font file falls back to built-in
   show(SCR_USERFONT);
 }
