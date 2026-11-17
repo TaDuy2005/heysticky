@@ -209,13 +209,19 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .warn{border:2px solid #000;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:600;margin:0 0 22px}
 .pv{border:1px solid #000;border-radius:8px;padding:16px;margin:0 0 22px}.pv small{display:block;font-size:12px;margin:12px 0 2px}.pv small:first-child{margin-top:0}
 .pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .x{background:none;border:0;padding:0;font-weight:600}.btn:disabled{opacity:.35}
+.sh{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}.tag{border:1.5px solid #000;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:600}
+.sd{font-size:13px;line-height:1.4;margin:10px 0 0}.sec{margin-bottom:22px}.sec .sd+label{margin-top:10px}
+textarea{display:block;width:100%;height:160px;font:14px/1.35 -apple-system,system-ui,sans-serif;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
+.up{display:flex;gap:10px;align-items:center;margin-top:6px}.up button{flex:none;height:44px;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;font-size:15px;font-weight:600}.up small{font-size:12px;line-height:1.4}
+.foot{font-size:13px;line-height:1.4;margin:0}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
 <div class="c" id="v-setup"><div class="g">
 <button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
 <button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
-<button class="r" id="rf"><b class="n" id="lf">Fonts</b><span id="fv"></span><span class="ch">›</span></button></div></div>
+<button class="r" id="rf"><b class="n" id="lf">Fonts</b><span id="fv"></span><span class="ch">›</span></button>
+<button class="r" id="ri"><b class="n" id="li">Integrations</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -224,6 +230,8 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 <div class="c" id="v-det" hidden></div>
 <div class="c" id="v-fonts" hidden></div>
 <div class="c" id="v-addfont" hidden></div>
+<div class="c" id="v-integ" hidden></div>
+<div class="c" id="v-ai" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -248,10 +256,10 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
 
 function go(v,d){view=v;det=d||'';
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
- if(v==='fonts')fontsView();if(v==='addfont')addView();
+ if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();
  render();scrollTo(0,0)}
-$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':'setup');
-$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');
+$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':view==='ai'?'integ':'setup');
+$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');$('ri').onclick=()=>go('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
@@ -263,11 +271,12 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông')}[view];
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI'}[view];
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
- $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');
+ $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');$('li').textContent=L('Integrations','Tích hợp');
+ $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
  $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');$('fv').textContent=S.font||L('Default','Mặc định');
  if(view==='wifi'){const w=$('v-wifi');w.replaceChildren();
@@ -398,6 +407,36 @@ function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLeng
  v.replaceChildren(E('label',{htmlFor:'fname',textContent:L('Font name','Tên phông')}),nm,E('h2',{style:'margin-top:22px',textContent:L('Font files','Tệp phông')}),E('div',{className:'g'},...rows),warn,
   E('h2',{textContent:L('Preview — as on the Sticky','Xem trước — như trên Sticky')}),pv,
   E('p',{className:'note',style:'margin:0',textContent:L('Numbers on Home and the clock keep the built-in font.','Số trên Trang chủ và đồng hồ vẫn dùng phông có sẵn.')}),upb,msg)}
+// ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in V3. ----------
+function integView(){const r=E('button',{className:'r'},E('b',{className:'n',textContent:'AI'}),E('span',{className:'ch',textContent:'›'}));
+ r.onclick=()=>go('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
+async function aiView(){const v=$('v-ai');v.replaceChildren();let A;
+ try{A=await(await api('/api/ai')).json()}catch(e){alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return}
+ const SAME=L('Same as speech-to-text','Giống mục giọng nói thành chữ'),inp={};
+ const field=(k,lab,val,ph,pw)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:200});
+  return[E('label',{htmlFor:'a-'+k,textContent:lab}),inp[k]]};
+ const head=(t,d)=>[E('h3',{className:'sh'},t,E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')})),E('p',{className:'sd',textContent:d})];
+ const keyPh=h=>h||L('Paste your API key','Dán khoá API');
+ const s1=E('div',{className:'sec'},...head(L('Speech-to-text','Giọng nói thành chữ'),L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')),
+  ...field('stt_url',L('Base URL','URL gốc'),A.stt_url),...field('stt_model',L('Model','Mô hình'),A.stt_model),...field('stt_key',L('API key','Khoá API'),'',keyPh(A.stt_key),1));
+ const ta=E('textarea',{id:'a-notes',value:A.notes||'',maxLength:2000,placeholder:'# Title\n## Key points\n- …\n## Action items\n- [ ] …\n'+L('Keep it short. Write in English.','Viết ngắn gọn. Viết bằng tiếng Việt.')});
+ const file=E('input',{type:'file',accept:'.txt,text/plain',hidden:true}),upb=E('button',{type:'button'},H(svg(18,'<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 15v4h14v-4"/>')),' '+L('Upload .txt','Tải lên .txt'));
+ upb.style.display='flex';upb.style.alignItems='center';upb.style.gap='8px';upb.onclick=()=>file.click();
+ file.onchange=async()=>{const f=file.files[0];if(!f)return;let t=await f.text();file.value='';
+  if([...t].length>2000){t=[...t].slice(0,2000).join('');alertBox(L('The file is longer than 2,000 characters','Tệp dài hơn 2.000 ký tự'),L('Only the first 2,000 were kept.','Chỉ giữ 2.000 ký tự đầu.'))}ta.value=t};
+ const s2=E('div',{className:'sec'},...head(L('AI for notes & to-dos','AI cho ghi chú & việc cần làm'),L('Writes notes using your instructions and splits to-dos. Works with DeepSeek, OpenAI, or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với DeepSeek, OpenAI hoặc mọi API /chat/completions kiểu OpenAI.')),
+  ...field('ai_url',L('Base URL','URL gốc'),A.ai_url,SAME),...field('ai_model',L('Model','Mô hình'),A.ai_model),...field('ai_key',L('API key','Khoá API'),'',A.ai_key||SAME,1),
+  E('label',{htmlFor:'a-notes',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),E('p',{className:'sd',style:'margin:0 0 6px',textContent:L('Tell the AI how to write your notes: an outline, a template, or rules.','Cho AI biết cách viết ghi chú: dàn ý, mẫu hoặc quy tắc.')}),ta,
+  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')})),file);
+ if(!A.sd){ta.disabled=upb.disabled=true;ta.placeholder=L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.')}
+ const save=E('button',{className:'btn k',style:'margin-top:0',textContent:L('✓  Save to Sticky','✓  Lưu vào Sticky')});
+ save.onclick=async()=>{const b={notes:ta.value};for(const k in inp)b[k]=inp[k].value.trim();
+  if(!b.stt_url||!b.stt_model||!b.ai_model)return alertBox(L('Fill in the URL and both models','Hãy điền URL và cả hai mô hình'));
+  save.disabled=true;
+  try{const r=await api('/api/ai',b);if(r.status===503)throw L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.');if(!r.ok)throw '';
+   save.textContent=L('✓  Saved','✓  Đã lưu');setTimeout(()=>go('integ'),900)}
+  catch(e){save.disabled=false;alertBox(L('Couldn\'t save','Không lưu được'),typeof e==='string'?e:'')}};
+ v.replaceChildren(s1,s2,save)}
 load();setInterval(load,1500);
 </script></body></html>)HTML";
 
@@ -592,6 +631,85 @@ inline void api_city() {
   send_json(out);
 }
 
+// ---------- AI (06h): speech-to-text + AI for notes & to-dos, both OpenAI-compatible (PLAN_AI.md) ----------
+// Defaults: one OpenRouter key for both. An empty AI URL / key means "same as speech-to-text".
+constexpr const char *AI_URL_DEF = "https://openrouter.ai/api/v1";
+constexpr const char *STT_MODEL_DEF = "openai/whisper-large-v3";
+constexpr const char *AI_MODEL_DEF = "~deepseek/deepseek-flash-latest";
+constexpr const char *NOTE_INSTR_PATH = "/ai/note-instructions.txt";
+constexpr size_t NOTE_INSTR_MAX = 2000;  // characters
+
+// Keys never go back to the browser: only their first few characters, to show which one is saved.
+inline String key_hint(const char *k) {
+  const String s = cfg_get(k);
+  return s.length() ? s.substring(0, min<unsigned>(6, s.length() / 3)) + "••••" : "";
+}
+inline size_t utf8_len(const String &s) {
+  size_t n = 0;
+  for (const char c : s) n += (uint8_t(c) & 0xC0) != 0x80;
+  return n;
+}
+inline bool url_ok(const String &u) { return u.isEmpty() || ((u.startsWith("https://") || u.startsWith("http://")) && text_ok(u, 200) && u.indexOf(' ') < 0); }
+inline bool notes_ok(const String &s) {  // multi-line text: line breaks and tabs allowed, other control characters not
+  if (utf8_len(s) > NOTE_INSTR_MAX) return false;
+  for (const char c : s)
+    if ((uint8_t(c) < 0x20 && c != '\n' && c != '\r' && c != '\t') || c == 0x7f) return false;
+  return true;
+}
+
+inline void api_ai_get() {
+  if (!ap_only()) return;
+  JsonDocument d;
+  d["stt_url"] = cfg_get("stt_url", AI_URL_DEF);
+  d["stt_model"] = cfg_get("stt_model", STT_MODEL_DEF);
+  d["stt_key"] = key_hint("stt_key");
+  d["ai_url"] = cfg_get("ai_url");
+  d["ai_model"] = cfg_get("ai_model", AI_MODEL_DEF);
+  d["ai_key"] = key_hint("ai_key");
+  d["sd"] = g_sdOk;
+  if (g_sdOk) {
+    File f = SD.open(NOTE_INSTR_PATH);
+    if (f) { d["notes"] = read_upto(f, NOTE_INSTR_MAX * 4); f.close(); }
+  }
+  send_json(d);
+}
+
+// An empty key field keeps the saved key. Note instructions go to the card (written as .tmp, then renamed).
+inline void api_ai_save() {
+  if (!ap_only()) return;
+  String su = g_web.arg("stt_url"), sm = g_web.arg("stt_model"), sk = g_web.arg("stt_key");
+  String au = g_web.arg("ai_url"), am = g_web.arg("ai_model"), ak = g_web.arg("ai_key");
+  const String notes = g_web.arg("notes");
+  for (String *s : {&su, &sm, &sk, &au, &am, &ak}) s->trim();
+  while (su.endsWith("/")) su.remove(su.length() - 1);
+  while (au.endsWith("/")) au.remove(au.length() - 1);
+  if (su.isEmpty() || sm.isEmpty() || am.isEmpty() || !url_ok(su) || !url_ok(au) || !text_ok(sm, 100) || !text_ok(am, 100) ||
+      !text_ok(sk, 200) || !text_ok(ak, 200) || !notes_ok(notes))
+    return api_reply(400, "Invalid input");
+  File cur = g_sdOk ? SD.open(NOTE_INSTR_PATH) : File();
+  const bool same = cur ? read_upto(cur, NOTE_INSTR_MAX * 4) == notes : notes.isEmpty();
+  if (cur) cur.close();
+  if (!same) {
+    if (!g_sdOk) return api_reply(503, "No SD card");
+    if (!SD.exists("/ai")) SD.mkdir("/ai");
+    SD.remove(NOTE_INSTR_PATH);
+    if (notes.length()) {
+      const char *tmp = "/ai/note-instructions.tmp";
+      File f = SD.open(tmp, FILE_WRITE);
+      const bool ok = f && f.print(notes) == notes.length();
+      if (f) f.close();
+      if (!ok || !SD.rename(tmp, NOTE_INSTR_PATH)) return api_reply(500, "SD write failed");
+    }
+  }
+  cfg_set("stt_url", su);
+  cfg_set("stt_model", sm);
+  cfg_set("ai_url", au);
+  cfg_set("ai_model", am);
+  if (sk.length()) cfg_set("stt_key", sk);
+  if (ak.length()) cfg_set("ai_key", ak);
+  api_reply(200, "OK");
+}
+
 // Returns true when a network is saved; false = first setup, the hotspot is already on.
 inline bool net_begin() {
   WiFi.persistent(false);  // our own store.h holds the networks
@@ -615,6 +733,8 @@ inline bool net_begin() {
   g_web.on("/api/fonts", HTTP_GET, api_fonts);
   g_web.on("/api/font", HTTP_POST, api_font_done, api_font_part);
   g_web.on("/api/font_del", HTTP_POST, api_font_del);
+  g_web.on("/api/ai", HTTP_GET, api_ai_get);
+  g_web.on("/api/ai", HTTP_POST, api_ai_save);
   g_web.onNotFound([] {  // captive portal: any other address -> the page
     if (!ap_only()) return;
     g_web.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/");
