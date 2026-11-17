@@ -11,7 +11,7 @@
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
-                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT };  // Settings last
+                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -101,7 +101,7 @@ inline void home_today(int n) {
 inline void draw_home() {
   display.fillScreen(PAPER);
   g_shown.battery = ui_battery_pct();
-  g_shown.wifi = WiFi.status() == WL_CONNECTED;
+  g_shown.wifi = !g_asleep && WiFi.status() == WL_CONNECTED;
   g_shown.plugged = g_plugged;
   ui_status_bar(g_shown.battery);
   const String name = cfg_get("name");
@@ -136,14 +136,15 @@ inline void home_tick() {
     ui_partial(40, 288, 400, 143);
   }
   String temp, hum;
-  read_indoor(temp, hum);
+  if (g_asleep && !clock.endsWith("0")) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
+  else read_indoor(temp, hum);
   if (temp != g_shown.indoor || hum != g_shown.humidity) {
     g_shown.indoor = temp; g_shown.humidity = hum;
     home_indoor(temp, hum);
     ui_partial(40, 445, 400, 102);
   }
   const int pct = ui_battery_pct();
-  const bool wifi = WiFi.status() == WL_CONNECTED;
+  const bool wifi = !g_asleep && WiFi.status() == WL_CONNECTED;  // asleep: the moon stays, Wi-Fi comes and goes
   if (pct != g_shown.battery || wifi != g_shown.wifi || g_plugged != g_shown.plugged) {
     g_shown.battery = pct; g_shown.wifi = wifi; g_shown.plugged = g_plugged;
     ui_status_bar(pct);
@@ -180,6 +181,7 @@ inline int apps_hit(int x, int y) {
 
 // ---------- navigation ----------
 inline Screen g_discardBack = SCR_TASK;  // 02i/03h Cancel returns here
+inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Sleep after counts from here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
 inline const char *discard_question() {
@@ -214,6 +216,7 @@ inline void draw_screen() {
     case SCR_LANGFONT: draw_langfont(); break;
     case SCR_SYSLANG: draw_syslang(); break;
     case SCR_USERFONT: draw_userfont(); break;
+    case SCR_SLEEP: draw_sleep(); break;
   }
 }
 
@@ -353,6 +356,15 @@ inline void temp_tap(int y) {
   g_redraw = true;
 }
 
+inline void sleep_tap(int y) {
+  const int r = srow_at(y, SROW_H, SLEEP_N);
+  if (r < 0) return;
+  hw_beep(30);
+  g_sleepMin = SLEEP_CHOICES[r];
+  cfg_set("sleep_min", String(g_sleepMin));
+  g_redraw = true;
+}
+
 // ---------- touch ----------
 inline bool in(int x, int y, int x0, int y0, int w, int h) { return x >= x0 && x < x0 + w && y >= y0 && y < y0 + h; }
 inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  // Cancel / Clear / Back
@@ -389,6 +401,7 @@ inline void settings_tap(int x, int y) {
     case SR_ROTATE: cfg_set("rotate", set_rotate() ? "0" : "1"); g_redraw = true; break;
     case SR_SOUND: g_sound = !g_sound; cfg_set("sound", g_sound ? "1" : "0"); hw_beep(30); g_redraw = true; break;
     case SR_CONFIG: hw_beep(30); show(SCR_CONFIG); break;
+    case SR_SLEEP: hw_beep(30); show(SCR_SLEEP); break;
     case SR_WEB: hw_beep(30); show(SCR_WEBSETUP); break;
     case SR_ABOUT: hw_beep(30); show(SCR_ABOUT); break;
     case SR_UPDATE: hw_beep(30); show(SCR_UPDATE); break;
@@ -584,6 +597,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_LANGFONT: langfont_tap(y0); return;
     case SCR_SYSLANG: syslang_tap(y0); return;
     case SCR_USERFONT: userfont_tap(y0); return;
+    case SCR_SLEEP: sleep_tap(y0); return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(30); open_todo(); }
       return;
@@ -639,6 +653,7 @@ inline void screens_input() {
   static bool holding = false, pressing = false, consumed = false;  // consumed: DOWN already acted
   TouchEv e;
   while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
+    g_lastInput = millis();
     if (e.down) {
       x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; consumed = false;
       int k;
@@ -664,6 +679,7 @@ inline void screens_input() {
   }
 
   if (HwButton b = hw_buttons_poll()) {
+    g_lastInput = millis();
     hw_beep(b == BTN_TOP_LONG ? 120 : 30);
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();

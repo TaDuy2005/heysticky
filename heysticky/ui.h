@@ -58,6 +58,7 @@ inline void ui_card_dashed(int x, int y, int w, int h, int r, int stroke) {
 
 // ---------- status bar (Figma StatusBar, 40 px) ----------
 inline bool g_plugged = false;  // external power present: the status bar shows the bolt (set by ui_battery_pct)
+inline bool g_asleep = false;  // Sleep after (power.h): status bar shows the moon
 inline bool g_webOn = false;  // 04j toggle: hotspot + phone setup page (status bar shows the hotspot icon)
 inline int ui_battery_pct() {
   Battery b;
@@ -80,7 +81,8 @@ inline void ui_status_bar(int pct) {
   const int lx = g_plugged ? bx - 8 - 16 : bx;  // Figma StatusBar Mode=Charging: bolt between Wi-Fi and battery
   if (g_plugged) ui_icon(ICON_BOLT, lx, 5);
   const int wx = lx - 8 - 28;
-  if (WiFi.status() == WL_CONNECTED) ui_icon(ICON_WIFI, wx, 6);
+  if (g_asleep) ui_icon(ICON_MOON, wx, 6);
+  else if (WiFi.status() == WL_CONNECTED) ui_icon(ICON_WIFI, wx, 6);
   if (g_webOn) ui_icon(ICON_HOTSPOT, wx - 8 - 28, 6);  // Figma StatusBar Hotspot=true; left of Wi-Fi's slot even when Wi-Fi is down
 }
 
