@@ -20,7 +20,6 @@ constexpr int SCAN_MAX = 20;
 
 inline WebServer g_web(80);
 inline DNSServer g_dns;
-inline bool g_webOn = false;  // 04j toggle: hotspot + phone setup page
 inline String g_apPass;       // new for every hotspot start
 inline WifiList g_wifi;       // saved networks, flash keys wifi0…wifi4
 inline ScanNet g_nets[SCAN_MAX];  // last scan, strongest entry per name. Not "g_scan": the ESP32 ROM owns that symbol
