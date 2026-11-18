@@ -13,14 +13,18 @@ constexpr uint32_t AI_TIMEOUT_MS = 30000;  // calibration knob: a 60 s clip take
 
 enum AiFail : uint8_t { AF_NONE, AF_SHORT, AF_NONET, AF_NOKEY, AF_STT, AF_EMPTY, AF_AI, AF_REPLY };
 
-struct AiCfg { String sttUrl, sttModel, sttKey, url, model, key, instr; };
+struct AiCfg {
+  String sttUrl, sttModel, sttKey, url, model, key, instr;
+  bool plain = false;  // 06h Plain text: a note keeps the exact transcript, the AI only picks to-do or note
+};
 
 inline AiCfg ai_cfg() {  // an empty AI URL or key means the speech-to-text one
   AiCfg c{cfg_get("stt_url", AI_URL_DEF), cfg_get("stt_model", STT_MODEL_DEF), cfg_get("stt_key"),
           cfg_get("ai_url"), cfg_get("ai_model", AI_MODEL_DEF), cfg_get("ai_key"), ""};
   if (c.url.isEmpty()) c.url = c.sttUrl;
   if (c.key.isEmpty()) c.key = c.sttKey;
-  if (g_sdOk) {
+  c.plain = cfg_get("ai_plain") == "1";
+  if (g_sdOk && !c.plain && cfg_get("ai_instr", "1") == "1") {  // 06h Note instructions toggle
     File f = SD.open(NOTE_INSTR_PATH);
     if (f) { c.instr = read_upto(f, NOTE_INSTR_MAX * 4); f.close(); }
   }

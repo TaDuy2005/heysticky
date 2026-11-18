@@ -615,6 +615,16 @@ inline void working_steps(int step) {
   ui_partial(40, WORK_Y, 400, WORK_H, INT_MAX);
 }
 
+// The transcript as is (05b Note, 06h Plain text): titled with its first words; characters the fonts can't draw are dropped.
+inline Note plain_note(String text) {
+  text = ui_drawable(F_R25, text);
+  text.trim();
+  Note n;
+  n.title = one_line(clip_chars(text, 30), TITLE_MAX);
+  n.body = utf8_cut(text, NOTE_BYTES - 3 - n.title.length());
+  return n;
+}
+
 // Saves on the main loop (the card shares the panel's SPI bus), ticks Saving on 05a, then 05c.
 inline void ai_save(const AiResult &r) {
   g_doneItems.clear();
@@ -656,6 +666,10 @@ inline void working_loop() {
   if (g_job.fail) return ai_fail(g_job.fail, g_job.code);
   g_aiText = g_job.text;
   g_aiSecs = mic_seconds();
+  if (g_job.r.kind == AI_NOTE && g_job.cfg.plain) {  // 06h Plain text: your words, minus what the fonts can't draw
+    g_job.r.note = plain_note(g_aiText);
+    if (g_job.r.note.body.isEmpty()) return ai_fail(AF_EMPTY, 0);
+  }
   if (g_job.r.kind == AI_UNSURE) { hw_beep(); show(SCR_REVIEW); return; }
   working_steps(2);  // Sorting it out ticked, Saving in progress
   ai_save(g_job.r);
@@ -671,8 +685,8 @@ inline void review_tap(int x, int y) {
     r.todos.push_back(t);
   } else if (in(x, y, 247, 619, 193, 72)) {
     r.kind = AI_NOTE;
-    r.note.title = one_line(clip_chars(g_aiText, 30), TITLE_MAX);
-    r.note.body = utf8_cut(g_aiText, NOTE_BYTES - 3 - r.note.title.length());
+    r.note = plain_note(g_aiText);
+    if (r.note.body.isEmpty()) return ai_fail(AF_EMPTY, 0);
   } else if (in(x, y, 40, 705, 400, 79)) { hw_beep(); show(g_listenBack); return; }  // then hold the top button again
   else return;
   hw_beep();

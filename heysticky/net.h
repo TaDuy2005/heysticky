@@ -214,6 +214,10 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 textarea{display:block;width:100%;height:160px;font:14px/1.35 -apple-system,system-ui,sans-serif;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
 .up{display:flex;gap:10px;align-items:center;margin-top:6px}.up button{flex:none;height:44px;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;font-size:15px;font-weight:600}.up small{font-size:12px;line-height:1.4}
 .foot{font-size:13px;line-height:1.4;margin:0}
+.tg{display:flex;align-items:center;gap:12px;margin-top:10px}.tg>div{flex:1}.tg label{margin:0}.tg .sd{margin:4px 0 0}
+input.sw{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:51px;height:29px;padding:0;border:2px solid #000;border-radius:15px;background:#fff}
+input.sw:before{content:'';position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#000;transition:left .15s}
+input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#fff}input.sw:disabled{opacity:.35}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
@@ -424,13 +428,18 @@ async function aiView(){const v=$('v-ai');v.replaceChildren();let A;
  upb.style.display='flex';upb.style.alignItems='center';upb.style.gap='8px';upb.onclick=()=>file.click();
  file.onchange=async()=>{const f=file.files[0];if(!f)return;let t=await f.text();file.value='';
   if([...t].length>2000){t=[...t].slice(0,2000).join('');alertBox(L('The file is longer than 2,000 characters','Tệp dài hơn 2.000 ký tự'),L('Only the first 2,000 were kept.','Chỉ giữ 2.000 ký tự đầu.'))}ta.value=t};
+ const sw=(id,on)=>E('input',{type:'checkbox',className:'sw',id,checked:!!on}),plain=sw('a-plain',A.plain),useN=sw('a-instr',A.instr);
+ const nbox=E('div',{},E('p',{className:'sd',style:'margin:6px 0',textContent:L('Tell the AI how to write your notes: an outline, a template, or rules.','Cho AI biết cách viết ghi chú: dàn ý, mẫu hoặc quy tắc.')}),ta,
+  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')})),file);
  const s2=E('div',{className:'sec'},...head(L('AI for notes & to-dos','AI cho ghi chú & việc cần làm'),L('Writes notes using your instructions and splits to-dos. Works with DeepSeek, OpenAI, or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với DeepSeek, OpenAI hoặc mọi API /chat/completions kiểu OpenAI.')),
   ...field('ai_url',L('Base URL','URL gốc'),A.ai_url,SAME),...field('ai_model',L('Model','Mô hình'),A.ai_model),...field('ai_key',L('API key','Khoá API'),'',A.ai_key||SAME,1),
-  E('label',{htmlFor:'a-notes',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),E('p',{className:'sd',style:'margin:0 0 6px',textContent:L('Tell the AI how to write your notes: an outline, a template, or rules.','Cho AI biết cách viết ghi chú: dàn ý, mẫu hoặc quy tắc.')}),ta,
-  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')})),file);
+  E('div',{className:'tg'},E('div',{},E('label',{htmlFor:'a-plain',textContent:L('Plain text','Văn bản gốc')}),
+   E('p',{className:'sd',textContent:L('Save your exact words as the note. The AI only picks to-do or note.','Lưu đúng lời bạn nói thành ghi chú. AI chỉ chọn việc cần làm hay ghi chú.')})),plain),
+  E('div',{className:'tg'},E('label',{htmlFor:'a-instr',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),useN),nbox);
+ const sync=()=>{useN.disabled=plain.checked;nbox.hidden=plain.checked||!useN.checked};plain.onchange=useN.onchange=sync;sync();
  if(!A.sd){ta.disabled=upb.disabled=true;ta.placeholder=L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.')}
  const save=E('button',{className:'btn k',style:'margin-top:0',textContent:L('✓  Save to Sticky','✓  Lưu vào Sticky')});
- save.onclick=async()=>{const b={notes:ta.value};for(const k in inp)b[k]=inp[k].value.trim();
+ save.onclick=async()=>{const b={notes:ta.value,plain:plain.checked?1:0,instr:useN.checked?1:0};for(const k in inp)b[k]=inp[k].value.trim();
   if(!b.stt_url||!b.stt_model||!b.ai_model)return alertBox(L('Fill in the URL and both models','Hãy điền URL và cả hai mô hình'));
   save.disabled=true;
   try{const r=await api('/api/ai',b);if(r.status===503)throw L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.');if(!r.ok)throw '';
@@ -666,6 +675,8 @@ inline void api_ai_get() {
   d["ai_url"] = cfg_get("ai_url");
   d["ai_model"] = cfg_get("ai_model", AI_MODEL_DEF);
   d["ai_key"] = key_hint("ai_key");
+  d["plain"] = cfg_get("ai_plain") == "1";
+  d["instr"] = cfg_get("ai_instr", "1") == "1";
   d["sd"] = g_sdOk;
   if (g_sdOk) {
     File f = SD.open(NOTE_INSTR_PATH);
@@ -705,6 +716,8 @@ inline void api_ai_save() {
   cfg_set("stt_model", sm);
   cfg_set("ai_url", au);
   cfg_set("ai_model", am);
+  cfg_set("ai_plain", g_web.arg("plain") == "1" ? "1" : "0");
+  cfg_set("ai_instr", g_web.arg("instr") == "0" ? "0" : "1");
   if (sk.length()) cfg_set("stt_key", sk);
   if (ak.length()) cfg_set("ai_key", ak);
   api_reply(200, "OK");
