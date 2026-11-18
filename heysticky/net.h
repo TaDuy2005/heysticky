@@ -176,7 +176,7 @@ inline void net_hotspot(bool on) {
 }
 
 // ---------- phone setup page (Figma 06–06f, 06l). One page; data through /api. ----------
-// System sans-serif (no web font: the hotspot has no internet). Integrations (06g–06k) stay hidden until V2.
+// System sans-serif (no web font: the hotspot has no internet). Integrations (06g–06k) stay hidden until Phase 2.
 inline const char PAGE[] PROGMEM = R"HTML(<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>HeySticky setup</title><style>
 *{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
@@ -411,7 +411,7 @@ function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLeng
  v.replaceChildren(E('label',{htmlFor:'fname',textContent:L('Font name','Tên phông')}),nm,E('h2',{style:'margin-top:22px',textContent:L('Font files','Tệp phông')}),E('div',{className:'g'},...rows),warn,
   E('h2',{textContent:L('Preview — as on the Sticky','Xem trước — như trên Sticky')}),pv,
   E('p',{className:'note',style:'margin:0',textContent:L('Numbers on Home and the clock keep the built-in font.','Số trên Trang chủ và đồng hồ vẫn dùng phông có sẵn.')}),upb,msg)}
-// ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in V3. ----------
+// ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in Phase 3. ----------
 function integView(){const r=E('button',{className:'r'},E('b',{className:'n',textContent:'AI'}),E('span',{className:'ch',textContent:'›'}));
  r.onclick=()=>go('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
 async function aiView(){const v=$('v-ai');v.replaceChildren();let A;
