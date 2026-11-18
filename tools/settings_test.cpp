@@ -60,5 +60,10 @@ int main() {
   bad = f; bad[24 + 8 + 2] = 1;                           // first glyph 256+ px wide
   assert(!vlw_ok(bad.data(), bad.size()));
 
+  // 04k folders: up one level, folder name, folders before files then A-Z ignoring case
+  assert(sd_parent("/fonts/NotoSans") == "/fonts" && sd_parent("/fonts") == "/" && sd_parent("/") == "/");
+  assert(sd_name("/fonts/NotoSans") == "NotoSans" && sd_name("/ai") == "ai");
+  assert(sd_before(true, "notes", false, "a.md") && !sd_before(false, "a.md", true, "notes"));
+  assert(sd_before(false, "B20.vlw", false, "i25.vlw") && !sd_before(true, "fonts", true, "AI"));
   puts("settings_test OK");
 }
