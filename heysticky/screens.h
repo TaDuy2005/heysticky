@@ -155,11 +155,11 @@ inline void home_tick() {
 }
 
 // ---------- Apps (01a) ----------
-struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool v3; };
+struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool later; };  // later: Phase 3, not built yet
 inline const Tile TILES[] = {
   {40, 126, &ICON_APP_TODO, "To-do", "Việc cần làm", false},   {250, 126, &ICON_APP_NOTE, "Notes", "Ghi chú", false},
-  {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home · V3", "Nhà · V3", true},
-  {40, 486, &ICON_APP_BOOK, "Reader · V3", "Đọc · V3", true},
+  {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home", "Nhà", true},
+  {40, 486, &ICON_APP_BOOK, "Reader", "Đọc", true},
 };
 
 inline void draw_apps() {
@@ -167,8 +167,14 @@ inline void draw_apps() {
   ui_status_bar(ui_battery_pct());
   ui_text(F_X32, TR("Apps", "Ứng dụng"), 40, 64, 42);
   for (const Tile &t : TILES) {
-    if (t.v3) ui_card_dashed(t.x, t.y, 190, 160, 14, 3);
-    else ui_card(t.x, t.y, 190, 160, 14, 3);
+    if (t.later) {  // dashed, with "Phase 3" under the name (the name and phase don't fit on one line)
+      ui_card_dashed(t.x, t.y, 190, 160, 14, 3);
+      ui_icon(*t.icon, t.x + 65, t.y + 16);
+      ui_text(F_B25, TR(t.label, t.vi), t.x + 95, t.y + 84, 33, AL_CENTER);
+      ui_text(F_R20, TR("Phase 3", "Giai đoạn 3"), t.x + 95, t.y + 117, 27, AL_CENTER);
+      continue;
+    }
+    ui_card(t.x, t.y, 190, 160, 14, 3);
     ui_icon(*t.icon, t.x + 65, t.y + 26);
     ui_text(F_B25, TR(t.label, t.vi), t.x + 95, t.y + 101, 33, AL_CENTER);
   }

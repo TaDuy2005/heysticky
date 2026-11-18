@@ -1,7 +1,7 @@
 # HeySticky — Project Plan
 
 Personal assistant firmware for the **Seeed reTerminal Sticky** (ESP32-S3, 3.97" e-paper).
-Home dashboard, to-dos with deadlines, notes on microSD, a phone setup page, and (V2) hold-to-talk AI.
+Home dashboard, to-dos with deadlines, notes on microSD, a phone setup page, and hold-to-talk AI. HeySticky V1 ships in three phases: 1 Core, 2 AI voice, 3 Integration (§5).
 
 - **Design (clickable prototype):** https://www.figma.com/design/SHu2RsGVk0D3wuorPdUztE (English section + a Tiếng Việt copy to its right; strings in §13)
 - **Display library:** https://github.com/Seeed-Studio/Seeed_GFX2 (`Seeed_Product::reTerminal_Sticky`)
@@ -43,14 +43,14 @@ Pin map (from the open-source sticky-2048 firmware):
 - Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials (20 while typing)
 - Measured on this unit: a partial refresh takes ~860 ms regardless of area. Touch is read by a FreeRTOS task on core 0 into a queue, so taps made during a refresh are applied in the next one; typing is silent (a beep per key cannot keep pace)
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
-- V2: any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`, e.g. DeepSeek)
+- Phase 2: any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`, e.g. DeepSeek)
 
 ## 3. Interaction model
 
 - **Touch** everything. Swipe left/right between pages (Home 1/2 ⇄ Apps 2/2, To-do and Notes pages, a note's pages; right on To-do / Notes page 1 → Apps, on a note's page 1 → Notes).
 - **DOWN = back**, same as swiping left-to-right; **UP = forward**, same as swiping right-to-left. In Settings, back goes up one level (sub-screen → parent → Settings → Apps). They only move between pages; in the note editor they hide the keyboard if it is open, otherwise scroll the body (DOWN = earlier, UP = later); elsewhere without pages they do nothing (they are never Cancel).
 - **Press top button = Home**, from any screen. **Swipe up from the bottom edge = Home** too (start in the bottom 15 px, y ≥ 785; keys ignore touches that start there).
-- **Hold top button = talk to AI** (V2). Sleep is by idle timer, not a button hold.
+- **Hold top button = talk to AI** (Phase 2). Sleep is by idle timer, not a button hold.
 - **Long-tap a to-do row = edit.** Tap = tick.
 - **Note body box scrolls**: swipe up/down inside it moves a box-full (minus one line); a scrollbar shows on the right edge when the text doesn't fit. Typing jumps back to the end.
 - Partial refresh for small changes (typing, ticking); full refresh when changing screens.
@@ -84,32 +84,32 @@ Pin map (from the open-source sticky-2048 firmware):
 - **Fonts (06m) / Add font (06n), phone page:** 06m lists the fonts on the card (Delete each). 06n picks a TTF/OTF per style (Regular, Bold, ExtraBold, Italic); the browser renders it 1-bit (threshold 128, same characters as `tools/make_fonts.py`) into the 13 VLW slots and uploads them. A missing style warns and uses Regular; a font without Vietnamese letters warns. A 1-bit preview shows each style. Fonts are added only from the phone page; Seeed `.fpack` files are not read.
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9). Figma 04d shows only the up-to-date state; the others reuse its layout: Not checked yet / No Wi-Fi connection, Checking…, "v1.1.0 is available" + **Install v1.1.0**, Installing v1.1.0… 40% (refreshed every 10%, no button), Couldn’t check for updates, Update failed + **Try again**.
 - **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
-- **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until V2 (its fields would save keys nothing uses yet).
+- **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until Phase 2 (its fields would save keys nothing uses yet).
 - **City suggestions (06a):** from 2 letters, after a 0.3 s pause, up to 5 places ("{name}" + "{region}, {country}"). The Sticky looks them up through its own Wi-Fi; if it has no internet yet, the phone tries Open-Meteo itself; if neither works there is no list and the typed name is used (top match). Picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Units is set only on the Sticky (04g).
 - **Web setup (04j):** On/Off toggle in the top bar. **On** starts the hotspot `HeySticky-Setup` with a new random 8-character WPA2 password each time and shows: *Scan to join* + a Wi-Fi QR code (`WIFI:T:WPA;S:HeySticky-Setup;P:{password};;` — the phone camera joins it), "Wi-Fi HeySticky-Setup", "Password {password}", *Then open* `192.168.4.1` ("It may open by itself": captive portal). The Sticky stays on its home Wi-Fi while the hotspot is on (clock and weather keep going). **Off** stops the hotspot and the page; nothing below the top bar. Starts Off after boot, except with no saved network (first setup): then On by itself. The setup page is never served on the home network.
 - **About:** Name, SN (eFuse BLOCK3, 18 digits), MAC, Software version, Certifications, SD card › (04i: Inserted, Mounted, Path, Space, Files › → 04k SD Files: every file by path with its size, 9 per page).
 - **Auto-rotate:** setting is stored; no screen supports rotation yet (needs the IMU).
-| AI voice (V2) | 05 Listening · 05a Working · 05b Review (only when unsure) · 05c Done · 05d Failed |
+| AI voice (Phase 2) | 05 Listening · 05a Working · 05b Review (only when unsure) · 05c Done · 05d Failed |
 
 **Home:** "Hello, {name}", big clock + date, weather card (condition, temp, high/low, city), indoor temp + humidity (SHT40), Today card (number of to-dos due today, e.g. "3 tasks today"; "No tasks today" when none; tap → To-do), app dock (To-do, Notes, Home*, Reader*, Settings). *V3.
 
-## 5. Versions
+## 5. Phases (all V1)
 
-### V1 — core (offline-capable, Wi-Fi for time & weather)
+### Phase 1 — Core (offline-capable, Wi-Fi for time & weather)
 Wi-Fi + phone setup page, Home dashboard, To-do with optional deadlines, Notes, Settings/About, power management, release `.bin`.
 
-### V2 — AI voice
+### Phase 2 — AI voice
 Hold top button → record → speech-to-text → **Working** → **Done**. Only when the AI can't tell whether it's a to-do or a note does it show **Review** (transcript; choose **To-do** or **Note**, or **Record again**), then Done.
 - **To-do:** AI splits the sentence into items and extracts deadlines ("tomorrow at 9" → `@due`).
-- **Note:** AI writes the note following the user's **Note instructions** (outline/template/rules, typed or uploaded as .txt on the phone setup page, max 2,000 characters); "Plain (no AI)" saves the transcript as-is.
+- **Note:** AI writes the note following the user's **Note instructions** (outline/template/rules, typed or uploaded as .txt on the phone setup page, max 2,000 characters); **Plain text** (06h toggle) saves the transcript as-is; the AI only picks to-do or note.
 - Done / Failed screens with the reason, plus success/fail beeps (if Sound is on).
 - Listening wave: while recording, partial-refresh only the wave strip (260×80) about 3×/s, bar heights from the mic level; bars go flat when silent. Full refresh when leaving Listening. Figma: `Waveform` component, Step 1→4 looping every 0.35 s.
 
-### V3 — later (each its own feature branch)
-Notion daily sync · Home Assistant dashboard · Reader · deadline reminder beeps (wake from sleep at due time) · Tailscale (experimental, community ESP-IDF libs only).
+### Phase 3 — Integration (each its own feature branch)
+Notion daily sync (to-dos, notes, and voice recordings passed to the phone over Bluetooth, then deleted from the card) · Home Assistant dashboard · Reader · deadline reminder beeps (wake from sleep at due time) · Tailscale (experimental, community ESP-IDF libs only).
 - **Bluetooth (BLE) link to a phone app** (noted 2026-11-17): the ESP32-S3 has BLE 5 and can run it next to Wi-Fi. Seeed's factory firmware uses it for "Bluetooth connect" with the SenseCraft app (notes, to-dos, photos, fonts, OTA). For us: send fonts, notes and to-dos from our own app without the hotspot. The app converts TTF/OTF into the 13 `.vlw` slots (the Sticky has no TrueType renderer); about 1.1 MB per font, so roughly 20–40 s at a realistic 30–60 KB/s. iPhone needs a native app (Safari has no Web Bluetooth); Chrome on Android / desktop could reuse the phone page's converter via Web Bluetooth. Costs a few hundred KB of flash for the BLE stack.
 
-## 6. V1 requirements
+## 6. Phase 1 requirements
 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
 - [x] REQ-02 Phone setup page saves Wi-Fi, name, city (with suggestions) — stored on the device only
@@ -129,7 +129,7 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
 
-## 7. V1 task list
+## 7. Phase 1 task list
 
 - [x] TASK-01 Pin core + libraries in `sketch.yaml`; compile Seeed's Sticky HelloWorld
 - [x] TASK-02 Flash HelloWorld; confirm on the real screen (needs device on USB-C)
@@ -157,13 +157,13 @@ Notion daily sync · Home Assistant dashboard · Reader · deadline reminder bee
                     - [x] Flash HelloWorld
 /notes/012.md       # Idea: sticky habit grid
                     Show a 7×5 grid …
-/ai/note-instructions.txt  (V2) how the AI writes notes, set on the phone setup page
+/ai/note-instructions.txt  (Phase 2) how the AI writes notes, set on the phone setup page
 /fonts/<Name>/<slot>.vlw  user font, one file per slot (R20 … I25), made by the phone page (06n)
 ```
 
 **Device flash (`Preferences`)** — never in source, never in the `.bin`:
 
-| Key | V1 | V2 |
+| Key | Phase 1 | Phase 2 |
 |---|---|---|
 | `wifi0`…`wifi4` = saved networks (SSID + password), most recently joined first (TASK-15; replaces `wifi_ssid`, `wifi_pass`) | ✓ | |
 | `name`, `city`, `lat`, `lon`, `tz`, `utc_off` (last UTC offset, seconds), `units`, `geo_city` (city that lat/lon belong to) | ✓ | |
@@ -207,7 +207,7 @@ HeySticky/
   tools/release.sh  release/vX.Y.Z/: four flash files + manifest.json + heysticky-app.bin
 ```
 
-## 11. Publishing (after V1 is tested)
+## 11. Publishing (after Phase 1 is tested)
 
 1. Public GitHub repo with source + MIT `LICENSE`.
 2. Export merged `.bin` (32 MB flash, DIO, 80 MHz) and test-flash it on the device.
@@ -220,7 +220,7 @@ HeySticky/
 - [x] Hold top button is reserved for AI; sleep is idle-only
 - [x] AI providers are OpenAI-compatible and user-configurable (DeepSeek for chat; a separate speech-to-text provider, since DeepSeek has no audio API)
 - [ ] Device + microSD card needed on USB-C from TASK-02
-- [ ] Deadline reminder beeps — V3 unless pulled into V1
+- [ ] Deadline reminder beeps — Phase 3 unless pulled into Phase 1
 - [x] SN: in eFuse BLOCK3 (user data), first 8 bytes little-endian, printed as 18 digits like the factory firmware's `%018llu` (this Sticky: 123456789012345678). eFuse is never touched by flashing
 - [ ] MAC: read from efuse (`esptool read_mac`; `ESP.getEfuseMac()` in firmware) — no unknowns
 - [ ] Certifications: not readable from the chip, and the factory firmware has no certification text either. About shows the Figma placeholder "FCC · CE" until the text on the device label is confirmed

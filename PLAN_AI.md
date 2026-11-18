@@ -1,6 +1,6 @@
-# HeySticky — AI voice plan (V2)
+# HeySticky — AI voice plan (Phase 2)
 
-Branch `feature/ai`. Spec context: PLAN.md §3 (hold top button = AI), §4 (screens 05–05d), §5 V2, §8 (keys), §13 (`ai_*` strings).
+Branch `feature/ai`. Spec context: PLAN.md §3 (hold top button = AI), §4 (screens 05–05d), §5 Phase 2, §8 (keys), §13 (`ai_*` strings).
 
 **Flow:** hold top button → **05 Listening** (record while held) → release → **05a Working** (transcribe → sort → save) → **05c Done**. If the AI can't tell to-do from note → **05b Review** (To-do / Note / Record again). Any error → **05d Failed**.
 
@@ -51,7 +51,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 `due` is `YYYY-MM-DD HH:MM`, `YYYY-MM-DD`, or absent. Text comes back in the system language (`Output language: English / Vietnamese`), translated from whatever was spoken, so mixed memos end up in one language the fonts can draw. `{"type":"unclear"}` = mumbling, noise, or speech-to-text inventing text (a short Chinese / Japanese / Korean phrase, "Thank you for watching") → 05d. Known gap (tested 2026-11-18): a fluent fake like "明天上午9点，9号楼" still becomes a to-do; a loudness gate before upload would catch it. The parser strips code fences and ignores text around the object; anything unreadable → 05d "AI service error".
 
 - To-dos → appended to `/todo.md` with `@due(…)` through `todo.h`.
-- Notes → a new `/notes/NNN.md` through `notes.h`. With **Plain (no AI)** on, the transcript is saved as the note body and the chat call is only used to decide to-do vs note.
+- Notes → a new `/notes/NNN.md` through `notes.h`. With **Plain text** on (06h toggle), the transcript is saved as the note body and the chat call is only used to decide to-do vs note.
 
 ## 5. Errors (05d)
 
@@ -73,9 +73,9 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 - [x] AI-05 `ai.h` sorting: chat request (§4), parse the reply, save to-dos / note; 05a Working steps (Heard you → Sorting it out… → Saving…). Device-tested 2026-11-18. DeepSeek ~1 s with `thinking` disabled (~4 s with it). Saving runs on the main loop (the card shares the panel's SPI bus). Replies come back in the system language; `unclear` (noise, fake subtitles) → 05d. A mumble once came back as Chinese text, which the fonts can't draw ("9 … 9" to-do), hence the translate rule (§4)
 - [x] AI-06 05b Review (transcript + To-do / Note / Record again), 05c Done (Added + list), 05d Failed (§5); EN + VI from Figma. Device-tested 2026-11-18. 05b saves the transcript as is (no AI). 05c buttons: Go to To-do / Go to Notes + Done (Figma 14:452 still says Try again). 05d Try again resends the same take for network / service failures
 - [x] AI-07 Host test `tools/ai_test.cpp`: WAV header, multipart body, JSON reply parsing (plain, fenced, wrapped in text, broken, each `type`). Needs ArduinoJson on the include path (README)
-- [x] AI-08 Phone page 06g Integrations → 06h AI (Figma, EN + VI): Speech-to-text and AI sections (Base URL, Model, API key each), Note instructions (type or upload .txt, 2,000 characters, saved to `/ai/note-instructions.txt`); Integrations row + keys footer on 06; `/api/ai` GET / POST. Keys come back only as a hint (`sk-or-••••`); an empty key field keeps the saved key. Notion, Home Assistant, Remote access stay hidden (V3). Device-tested 2026-11-18 (key saved from the phone, shown masked)
+- [x] AI-08 Phone page 06g Integrations → 06h AI (Figma, EN + VI): Speech-to-text and AI sections (Base URL, Model, API key each), Note instructions (type or upload .txt, 2,000 characters, saved to `/ai/note-instructions.txt`); Integrations row + keys footer on 06; `/api/ai` GET / POST. Keys come back only as a hint (`sk-or-••••`); an empty key field keeps the saved key. Notion, Home Assistant, Remote access stay hidden (Phase 3). Device-tested 2026-11-18 (key saved from the phone, shown masked)
 - [ ] AI-09 Device test: 5–10 clips each in English and Vietnamese (to-do, note, unsure, deadlines like "tomorrow at 9"); compare the saved clips against the §3 alternatives with `curl`; then stop writing `/ai/last.wav`
-- [ ] AI-10 Docs: PLAN §2, §5, §8, §12 and the V2 requirement list; README (how to get an OpenRouter key, cost, privacy note: audio goes to OpenRouter and the chosen model provider)
+- [ ] AI-10 Docs: PLAN §2, §5, §8, §12 and the Phase 2 requirement list; README (how to get an OpenRouter key, cost, privacy note: audio goes to OpenRouter and the chosen model provider)
 - [ ] AI-11 Release v1.1.0: `FW_VERSION`, `tools/release.sh v1.1.0`, GitHub Release, OTA test from v1.0.2
 - [ ] AI-12 Seeed registry: refresh the prepared entry to v1.1.0, add the device photo, `npm test` + `npm run validate`, then wait for confirmation before fork / PR / form
 
@@ -83,7 +83,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 
 - [x] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06. Checked by the user 2026-11-18: EN and VI frames exist
 - [x] Mic gain: ×2 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
-- [ ] "Plain (no AI)" (PLAN §5): not on Figma 06h; decide where it goes (06h toggle or a 05b choice) before AI-05
+- [x] "Plain (no AI)" → **Plain text** toggle on 06h under the AI key, plus a **Note instructions** toggle (hides the box; disabled while Plain text is on). Figma 06h EN + VI updated 2026-11-18. Plain notes drop characters the fonts can't draw; nothing left → 05d
 - [ ] No way to delete a saved key yet (only replace it)
 - [ ] AI-09: add mixed English / Vietnamese clips to the model comparison
 - [ ] Battery cost of one clip (mic + Wi-Fi + TLS); read it from the gauge during AI-09
