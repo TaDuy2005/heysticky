@@ -43,7 +43,7 @@ Pin map (from the open-source sticky-2048 firmware):
 - Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials (20 while typing)
 - Measured on this unit: a partial refresh takes ~860 ms regardless of area. Touch is read by a FreeRTOS task on core 0 into a queue, so taps made during a refresh are applied in the next one; typing is silent (a beep per key cannot keep pace)
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
-- Phase 2: any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`, e.g. DeepSeek)
+- Phase 2: PDM mic (clock GPIO19, data GPIO20, power GPIO38) recorded at 16 kHz mono into PSRAM, max 60 s. Any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`). Default: one [OpenRouter](https://openrouter.ai) key for `openai/whisper-large-v3` + `~deepseek/deepseek-flash-latest`. Both calls run in a FreeRTOS task (`ai.h`) so 05a can animate. Details, cost and tests: `PLAN_AI.md`
 
 ## 3. Interaction model
 
@@ -64,7 +64,7 @@ Pin map (from the open-source sticky-2048 firmware):
 | To-do | 02 To-do list · 02a New task (keyboard) · 02b New task (no keyboard) · 02c Date · 02d Edit task (keyboard) · 02e Edit task (no keyboard) · 02f Delete task (confirm) · 02g To-do (empty) · 02h Time · 02i Discard task (confirm) · 02j Discard changes (confirm) |
 | Notes | 03 Notes list · 03a New note (keyboard) · 03b New note (no keyboard) · 03c Note view · 03d Edit note (keyboard) · 03e Edit note (no keyboard) · 03f Delete note (confirm) · 03g Notes (empty) · 03h Discard note (confirm) · 03i Discard changes (confirm) |
 | Settings & setup | 04 Settings · 04a Language & Font · 04b System Language · 04c User Font · 04d Software Update · 04e Configuration · 04g Temperature · 04h About · 04i SD Card · 04j Web setup (On / Off) · 04k SD Files · 04l Sleep after · 04m Sound |
-| Phone setup page (served only on the hotspot) | 06 Setup · 06a City suggestions · 06b Wi-Fi · 06c Enter password · 06d Incorrect password · 06e Network details · 06f Forget network · 06g Integrations · 06h AI · 06i Notion · 06j Home Assistant · 06k Remote access · 06l Profile · 06m Fonts · 06n Add font |
+| Phone setup page (served only on the hotspot) | 06 Setup · 06a City suggestions · 06b Wi-Fi · 06c Enter password · 06d Incorrect password · 06e Network details · 06f Forget network · 06g Integrations · 06h AI · 06h1 Speech-to-text · 06h2 AI for notes & to-dos · 06h3 Testing / Connected / Couldn't connect · 06h4 Delete provider · 06i Notion · 06j Home Assistant · 06k Remote access · 06l Profile · 06m Fonts · 06n Add font |
 
 **Layout & type (all Sticky screens; not the phone setup page):**
 - Font: **JetBrains Mono** (Regular, Bold, ExtraBold), or the user font picked in 04c for text (digits stay JetBrains Mono). Minimum text size **25 px**; the status bar and the page counter are the only exceptions, at **20 px**.
@@ -84,7 +84,7 @@ Pin map (from the open-source sticky-2048 firmware):
 - **Fonts (06m) / Add font (06n), phone page:** 06m lists the fonts on the card (Delete each). 06n picks a TTF/OTF per style (Regular, Bold, ExtraBold, Italic); the browser renders it 1-bit (threshold 128, same characters as `tools/make_fonts.py`) into the 13 VLW slots and uploads them. A missing style warns and uses Regular; a font without Vietnamese letters warns. A 1-bit preview shows each style. Fonts are added only from the phone page; Seeed `.fpack` files are not read.
 - **Software Update:** current version, "up to date" / "update available", **Check for updates** button (OTA, see §9). Figma 04d shows only the up-to-date state; the others reuse its layout: Not checked yet / No Wi-Fi connection, Checking…, "v1.1.0 is available" + **Install v1.1.0**, Installing v1.1.0… 40% (refreshed every 10%, no button), Couldn’t check for updates, Update failed + **Try again**.
 - **Configuration:** City (display only, set on the phone setup page) · Timezone (UTC±h from the last weather reply, read-only) · Refresh interval (30 min, fixed) · Temperature › (°C / °F checkboxes; changing it fetches the weather again).
-- **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h: speech-to-text + AI for notes & to-dos + note instructions), Notion (06i), Home Assistant (06j), Remote access / Tailscale (06k), each with its own Save. Integrations is hidden until Phase 2 (its fields would save keys nothing uses yet).
+- **Phone setup page (06–06k), like iPhone Settings:** served only on the Sticky's hotspot (04j), at `192.168.4.1`. **06 Setup:** three rows — **Profile** "{name}" ›, **Wi-Fi** "{current network}" ›, **Integrations** ›. Sub-pages have the title on the left and a circled ‹ back button on the right. **06l Profile:** Your name, City (06a suggestions) and **Save to Sticky** (name + city; no restart). **06b Wi-Fi:** ✓ current network, **MY NETWORKS** (saved, up to 5, ⓘ), **OTHER NETWORKS** (the Sticky's scan, with 🔒 and signal 1–3), **Other…** (hidden network: name + password). Tap a saved or open network → join; a new secured one → 06c sheet like iOS (round ✕ = cancel and ✓ = join, Wi-Fi icon, *Join “{ssid}”*, *Enter the password to join this Wi-Fi network.*, pill Password field). The row shows "Joining…"; the Sticky tests the network while its hotspot stays up, so the phone keeps the page: success → ✓ on that row (saved, first in the list); router rejects the password → 06d *Incorrect password for "{ssid}"* (OK); not found / timeout → "Couldn't join". ⓘ → 06e details: Status, Signal, Security, IP address, **Forget This Network** → 06f *Forget "{ssid}"?* (Cancel / Forget). **06g Integrations:** AI (06h); Notion (06i), Home Assistant (06j) and Remote access / Tailscale (06k) stay hidden until Phase 3. **06h AI:** two rows, **Speech-to-text** and **AI for notes & to-dos**, each showing its saved model (or *Not set*) ›. **06h1 / 06h2** (one page per service, OPENAI-COMPATIBLE tag + description): a dashed **+ Add model provider** box → a form with Base URL, Model, API key and **Cancel / Save** → a saved line `{model}` with edit ✎ and delete 🗑. On 06h2 the URL and key may stay empty (*Same as speech-to-text*). **Save** shows 06h3 *Testing connection…* while the Sticky sends a tiny request (§9), then *Connected* (✓, OK → saved line) or *Couldn't connect* (✕, the reason, OK → the form stays filled in). Nothing is saved unless the test passes. Edit opens the form filled in; an empty key field keeps the saved key. Delete → 06h4 *Delete speech-to-text?* / *The API key will be removed from the Sticky.* (Cancel / Delete) → back to the dashed box. Below the 06h2 provider: **Plain text** and **Note instructions** toggles + the instructions box (type or upload .txt). No Save button: toggles save as they flip, the instructions when the box loses focus or a .txt is loaded.
 - **City suggestions (06a):** from 2 letters, after a 0.3 s pause, up to 5 places ("{name}" + "{region}, {country}"). The Sticky looks them up through its own Wi-Fi; if it has no internet yet, the phone tries Open-Meteo itself; if neither works there is no list and the typed name is used (top match). Picking one also sends its lat/lon, so the Sticky never guesses between same-name towns. Units is set only on the Sticky (04g).
 - **Web setup (04j):** On/Off toggle in the top bar. **On** starts the hotspot `HeySticky-Setup` with a new random 8-character WPA2 password each time and shows: *Scan to join* + a Wi-Fi QR code (`WIFI:T:WPA;S:HeySticky-Setup;P:{password};;` — the phone camera joins it), "Wi-Fi HeySticky-Setup", "Password {password}", *Then open* `192.168.4.1` ("It may open by itself": captive portal). The Sticky stays on its home Wi-Fi while the hotspot is on (clock and weather keep going). **Off** stops the hotspot and the page; nothing below the top bar. Starts Off after boot, except with no saved network (first setup): then On by itself. The setup page is never served on the home network.
 - **About:** Name, SN (eFuse BLOCK3, 18 digits), MAC, Software version, Certifications, SD card › (04i: Inserted, Mounted, Path, Space, Files › → 04k SD Files: every file by path with its size, 9 per page).
@@ -99,6 +99,7 @@ Pin map (from the open-source sticky-2048 firmware):
 Wi-Fi + phone setup page, Home dashboard, To-do with optional deadlines, Notes, Settings/About, power management, release `.bin`.
 
 ### Phase 2 — AI voice
+Built on `feature/ai` (2026-11-18); device test AI-09 and release AI-11 still open (`PLAN_AI.md`). Set up on the phone page (06h): add a speech-to-text and an AI provider; each is tested before it is saved.
 Hold top button → record → speech-to-text → **Working** → **Done**. Only when the AI can't tell whether it's a to-do or a note does it show **Review** (transcript; choose **To-do** or **Note**, or **Record again**), then Done.
 - **To-do:** AI splits the sentence into items and extracts deadlines ("tomorrow at 9" → `@due`).
 - **Note:** AI writes the note following the user's **Note instructions** (outline/template/rules, typed or uploaded as .txt on the phone setup page, max 2,000 characters); **Plain text** (06h toggle) saves the transcript as-is; the AI only picks to-do or note.
@@ -109,7 +110,9 @@ Hold top button → record → speech-to-text → **Working** → **Done**. Only
 Notion daily sync (to-dos, notes, and voice recordings passed to the phone over Bluetooth, then deleted from the card) · Home Assistant dashboard · Reader · deadline reminder beeps (wake from sleep at due time) · Tailscale (experimental, community ESP-IDF libs only).
 - **Bluetooth (BLE) link to a phone app** (noted 2026-11-17): the ESP32-S3 has BLE 5 and can run it next to Wi-Fi. Seeed's factory firmware uses it for "Bluetooth connect" with the SenseCraft app (notes, to-dos, photos, fonts, OTA). For us: send fonts, notes and to-dos from our own app without the hotspot. The app converts TTF/OTF into the 13 `.vlw` slots (the Sticky has no TrueType renderer); about 1.1 MB per font, so roughly 20–40 s at a realistic 30–60 KB/s. iPhone needs a native app (Safari has no Web Bluetooth); Chrome on Android / desktop could reuse the phone page's converter via Web Bluetooth. Costs a few hundred KB of flash for the BLE stack.
 
-## 6. Phase 1 requirements
+## 6. Requirements
+
+### Phase 1
 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
 - [x] REQ-02 Phone setup page saves Wi-Fi, name, city (with suggestions) — stored on the device only
@@ -128,6 +131,15 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - [x] REQ-15 Language English/Vietnamese; user fonts from `/fonts/<Name>/<slot>.vlw` (added on the phone page); built-in font covers Vietnamese diacritics
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
 - [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
+
+### Phase 2 (`PLAN_AI.md`)
+
+- [x] REQ-20 Hold the top button to record (max 60 s); release sends it; under 0.5 s → *I didn't catch that*
+- [x] REQ-21 Speech-to-text, then the AI saves to-dos (with deadlines) or a note; 05b Review only when it can't tell; 05c Done / 05d Failed with the reason; beeps if Sound is on
+- [x] REQ-22 Everything is written in the system language; noise or invented text → 05d, not a to-do (known gap: a fluent fake still passes)
+- [x] REQ-23 Phone page 06h: one page per service; Save tests the connection and saves only on success; edit and delete; keys never go back to the browser
+- [x] REQ-24 Note instructions (typed or .txt, max 2,000 characters, on the card) and Plain text, saved as they change
+- [ ] REQ-25 Device test: English and Vietnamese clips, deadlines, Review, Failed, the 06h test / edit / delete (AI-09)
 
 ## 7. Phase 1 task list
 
@@ -158,6 +170,7 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 /notes/012.md       # Idea: sticky habit grid
                     Show a 7×5 grid …
 /ai/note-instructions.txt  (Phase 2) how the AI writes notes, set on the phone setup page
+/ai/last.wav        (Phase 2, development only) the last recording, overwritten each take; removed in AI-09
 /fonts/<Name>/<slot>.vlw  user font, one file per slot (R20 … I25), made by the phone page (06n)
 ```
 
@@ -169,8 +182,9 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 | `name`, `city`, `lat`, `lon`, `tz`, `utc_off` (last UTC offset, seconds), `units`, `geo_city` (city that lat/lon belong to) | ✓ | |
 | `sound`, `vol`, `sleep_min` | ✓ | |
 | `rotate`, `lang`, `font`, `ota_last` | ✓ | |
-| `stt_url`, `stt_model`, `stt_key` | | ✓ |
-| `ai_url`, `ai_model`, `ai_key` | | ✓ |
+| `stt_url`, `stt_model`, `stt_key` — saved by a passed test on 06h1; set = a key is saved | | ✓ |
+| `ai_url`, `ai_model`, `ai_key` — saved by a passed test on 06h2; empty URL / key = speech-to-text's; set = a model is saved (none → *AI key missing*) | | ✓ |
+| `ai_plain` (Plain text, default 0), `ai_instr` (Note instructions, default 1) | | ✓ |
 
 ## 9. Network
 
@@ -180,6 +194,7 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - **City lookup:** `https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5` → lat/lon/timezone (phone page suggestions; the Sticky itself uses count=1 for a typed name)
 - **Weather:** `https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
 - **Time:** NTP; UTC offset from `utc_offset_seconds` in each weather reply (follows DST within 30 min, no timezone table)
+- **AI (Phase 2):** `POST {stt_url}/audio/transcriptions` (multipart WAV) and `POST {ai_url}/chat/completions`, `Authorization: Bearer {key}`. The 06h Save test sends 0.5 s of silence or a 16-token "Hi" chat; 401/403 → wrong key, 400/404/422 → check URL and model, no answer → couldn't reach
 - **HTTPS:** certificates checked with the ESP32 core's built-in root CA bundle (`useBuiltinCACertBundle()`)
 - **OTA:** `https://api.github.com/repos/{owner}/heysticky/releases/latest` → compare `tag_name` with the running version → download the release asset `heysticky-app.bin` over HTTPS → `HTTPUpdate` writes the inactive OTA slot. Each release publishes the app `.bin` as `heysticky-app.bin` (OTA) plus the four first-install files and `manifest.json`, all made by `tools/release.sh vX.Y.Z` into `release/vX.Y.Z/`. The tag is `vX.Y.Z` and must match `FW_VERSION` in `settings.h`. The repo is `OTA_REPO` in `ota.h`: `TaDuy2005/heysticky` (public, MIT). Rollback: the new image marks itself good at the end of `setup()`; a reset before that boots the old slot
 
@@ -202,6 +217,10 @@ HeySticky/
     power.h         Sleep after (light sleep, minute clock wake, 30-min sync) and shutdown (UP + DOWN, battery empty)
     lang.h          English / Vietnamese: g_vi + TR(en, vi)
     userfont.h      user fonts from /fonts/<Name>/ on the card (04c)
+    mic.h           PDM mic: power, record into PSRAM, level for the waveform (Phase 2)
+    ai_parse.h      prompt, multipart body, reply parsing (host test: tools/ai_test.cpp)
+    ai.h            speech-to-text + sorting in a task, 06h connection test
+    ai_ui.h         05 Listening · 05a Working · 05b Review · 05c Done · 05d Failed
   release/          exported .bin (git-ignored)
   tools/build.sh    compile / upload / export for 32 MB flash (home folder stripped from the .bin)
   tools/release.sh  release/vX.Y.Z/: four flash files + manifest.json + heysticky-app.bin
@@ -219,6 +238,7 @@ HeySticky/
 - [x] City is typed by the user (no IP geolocation)
 - [x] Hold top button is reserved for AI; sleep is idle-only
 - [x] AI providers are OpenAI-compatible and user-configurable (DeepSeek for chat; a separate speech-to-text provider, since DeepSeek has no audio API)
+- [x] AI keys are saved only after the Sticky has tested them (06h3), and each service can be deleted (06h4) (2026-11-18)
 - [ ] Device + microSD card needed on USB-C from TASK-02
 - [ ] Deadline reminder beeps — Phase 3 unless pulled into Phase 1
 - [x] SN: in eFuse BLOCK3 (user data), first 8 bytes little-endian, printed as 18 digits like the factory firmware's `%018llu` (this Sticky: 123456789012345678). eFuse is never touched by flashing

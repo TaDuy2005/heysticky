@@ -11,6 +11,8 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 - **To-do:** add, tick, edit (long-tap), delete with confirmation, optional deadline (date and/or time).
   Stored as plain Markdown in `/todo.md` on the microSD card.
 - **Notes:** create, view, edit, delete. One Markdown file per note in `/notes/`.
+- **AI voice:** hold the top button and talk. Speech-to-text, then an AI turns it into to-dos (with deadlines,
+  "tomorrow at 9") or a note written your way. English and Vietnamese. Needs an API key (see AI setup).
 - **On-screen keyboard** with phone-like auto-capitals and double-space full stop.
 - **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
   `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically).
@@ -29,6 +31,7 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 | Back / forward | DOWN / UP, or swipe right / left |
 | Tick a to-do | Tap it |
 | Edit a to-do | Long-tap it |
+| Talk to AI | Hold the top button while you speak (up to 60 s), then let go |
 | Wake from sleep | Press the top button |
 | Turn off | Hold UP + DOWN together for 3 s |
 | Turn on | Hold the top button for 2 s (a short tap does nothing) |
@@ -43,6 +46,33 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 Wi-Fi passwords and settings are kept in the Sticky's flash only. They are never in the source or the `.bin`,
 and the setup page is served only on the Sticky's own password-protected hotspot.
 
+## AI setup
+
+The Sticky does no speech recognition itself: your recording goes to a speech-to-text service and the text to a
+chat AI. Any OpenAI-compatible service works. The default is one [OpenRouter](https://openrouter.ai) key for both.
+
+1. Sign in at [openrouter.ai](https://openrouter.ai), add a few dollars of credit, then create a key under **Keys**
+   (it starts with `sk-or-`).
+2. On the Sticky turn on **Web setup** and open `192.168.4.1` on your phone (First setup).
+3. **Integrations › AI › Speech-to-text › + Add model provider.** The Base URL and model are filled in
+   (`https://openrouter.ai/api/v1`, `openai/whisper-large-v3`); paste your key and tap **Save**.
+   The Sticky sends a short test (half a second of silence) and saves the provider only if it answers.
+4. **AI for notes & to-dos › + Add model provider.** Leave Base URL and API key empty to use the same
+   OpenRouter key; the model is `~deepseek/deepseek-flash-latest`. Tap **Save** (tested with a one-word chat).
+5. Optional, on the same page: **Note instructions** (how notes should be written: an outline, a template or
+   rules; typed or uploaded as .txt, up to 2,000 characters) or **Plain text** (save your exact words).
+
+Use the pencil to change a provider and the bin to delete it (its key is removed from the Sticky). To stop a key
+working everywhere, also delete it on openrouter.ai.
+
+**Cost:** about $0.20 a month at 20 memos a day of 15 s each (Whisper ≈ $0.07, DeepSeek Flash ≈ $0.12), plus
+OpenRouter's fee when you buy credit (5.5 %, at least $0.80). Prices checked 2026-11-17.
+
+**Privacy:** each recording is sent over HTTPS to the speech-to-text service you set; with OpenRouter it is passed
+on to the model's provider. The transcript, your note instructions, the date, time and language go to the chat
+service. Nothing else leaves the Sticky. Keys stay in the Sticky's flash: the phone page only ever shows their first
+few characters, and they are never in the source or the `.bin`.
+
 ## microSD layout
 
 Plain text, readable on any computer:
@@ -53,6 +83,7 @@ Plain text, readable on any computer:
 /notes/012.md             # Title
                           Body text …
 /fonts/<Name>/<slot>.vlw  user font, one file per size/style, added from the phone page (Fonts)
+/ai/note-instructions.txt how the AI writes notes, set on the phone page (Integrations › AI)
 ```
 
 ## Install
