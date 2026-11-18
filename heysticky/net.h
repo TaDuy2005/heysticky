@@ -210,7 +210,7 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .al h3{font-size:17px;margin:20px 16px 4px}.al p{font-size:14px;margin:0 16px 18px}.al div{display:flex;border-top:2px solid #000}
 .warn{border:2px solid #000;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:600;margin:0 0 22px}
 .pv{border:1px solid #000;border-radius:8px;padding:16px;margin:0 0 22px}.pv small{display:block;font-size:12px;margin:12px 0 2px}.pv small:first-child{margin-top:0}
-.pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .x{background:none;border:0;padding:0;font-weight:600}.btn:disabled{opacity:.35}
+.pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .ib{width:32px;height:32px;margin:-6px 0}#v-fonts .n{white-space:normal}.btn:disabled{opacity:.35}
 .sh{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}.tag{border:1.5px solid #000;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:600}
 .sd{font-size:13px;line-height:1.4;margin:10px 0 0}.sec{margin-bottom:22px}.sec .sd+label{margin-top:10px}
 textarea{display:block;width:100%;height:160px;font:14px/1.35 JBM,ui-monospace,monospace;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
@@ -233,7 +233,7 @@ input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#f
 <div class="c" id="v-setup"><div class="g">
 <button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
 <button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
-<button class="r" id="rf"><b class="n" id="lf">Upload fonts</b><span class="ch">›</span></button>
+<button class="r" id="rf"><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
 <button class="r" id="ri"><b class="n" id="li">Integrations</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
@@ -292,10 +292,10 @@ function render(){
  const cur=S.cur?S.cur.ssid:'';
  for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
- $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Upload fonts','Tải lên phông chữ');$('li').textContent=L('Integrations','Tích hợp');
+ $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
  $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');
@@ -357,11 +357,11 @@ $('v-profile').onsubmit=async e=>{e.preventDefault();const b=$('save');
   b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>history.back(),900)}
  catch(e){alertBox(L('Couldn\'t save','Không lưu được'))}};
 
-// ---------- Fonts (06m) ----------
+// ---------- Font book (06m) ----------
 let F={cur:'',list:[],sd:true};
 async function fontsView(){const v=$('v-fonts');try{F=await(await api('/api/fonts')).json()}catch(e){}
- const tag=t=>E('span',{textContent:t}),rows=[E('div',{className:'r'},E('b',{className:'n',textContent:L('Default (built-in)','Mặc định (có sẵn)')}),tag(F.cur?'':L('In use','Đang dùng')))];
- for(const n of F.list){const d=E('button',{className:'x',textContent:L('Delete','Xoá')});
+ const tag=t=>E('span',{textContent:t}),rows=[E('div',{className:'r'},E('b',{className:'n',textContent:L('JetBrains Mono (built-in)','JetBrains Mono (có sẵn)')}),tag(F.cur?'':L('In use','Đang dùng')))];
+ for(const n of F.list){const d=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
   d.onclick=()=>alertBox(L('Delete “','Xoá “')+n+'”?',L('It is removed from the SD card.','Phông sẽ bị xoá khỏi thẻ SD.'),L('Delete','Xoá'),async()=>{try{await api('/api/font_del',{name:n})}catch(e){}fontsView();load()});
   rows.push(E('div',{className:'r'},E('b',{className:'n',textContent:n}),n===F.cur?tag(L('In use','Đang dùng')):'',d))}
  const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>nav('addfont');
