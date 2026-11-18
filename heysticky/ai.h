@@ -20,9 +20,10 @@ struct AiCfg {
 
 inline AiCfg ai_cfg() {  // an empty AI URL or key means the speech-to-text one
   AiCfg c{cfg_get("stt_url", AI_URL_DEF), cfg_get("stt_model", STT_MODEL_DEF), cfg_get("stt_key"),
-          cfg_get("ai_url"), cfg_get("ai_model", AI_MODEL_DEF), cfg_get("ai_key"), ""};
+          cfg_get("ai_url"), cfg_get("ai_model"), cfg_get("ai_key"), ""};
   if (c.url.isEmpty()) c.url = c.sttUrl;
   if (c.key.isEmpty()) c.key = c.sttKey;
+  if (c.model.isEmpty()) c.key = "";  // AI not added on 06h2 (or deleted): 05d "AI key missing"
   c.plain = cfg_get("ai_plain") == "1";
   if (g_sdOk && !c.plain && cfg_get("ai_instr", "1") == "1") {  // 06h Note instructions toggle
     File f = SD.open(NOTE_INSTR_PATH);
@@ -77,6 +78,66 @@ inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, 
     Serial.printf("[ai] sorted as %d: %.300s\n", r.kind, content.c_str());
   }
   return code;
+}
+
+// ---------- 06h1/06h2 Save: test one service with a tiny request; save it only on a 200 ----------
+// Runs inside the web handler, so the page waits on "Testing…" (up to AI_TIMEOUT_MS).
+// Reply: {"code": HTTP status or < 0, "msg": the service's error text} or {"why": "stt"|"wifi"} when nothing was sent.
+inline void api_ai_test() {
+  if (!ap_only()) return;
+  const bool stt = g_web.arg("svc") == "stt";
+  String url = g_web.arg("url"), model = g_web.arg("model"), key = g_web.arg("key");
+  for (String *s : {&url, &model, &key}) s->trim();
+  while (url.endsWith("/")) url.remove(url.length() - 1);
+  if ((stt && url.isEmpty()) || model.isEmpty() || !url_ok(url) || !text_ok(model, 100) || !text_ok(key, 200))
+    return api_reply(400, "Invalid input");
+  String u = url, k = key.length() ? key : cfg_get(stt ? "stt_key" : "ai_key");  // empty key field = keep the saved one
+  if (!stt && u.isEmpty()) u = cfg_get("stt_url", AI_URL_DEF);  // the AI's empty URL / key = speech-to-text's
+  if (!stt && k.isEmpty()) k = cfg_get("stt_key");
+  JsonDocument d;
+  if (k.isEmpty()) d["why"] = "stt";
+  else if (WiFi.status() != WL_CONNECTED) d["why"] = "wifi";
+  else {
+    String reply;
+    int code;
+    if (stt) {  // 0.5 s of silence
+      const size_t pcm = MIC_RATE;
+      const String b = "HeySticky" + String(esp_random(), HEX), head = mp_head(b, model), tail = mp_tail(b);
+      const size_t n = head.length() + PCM_WAV_HEADER_SIZE + pcm + tail.length();
+      uint8_t *buf = (uint8_t *)ps_calloc(1, n);
+      if (!buf) return api_reply(500, "No memory");
+      const pcm_wav_header_t h = PCM_WAV_HEADER_DEFAULT(pcm, 16, MIC_RATE, 1);
+      memcpy(buf, head.c_str(), head.length());
+      memcpy(buf + head.length(), &h, PCM_WAV_HEADER_SIZE);
+      memcpy(buf + n - tail.length(), tail.c_str(), tail.length());
+      code = ai_post(u + "/audio/transcriptions", k, "multipart/form-data; boundary=" + b, buf, n, reply);
+      free(buf);
+    } else {
+      JsonDocument q;
+      q["model"] = model;
+      q["max_tokens"] = 16;
+      q["messages"][0]["role"] = "user";
+      q["messages"][0]["content"] = "Hi";
+      String body;
+      serializeJson(q, body);
+      code = ai_post(u + "/chat/completions", k, "application/json", (const uint8_t *)body.c_str(), body.length(), reply);
+    }
+    d["code"] = code;
+    if (code == 200) {
+      const String p = stt ? "stt_" : "ai_";
+      cfg_set((p + "url").c_str(), url);
+      cfg_set((p + "model").c_str(), model);
+      if (key.length()) cfg_set((p + "key").c_str(), key);
+    } else {
+      JsonDocument e;
+      if (!deserializeJson(e, reply)) {
+        JsonVariantConst er = e["error"];
+        const char *m = er.is<const char *>() ? er.as<const char *>() : (er["message"] | "");
+        d["msg"] = String(m).substring(0, 160);
+      }
+    }
+  }
+  send_json(d);
 }
 
 // ---------- the job: both calls in a task; the loop polls g_job.done ----------
