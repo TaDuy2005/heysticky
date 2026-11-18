@@ -231,7 +231,7 @@ input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#f
 <div class="c" id="v-setup"><div class="g">
 <button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
 <button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
-<button class="r" id="rf"><b class="n" id="lf">Fonts</b><span id="fv"></span><span class="ch">›</span></button>
+<button class="r" id="rf"><b class="n" id="lf">Upload fonts</b><span class="ch">›</span></button>
 <button class="r" id="ri"><b class="n" id="li">Integrations</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
@@ -289,10 +289,10 @@ function render(){
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
  $('ttl').style.fontSize=$('ttl').textContent.length>22?'20px':'';
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
- $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');$('li').textContent=L('Integrations','Tích hợp');
+ $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Upload fonts','Tải lên phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
- $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');$('fv').textContent=S.font||L('Default','Mặc định');
+ $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');
  if(view==='wifi'){const w=$('v-wifi');w.replaceChildren();
   const net=s=>Object.assign({ssid:s},seen(s)||{});
   if(cur)w.append(E('div',{className:'g'},row(Object.assign(net(cur),{rssi:S.cur.rssi}),{cur:1,info:1})));
