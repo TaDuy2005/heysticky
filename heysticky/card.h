@@ -8,6 +8,7 @@
 #include "pins.h"
 #include "todo.h"
 #include "notes.h"
+#include "settings.h"
 
 extern Seeed_GFX display;
 inline bool g_sdOk = false;
@@ -175,27 +176,52 @@ inline bool notes_retry() {
 // ---------- 04i SD Card / SD Files ----------
 inline bool sd_inserted() { return digitalRead(PIN_SD_DETECT) == LOW; }  // card-detect switch pulls the pin low
 
-struct SdFile { String path; uint32_t size; };
-inline std::vector<SdFile> g_files;  // filled by sd_files_scan(), sorted by path
-constexpr size_t SD_FILES_MAX = 500;  // ponytail: list cap, keeps RAM bounded on a full card
+struct SdFile { String name; uint32_t size; int items; };  // items >= 0: a folder holding that many entries
+inline String g_dir = "/";            // the folder 04k shows
+inline std::vector<SdFile> g_files;   // its entries, filled by sd_dir_scan(): folders first, then A-Z
+inline size_t g_fileCount = 0;        // files on the whole card (04i), counted by sd_files_scan()
+constexpr size_t SD_FILES_MAX = 500;  // ponytail: list / count cap, keeps RAM and scan time bounded on a full card
 
-inline void sd_walk(File dir, int depth) {
-  for (File f = dir.openNextFile(); f && g_files.size() < SD_FILES_MAX; f = dir.openNextFile()) {
-    const String name = f.name();
-    if (name.startsWith(".") || name == "System Volume Information") { f.close(); continue; }  // hidden / OS files
-    if (f.isDirectory()) { if (depth < 4) sd_walk(f, depth + 1); }
-    else g_files.push_back({f.path(), uint32_t(f.size())});
+inline bool sd_hidden(const String &name) { return name.startsWith(".") || name == "System Volume Information"; }
+
+inline void sd_count(File dir, int depth) {
+  for (File f = dir.openNextFile(); f && g_fileCount < SD_FILES_MAX; f = dir.openNextFile()) {
+    if (sd_hidden(f.name())) { f.close(); continue; }
+    if (f.isDirectory()) { if (depth < 4) sd_count(f, depth + 1); }
+    else g_fileCount++;
     f.close();
   }
 }
 
-inline bool sd_files_scan() {
-  g_files.clear();
+inline bool sd_files_scan() {  // 04i: total file count
+  g_fileCount = 0;
   if (!g_sdOk && !sd_mount()) return false;
   File root = SD.open("/");
   if (!root) return sd_fail("open /");
-  sd_walk(root, 0);
+  sd_count(root, 0);
   root.close();
-  std::sort(g_files.begin(), g_files.end(), [](const SdFile &a, const SdFile &b) { return a.path < b.path; });
+  return true;
+}
+
+inline bool sd_dir_scan() {  // 04k: the entries of g_dir
+  g_files.clear();
+  if (!g_sdOk && !sd_mount()) return false;
+  File dir = SD.open(g_dir);
+  if (!dir || !dir.isDirectory()) { g_dir = "/"; dir = SD.open("/"); }  // folder gone (card swapped): back to the top
+  if (!dir) return sd_fail("open folder");
+  for (File f = dir.openNextFile(); f && g_files.size() < SD_FILES_MAX; f = dir.openNextFile()) {
+    if (sd_hidden(f.name())) { f.close(); continue; }
+    int items = -1;
+    if (f.isDirectory()) {
+      items = 0;
+      for (File c = f.openNextFile(); c && items < int(SD_FILES_MAX); c = f.openNextFile()) { items += !sd_hidden(c.name()); c.close(); }
+    }
+    g_files.push_back({f.name(), uint32_t(f.size()), items});
+    f.close();
+  }
+  dir.close();
+  std::sort(g_files.begin(), g_files.end(), [](const SdFile &a, const SdFile &b) {
+    return sd_before(a.items >= 0, a.name.c_str(), b.items >= 0, b.name.c_str());
+  });
   return true;
 }
