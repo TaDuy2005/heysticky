@@ -214,10 +214,17 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 textarea{display:block;width:100%;height:160px;font:14px/1.35 -apple-system,system-ui,sans-serif;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
 .up{display:flex;gap:10px;align-items:center;margin-top:6px}.up button{flex:none;height:44px;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;font-size:15px;font-weight:600}.up small{font-size:12px;line-height:1.4}
 .foot{font-size:13px;line-height:1.4;margin:0}
-.tg{display:flex;align-items:center;gap:12px;margin-top:10px}.tg>div{flex:1}.tg label{margin:0}.tg .sd{margin:4px 0 0}
+.tg{display:flex;align-items:center;gap:12px;margin-top:10px}.tg>div,.tg>label{flex:1}.tg label{margin:0}.tg .sd{margin:4px 0 0}
 input.sw{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:51px;height:29px;padding:0;border:2px solid #000;border-radius:15px;background:#fff}
 input.sw:before{content:'';position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#000;transition:left .15s}
 input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#fff}input.sw:disabled{opacity:.35}
+.r .n small{display:block;font-size:14px;margin-top:3px;overflow:hidden;text-overflow:ellipsis}.r .n b{font-weight:600}
+.add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:18px;margin-top:14px;border:2px dashed #000;border-radius:8px;background:#fff;font-size:16px;font-weight:600}.add b{font-size:20px}
+.ps{display:flex;align-items:center;gap:8px;margin-top:14px;border:2px solid #000;border-radius:8px;padding:10px 10px 10px 14px}.ps b{flex:1;font-weight:600;overflow-wrap:anywhere}
+.ib{flex:none;width:40px;height:40px;border:2px solid #000;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.pf{margin-top:14px;border:2px solid #000;border-radius:12px;padding:16px}.two{display:flex;gap:12px;margin-top:14px}
+.two button{flex:1;height:50px;border:2px solid #000;border-radius:10px;background:#fff;font-size:17px;font-weight:700}.two .k{background:#000;color:#fff}
+.al .ic{display:flex;justify-content:center;margin:20px 0 -10px}.spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.up .sv{font-weight:600}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
@@ -236,6 +243,8 @@ input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#f
 <div class="c" id="v-addfont" hidden></div>
 <div class="c" id="v-integ" hidden></div>
 <div class="c" id="v-ai" hidden></div>
+<div class="c" id="v-stt" hidden></div>
+<div class="c" id="v-nai" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -260,9 +269,9 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
 
 function go(v,d){view=v;det=d||'';
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
- if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();
+ if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
-$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':view==='ai'?'integ':'setup');
+$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':view==='ai'?'integ':view==='stt'||view==='nai'?'ai':'setup');
 $('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');$('ri').onclick=()=>go('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
@@ -275,9 +284,10 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI'}[view];
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
+ $('ttl').style.fontSize=$('ttl').textContent.length>22?'20px':'';
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
@@ -414,38 +424,73 @@ function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLeng
 // ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in Phase 3. ----------
 function integView(){const r=E('button',{className:'r'},E('b',{className:'n',textContent:'AI'}),E('span',{className:'ch',textContent:'›'}));
  r.onclick=()=>go('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
-async function aiView(){const v=$('v-ai');v.replaceChildren();let A;
- try{A=await(await api('/api/ai')).json()}catch(e){alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return}
- const SAME=L('Same as speech-to-text','Giống mục giọng nói thành chữ'),inp={};
- const field=(k,lab,val,ph,pw)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:200});
-  return[E('label',{htmlFor:'a-'+k,textContent:lab}),inp[k]]};
- const head=(t,d)=>[E('h3',{className:'sh'},t,E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')})),E('p',{className:'sd',textContent:d})];
- const keyPh=h=>h||L('Paste your API key','Dán khoá API');
- const s1=E('div',{className:'sec'},...head(L('Speech-to-text','Giọng nói thành chữ'),L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')),
-  ...field('stt_url',L('Base URL','URL gốc'),A.stt_url),...field('stt_model',L('Model','Mô hình'),A.stt_model),...field('stt_key',L('API key','Khoá API'),'',keyPh(A.stt_key),1));
+let A={};
+async function aiLoad(){try{A=await(await api('/api/ai')).json();return true}catch(e){alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return false}}
+const SVC={stt:()=>L('Speech-to-text','Giọng nói thành chữ'),nai:()=>L('AI for notes & to-dos','AI cho ghi chú & việc cần làm')};
+async function aiView(){const v=$('v-ai');v.replaceChildren();if(!await aiLoad())return;
+ const r=(id,set,m)=>{const b=E('button',{className:'r'},E('span',{className:'n'},E('b',{textContent:SVC[id]()}),E('small',{textContent:set?m.split('/').pop():L('Not set','Chưa cài đặt')})),E('span',{className:'ch',textContent:'›'}));
+  b.onclick=()=>go(id);return b};
+ v.append(E('div',{className:'g'},r('stt',A.stt_set,A.stt_model),r('nai',A.ai_set,A.ai_model)))}
+// 06h3: a pop-up with an icon; no ok = no button (Testing…), ok = an OK button that runs it (or just closes)
+function popBox(ic,title,text,ok){const a=E('div',{className:'al'},E('span',{className:'ic'},ic),E('h3',{textContent:title}),E('p',{textContent:text}));
+ if(ok!==undefined)a.append(E('div',{},E('button',{textContent:'OK',onclick:()=>{close();if(ok)ok()}})));
+ $('ov').replaceChildren(E('div',{className:'dim'}),a)}
+const host=u=>{try{return new URL(u).host}catch(e){return u}};
+const failText=(R,u)=>R.why==='stt'?L('Add speech-to-text first, or fill in the Base URL and API key.','Hãy thêm giọng nói thành chữ trước, hoặc điền URL gốc và khoá API.')
+ :R.why==='wifi'?L('The Sticky isn\'t on Wi-Fi. Join a network first.','Sticky chưa kết nối Wi-Fi. Hãy kết nối một mạng trước.')
+ :R.code===-9?L('Couldn\'t reach the Sticky.','Không kết nối được Sticky.')
+ :R.code<0?L('Couldn\'t reach ','Không kết nối được tới ')+host(u)+'.'
+ :R.code===401||R.code===403?L('Wrong API key. Check it and try again.','Sai khoá API. Hãy kiểm tra rồi thử lại.')
+ :R.code===400||R.code===404||R.code===422?L('Check the Base URL and model.','Hãy kiểm tra URL gốc và mô hình.')+(R.msg?' ('+R.msg+')':'')
+ :L('The service answered ','Dịch vụ trả lời ')+R.code+(R.msg?': '+R.msg:'.');
+// 06h1 / 06h2: dashed "Add model provider" -> form (Cancel / Save = test, then save) -> saved line with edit / delete
+async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLoad())return;
+ const stt=id==='stt',svc=stt?'stt':'ai',p=svc+'_',SAME=L('Same as speech-to-text','Giống mục giọng nói thành chữ'),slot=E('div');
+ v.append(E('div',{className:'sec'},E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')}),
+  E('p',{className:'sd',textContent:stt?L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')
+   :L('Writes notes using your instructions and splits to-dos. Works with DeepSeek, OpenAI, or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với DeepSeek, OpenAI hoặc mọi API /chat/completions kiểu OpenAI.')}),slot));
+ const show=()=>{if(!A[p+'set']){const b=E('button',{className:'add'},E('b',{textContent:'+'}),L('Add model provider','Thêm nhà cung cấp mô hình'));b.onclick=form;slot.replaceChildren(b);return}
+  const ed=E('button',{className:'ib',ariaLabel:L('Edit','Sửa')},H(svg(20,'<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>')));
+  const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
+  ed.onclick=form;
+  del.onclick=()=>alertBox(stt?L('Delete speech-to-text?','Xoá giọng nói thành chữ?'):L('Delete AI for notes & to-dos?','Xoá AI cho ghi chú & việc cần làm?'),
+   L('The API key will be removed from the Sticky.','Khoá API sẽ bị xoá khỏi Sticky.'),L('Delete','Xoá'),async()=>{try{await api('/api/ai_del',{svc})}catch(e){}if(await aiLoad())show()});
+  slot.replaceChildren(E('div',{className:'ps'},E('b',{textContent:A[p+'model']}),ed,del))};
+ function form(){const inp={},f=(k,lab,val,ph,pw)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:200});
+   return[E('label',{htmlFor:'a-'+k,textContent:lab}),inp[k]]};
+  const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')});
+  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':SAME),...f('model',L('Model','Mô hình'),A[p+'model']),
+   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(stt?L('Paste your API key','Dán khoá API'):SAME),1),
+   E('div',{className:'two'},E('button',{type:'button',textContent:L('Cancel','Huỷ'),onclick:show}),save)));
+  save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();
+   if((stt&&!b.url)||!b.model)return alertBox(L('Fill in the Base URL and model','Hãy điền URL gốc và mô hình'));
+   if(stt&&!b.key&&!A.stt_set)return alertBox(L('Paste your API key','Dán khoá API'));
+   const u=b.url||A.stt_url,sp=H(svg(36,'<circle cx="12" cy="12" r="9" opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/>'));sp.classList.add('spin');
+   popBox(sp,L('Testing connection…','Đang kiểm tra kết nối…'),L('Sending a short test to ','Đang gửi một yêu cầu thử tới ')+host(u)+'.');
+   let R;try{const r=await api('/api/ai_test',b);if(!r.ok)throw 0;R=await r.json()}catch(e){R={code:-9}}
+   if(R.code===200){await aiLoad();popBox(H(svg(36,'<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff"/>')),
+    L('Connected','Đã kết nối'),b.model+L(' is ready to use.',' đã sẵn sàng.'),show)}
+   else popBox(H(svg(36,'<circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/>')),L('Couldn\'t connect','Không kết nối được'),failText(R,u),null)}}
+ show();if(stt)return;
+ // 06h2 only: Plain text + Note instructions, saved as they change (toggles at once, the text when the box loses focus)
  const ta=E('textarea',{id:'a-notes',value:A.notes||'',maxLength:2000,placeholder:'# Title\n## Key points\n- …\n## Action items\n- [ ] …\n'+L('Keep it short. Write in English.','Viết ngắn gọn. Viết bằng tiếng Việt.')});
  const file=E('input',{type:'file',accept:'.txt,text/plain',hidden:true}),upb=E('button',{type:'button'},H(svg(18,'<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 15v4h14v-4"/>')),' '+L('Upload .txt','Tải lên .txt'));
  upb.style.display='flex';upb.style.alignItems='center';upb.style.gap='8px';upb.onclick=()=>file.click();
- file.onchange=async()=>{const f=file.files[0];if(!f)return;let t=await f.text();file.value='';
-  if([...t].length>2000){t=[...t].slice(0,2000).join('');alertBox(L('The file is longer than 2,000 characters','Tệp dài hơn 2.000 ký tự'),L('Only the first 2,000 were kept.','Chỉ giữ 2.000 ký tự đầu.'))}ta.value=t};
- const sw=(id,on)=>E('input',{type:'checkbox',className:'sw',id,checked:!!on}),plain=sw('a-plain',A.plain),useN=sw('a-instr',A.instr);
+ const sw=(i,on)=>E('input',{type:'checkbox',className:'sw',id:i,checked:!!on}),plain=sw('a-plain',A.plain),useN=sw('a-instr',A.instr),ok=E('small',{className:'sv'});
  const nbox=E('div',{},E('p',{className:'sd',style:'margin:6px 0',textContent:L('Tell the AI how to write your notes: an outline, a template, or rules.','Cho AI biết cách viết ghi chú: dàn ý, mẫu hoặc quy tắc.')}),ta,
-  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')})),file);
- const s2=E('div',{className:'sec'},...head(L('AI for notes & to-dos','AI cho ghi chú & việc cần làm'),L('Writes notes using your instructions and splits to-dos. Works with DeepSeek, OpenAI, or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với DeepSeek, OpenAI hoặc mọi API /chat/completions kiểu OpenAI.')),
-  ...field('ai_url',L('Base URL','URL gốc'),A.ai_url,SAME),...field('ai_model',L('Model','Mô hình'),A.ai_model),...field('ai_key',L('API key','Khoá API'),'',A.ai_key||SAME,1),
-  E('div',{className:'tg'},E('div',{},E('label',{htmlFor:'a-plain',textContent:L('Plain text','Văn bản gốc')}),
-   E('p',{className:'sd',textContent:L('Save your exact words as the note. The AI only picks to-do or note.','Lưu đúng lời bạn nói thành ghi chú. AI chỉ chọn việc cần làm hay ghi chú.')})),plain),
-  E('div',{className:'tg'},E('label',{htmlFor:'a-instr',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),useN),nbox);
- const sync=()=>{useN.disabled=plain.checked;nbox.hidden=plain.checked||!useN.checked};plain.onchange=useN.onchange=sync;sync();
+  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')}),ok),file);
+ const opts=async n=>{const b={plain:plain.checked?1:0,instr:useN.checked?1:0};if(n)b.notes=ta.value;
+  try{const r=await api('/api/ai_opts',b);if(r.status===503)throw L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.');if(!r.ok)throw '';
+   if(n){ok.textContent=L('Saved','Đã lưu');setTimeout(()=>ok.textContent='',2000)}}
+  catch(e){alertBox(L('Couldn\'t save','Không lưu được'),typeof e==='string'?e:'')}};
+ file.onchange=async()=>{const f=file.files[0];if(!f)return;let t=await f.text();file.value='';
+  if([...t].length>2000){t=[...t].slice(0,2000).join('');alertBox(L('The file is longer than 2,000 characters','Tệp dài hơn 2.000 ký tự'),L('Only the first 2,000 were kept.','Chỉ giữ 2.000 ký tự đầu.'))}ta.value=t;opts(1)};
+ const sync=()=>{useN.disabled=plain.checked;nbox.hidden=plain.checked||!useN.checked};
+ plain.onchange=useN.onchange=()=>{sync();opts()};ta.onchange=()=>opts(1);sync();
  if(!A.sd){ta.disabled=upb.disabled=true;ta.placeholder=L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.')}
- const save=E('button',{className:'btn k',style:'margin-top:0',textContent:L('✓  Save to Sticky','✓  Lưu vào Sticky')});
- save.onclick=async()=>{const b={notes:ta.value,plain:plain.checked?1:0,instr:useN.checked?1:0};for(const k in inp)b[k]=inp[k].value.trim();
-  if(!b.stt_url||!b.stt_model||!b.ai_model)return alertBox(L('Fill in the URL and both models','Hãy điền URL và cả hai mô hình'));
-  save.disabled=true;
-  try{const r=await api('/api/ai',b);if(r.status===503)throw L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.');if(!r.ok)throw '';
-   save.textContent=L('✓  Saved','✓  Đã lưu');setTimeout(()=>go('integ'),900)}
-  catch(e){save.disabled=false;alertBox(L('Couldn\'t save','Không lưu được'),typeof e==='string'?e:'')}};
- v.replaceChildren(s1,s2,save)}
+ v.append(E('div',{className:'tg'},E('div',{},E('label',{htmlFor:'a-plain',textContent:L('Plain text','Văn bản gốc')}),
+   E('p',{className:'sd',textContent:L('Save your exact words as the note. The AI only picks to-do or note.','Lưu đúng lời bạn nói thành ghi chú. AI chỉ chọn việc cần làm hay ghi chú.')})),plain),
+  E('div',{className:'tg'},E('label',{htmlFor:'a-instr',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),useN),nbox)}
 load();setInterval(load,1500);
 </script></body></html>)HTML";
 
@@ -675,6 +720,8 @@ inline void api_ai_get() {
   d["ai_url"] = cfg_get("ai_url");
   d["ai_model"] = cfg_get("ai_model", AI_MODEL_DEF);
   d["ai_key"] = key_hint("ai_key");
+  d["stt_set"] = cfg_get("stt_key").length() > 0;  // a passed test saves the key; 06h4 deletes it
+  d["ai_set"] = cfg_get("ai_model").length() > 0;  // the AI may borrow the key, so its model marks it saved
   d["plain"] = cfg_get("ai_plain") == "1";
   d["instr"] = cfg_get("ai_instr", "1") == "1";
   d["sd"] = g_sdOk;
@@ -685,43 +732,42 @@ inline void api_ai_get() {
   send_json(d);
 }
 
-// An empty key field keeps the saved key. Note instructions go to the card (written as .tmp, then renamed).
-inline void api_ai_save() {
+// 06h2 toggles save as they flip; note instructions (only when sent) go to the card, written as .tmp then renamed.
+inline void api_ai_opts() {
   if (!ap_only()) return;
-  String su = g_web.arg("stt_url"), sm = g_web.arg("stt_model"), sk = g_web.arg("stt_key");
-  String au = g_web.arg("ai_url"), am = g_web.arg("ai_model"), ak = g_web.arg("ai_key");
-  const String notes = g_web.arg("notes");
-  for (String *s : {&su, &sm, &sk, &au, &am, &ak}) s->trim();
-  while (su.endsWith("/")) su.remove(su.length() - 1);
-  while (au.endsWith("/")) au.remove(au.length() - 1);
-  if (su.isEmpty() || sm.isEmpty() || am.isEmpty() || !url_ok(su) || !url_ok(au) || !text_ok(sm, 100) || !text_ok(am, 100) ||
-      !text_ok(sk, 200) || !text_ok(ak, 200) || !notes_ok(notes))
-    return api_reply(400, "Invalid input");
-  File cur = g_sdOk ? SD.open(NOTE_INSTR_PATH) : File();
-  const bool same = cur ? read_upto(cur, NOTE_INSTR_MAX * 4) == notes : notes.isEmpty();
-  if (cur) cur.close();
-  if (!same) {
-    if (!g_sdOk) return api_reply(503, "No SD card");
-    if (!SD.exists("/ai")) SD.mkdir("/ai");
-    SD.remove(NOTE_INSTR_PATH);
-    if (notes.length()) {
-      const char *tmp = "/ai/note-instructions.tmp";
-      File f = SD.open(tmp, FILE_WRITE);
-      const bool ok = f && f.print(notes) == notes.length();
-      if (f) f.close();
-      if (!ok || !SD.rename(tmp, NOTE_INSTR_PATH)) return api_reply(500, "SD write failed");
+  if (g_web.hasArg("notes")) {
+    const String notes = g_web.arg("notes");
+    if (!notes_ok(notes)) return api_reply(400, "Invalid input");
+    File cur = g_sdOk ? SD.open(NOTE_INSTR_PATH) : File();
+    const bool same = cur ? read_upto(cur, NOTE_INSTR_MAX * 4) == notes : notes.isEmpty();
+    if (cur) cur.close();
+    if (!same) {
+      if (!g_sdOk) return api_reply(503, "No SD card");
+      if (!SD.exists("/ai")) SD.mkdir("/ai");
+      SD.remove(NOTE_INSTR_PATH);
+      if (notes.length()) {
+        const char *tmp = "/ai/note-instructions.tmp";
+        File f = SD.open(tmp, FILE_WRITE);
+        const bool ok = f && f.print(notes) == notes.length();
+        if (f) f.close();
+        if (!ok || !SD.rename(tmp, NOTE_INSTR_PATH)) return api_reply(500, "SD write failed");
+      }
     }
   }
-  cfg_set("stt_url", su);
-  cfg_set("stt_model", sm);
-  cfg_set("ai_url", au);
-  cfg_set("ai_model", am);
   cfg_set("ai_plain", g_web.arg("plain") == "1" ? "1" : "0");
   cfg_set("ai_instr", g_web.arg("instr") == "0" ? "0" : "1");
-  if (sk.length()) cfg_set("stt_key", sk);
-  if (ak.length()) cfg_set("ai_key", ak);
   api_reply(200, "OK");
 }
+
+// 06h4: forget one service's URL, model and key.
+inline void api_ai_del() {
+  if (!ap_only()) return;
+  const String p = g_web.arg("svc") == "stt" ? "stt_" : "ai_";
+  for (const char *k : {"url", "model", "key"}) cfg_del((p + k).c_str());
+  api_reply(200, "OK");
+}
+
+inline void api_ai_test();  // 06h1/06h2 Save, in ai.h (it needs ai_post)
 
 // Returns true when a network is saved; false = first setup, the hotspot is already on.
 inline bool net_begin() {
@@ -747,7 +793,9 @@ inline bool net_begin() {
   g_web.on("/api/font", HTTP_POST, api_font_done, api_font_part);
   g_web.on("/api/font_del", HTTP_POST, api_font_del);
   g_web.on("/api/ai", HTTP_GET, api_ai_get);
-  g_web.on("/api/ai", HTTP_POST, api_ai_save);
+  g_web.on("/api/ai_opts", HTTP_POST, api_ai_opts);
+  g_web.on("/api/ai_del", HTTP_POST, api_ai_del);
+  g_web.on("/api/ai_test", HTTP_POST, api_ai_test);
   g_web.onNotFound([] {  // captive portal: any other address -> the page
     if (!ap_only()) return;
     g_web.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/");
