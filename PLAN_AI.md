@@ -81,7 +81,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 
 ## 7. Open
 
-- [ ] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06
+- [x] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06. Checked by the user 2026-11-18: EN and VI frames exist
 - [x] Mic gain: ×2 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
 - [ ] "Plain (no AI)" (PLAN §5): not on Figma 06h; decide where it goes (06h toggle or a 05b choice) before AI-05
 - [ ] No way to delete a saved key yet (only replace it)
