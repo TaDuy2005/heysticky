@@ -11,6 +11,7 @@
 #include <time.h>
 #include "store.h"
 #include "wifi_list.h"
+#include "src/webfont.h"
 #include "lang.h"
 #include "userfont.h"
 
@@ -176,13 +177,14 @@ inline void net_hotspot(bool on) {
 }
 
 // ---------- phone setup page (Figma 06–06f, 06l). One page; data through /api. ----------
-// System sans-serif (no web font: the hotspot has no internet). Integrations (06g–06k) stay hidden until Phase 2.
+// JetBrains Mono, served by the Sticky itself (/font/r.woff, /font/b.woff from src/webfont.h): the hotspot has no internet. Integrations (06g–06k) stay hidden until Phase 2.
 inline const char PAGE[] PROGMEM = R"HTML(<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>HeySticky setup</title><style>
-*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
-main{max-width:390px;margin:0 auto;min-height:100vh}
+@font-face{font-family:JBM;src:url(/font/r.woff) format("woff");font-weight:400}@font-face{font-family:JBM;src:url(/font/b.woff) format("woff");font-weight:600 800}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 JBM,ui-monospace,monospace}
+main{min-height:100vh}
 header{background:#000;color:#fff;height:90px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-h1{font-size:26px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header p{font-size:14px;margin:2px 0 0}
+header>div{flex:1;min-width:0}h1{font-size:26px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header p{font-size:14px;margin:2px 0 0}
 button{font:inherit;color:#000;cursor:pointer}
 .back{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid #fff;background:none;color:#fff;font-size:24px;line-height:1;padding:0 2px 3px 0}
 .c{padding:20px}[hidden]{display:none!important}
@@ -200,7 +202,7 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .btn{display:block;width:100%;height:54px;font-size:18px;font-weight:700;border:2px solid #000;border-radius:8px;background:#fff}
 .btn.k{color:#fff;background:#000;margin-top:22px}
 .dim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:5}
-.sheet{position:fixed;left:0;right:0;top:56px;bottom:0;max-width:390px;margin:0 auto;background:#fff;border-radius:28px 28px 0 0;padding:20px 24px;z-index:6;overflow:auto}
+.sheet{position:fixed;left:0;right:0;top:56px;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:20px 24px;z-index:6;overflow:auto}
 .bar{display:flex;justify-content:space-between}.rb{width:44px;height:44px;border-radius:50%;border:2px solid #000;background:#fff;font-size:20px;padding:0}.rb.k{background:#000;color:#fff}
 .big{display:flex;justify-content:center;margin:36px 0 40px}.sheet h3{font-size:22px;margin:0 0 4px}.sheet p{font-size:18px;margin:0 0 40px}
 .sheet input{height:54px;border-radius:27px;padding:0 22px;font-size:17px;margin-bottom:12px}
@@ -211,7 +213,7 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .x{background:none;border:0;padding:0;font-weight:600}.btn:disabled{opacity:.35}
 .sh{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}.tag{border:1.5px solid #000;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:600}
 .sd{font-size:13px;line-height:1.4;margin:10px 0 0}.sec{margin-bottom:22px}.sec .sd+label{margin-top:10px}
-textarea{display:block;width:100%;height:160px;font:14px/1.35 -apple-system,system-ui,sans-serif;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
+textarea{display:block;width:100%;height:160px;font:14px/1.35 JBM,ui-monospace,monospace;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
 .up{display:flex;gap:10px;align-items:center;margin-top:6px}.up button{flex:none;height:44px;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;font-size:15px;font-weight:600}.up small{font-size:12px;line-height:1.4}
 .foot{font-size:13px;line-height:1.4;margin:0}
 .tg{display:flex;align-items:center;gap:12px;margin-top:10px}.tg>div,.tg>label{flex:1}.tg label{margin:0}.tg .sd{margin:4px 0 0}
@@ -271,15 +273,19 @@ function go(v,d){view=v;det=d||'';
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
-$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':view==='ai'?'integ':view==='stt'||view==='nai'?'ai':'setup');
-$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');$('ri').onclick=()=>go('integ');
+// Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
+const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai'};
+function nav(v,d){history.pushState(null,'');go(v,d)}
+addEventListener('popstate',()=>{close();go(UP[view]||'setup')});
+$('back').onclick=()=>history.back();
+$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
  const nm=E(o.cur?'b':'span',{className:'n',textContent:n.ssid});r.append(ck,nm);
  if(joining)r.append(E('span',{textContent:L('Joining…','Đang kết nối…')}));
  else{if(n.enc)r.append(lock());if(n.rssi!=null)r.append(wifi(lvl(n.rssi)));
-  if(o.info){const b=E('button',{className:'i',ariaLabel:'Details'},info());b.onclick=e=>{e.stopPropagation();go('det',n.ssid)};r.append(b)}}
+  if(o.info){const b=E('button',{className:'i',ariaLabel:'Details'},info());b.onclick=e=>{e.stopPropagation();nav('det',n.ssid)};r.append(b)}}
  if(o.tap)r.onclick=o.tap;return r}
 
 function render(){
@@ -287,7 +293,7 @@ function render(){
  for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
- $('ttl').style.fontSize=$('ttl').textContent.length>22?'20px':'';
+ const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Upload fonts','Tải lên phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
@@ -309,7 +315,7 @@ function render(){
   const g=E('div',{className:'g'},kv(L('Status','Trạng thái'),on?L('Connected','Đã kết nối'):L('Saved','Đã lưu')),kv(L('Signal','Tín hiệu'),rs==null?L('Not in range','Ngoài vùng phủ'):L(['','Weak','Good','Excellent'],['','Yếu','Tốt','Rất tốt'])[lvl(rs)]));
   if(n)g.append(kv(L('Security','Bảo mật'),ENC[n.enc]||L('Secured','Có bảo mật')));if(on)g.append(kv(L('IP address','Địa chỉ IP'),S.cur.ip));
   const f=E('button',{className:'btn',textContent:L('Forget This Network','Quên mạng này')});
-  f.onclick=()=>alertBox(L('Forget “','Quên “')+det+'”?',L('Your Sticky will stop joining it.','Sticky sẽ không tự kết nối mạng này nữa.'),L('Forget','Quên'),async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}go('wifi');load()});
+  f.onclick=()=>alertBox(L('Forget “','Quên “')+det+'”?',L('Your Sticky will stop joining it.','Sticky sẽ không tự kết nối mạng này nữa.'),L('Forget','Quên'),async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}history.back();load()});
   d.append(g,f)}}
 
 async function join(ssid,pass){pending=true;S.join={ssid,state:'busy'};render();
@@ -348,7 +354,7 @@ c.oninput=()=>{lat=lon='';clearTimeout(t);const q=c.value.trim();
 document.addEventListener('click',e=>{if(!l.contains(e.target)&&e.target!==c)l.hidden=true});
 $('v-profile').onsubmit=async e=>{e.preventDefault();const b=$('save');
  try{const r=await api('/api/save',{name:$('name').value,city:c.value,lat,lon});if(!r.ok)throw 0;
-  b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>go('setup'),900)}
+  b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>history.back(),900)}
  catch(e){alertBox(L('Couldn\'t save','Không lưu được'))}};
 
 // ---------- Fonts (06m) ----------
@@ -358,7 +364,7 @@ async function fontsView(){const v=$('v-fonts');try{F=await(await api('/api/font
  for(const n of F.list){const d=E('button',{className:'x',textContent:L('Delete','Xoá')});
   d.onclick=()=>alertBox(L('Delete “','Xoá “')+n+'”?',L('It is removed from the SD card.','Phông sẽ bị xoá khỏi thẻ SD.'),L('Delete','Xoá'),async()=>{try{await api('/api/font_del',{name:n})}catch(e){}fontsView();load()});
   rows.push(E('div',{className:'r'},E('b',{className:'n',textContent:n}),n===F.cur?tag(L('In use','Đang dùng')):'',d))}
- const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>go('addfont');
+ const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>nav('addfont');
  v.replaceChildren(E('div',{className:'g'},...rows),add,E('p',{className:'note',style:'margin-top:12px',textContent:!F.sd?L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.'):
   L('Pick the font on the Sticky: Settings › Language & Font › User Font.','Chọn phông trên Sticky: Cài đặt › Ngôn ngữ & Phông › Phông chữ.')}))}
 
@@ -416,20 +422,20 @@ function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLeng
   try{for(let i=0;i<SLOTS.length;i++){const[slot,k,px]=SLOTS[i];msg.textContent=L('Uploading ','Đang tải lên ')+(i+1)+'/'+SLOTS.length+'…';
     const fd=new FormData();fd.append('f',new Blob([vlw(fam(k),px)]),slot+'.vlw');
     const r=await fetch('/api/font?name='+encodeURIComponent(name)+'&slot='+slot,{method:'POST',body:fd});if(!r.ok)throw 0}
-   msg.textContent='';alertBox(L('“'+name+'” is on the Sticky','Đã lưu “'+name+'” vào Sticky'),L('Pick it in Settings › Language & Font › User Font.','Chọn trong Cài đặt › Ngôn ngữ & Phông › Phông chữ.'));go('fonts')}
+   msg.textContent='';alertBox(L('“'+name+'” is on the Sticky','Đã lưu “'+name+'” vào Sticky'),L('Pick it in Settings › Language & Font › User Font.','Chọn trong Cài đặt › Ngôn ngữ & Phông › Phông chữ.'));history.back()}
   catch(e){msg.textContent='';upb.disabled=false;alertBox(L('Couldn\'t upload the font','Không tải lên được phông'))}};
  v.replaceChildren(E('label',{htmlFor:'fname',textContent:L('Font name','Tên phông')}),nm,E('h2',{style:'margin-top:22px',textContent:L('Font files','Tệp phông')}),E('div',{className:'g'},...rows),warn,
   E('h2',{textContent:L('Preview — as on the Sticky','Xem trước — như trên Sticky')}),pv,
   E('p',{className:'note',style:'margin:0',textContent:L('Numbers on Home and the clock keep the built-in font.','Số trên Trang chủ và đồng hồ vẫn dùng phông có sẵn.')}),upb,msg)}
 // ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in Phase 3. ----------
 function integView(){const r=E('button',{className:'r'},E('b',{className:'n',textContent:'AI'}),E('span',{className:'ch',textContent:'›'}));
- r.onclick=()=>go('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
+ r.onclick=()=>nav('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
 let A={};
 async function aiLoad(){try{A=await(await api('/api/ai')).json();return true}catch(e){alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return false}}
 const SVC={stt:()=>L('Speech-to-text','Giọng nói thành chữ'),nai:()=>L('AI for notes & to-dos','AI cho ghi chú & việc cần làm')};
 async function aiView(){const v=$('v-ai');v.replaceChildren();if(!await aiLoad())return;
  const r=(id,set,m)=>{const b=E('button',{className:'r'},E('span',{className:'n'},E('b',{textContent:SVC[id]()}),E('small',{textContent:set?m.split('/').pop():L('Not set','Chưa cài đặt')})),E('span',{className:'ch',textContent:'›'}));
-  b.onclick=()=>go(id);return b};
+  b.onclick=()=>nav(id);return b};
  v.append(E('div',{className:'g'},r('stt',A.stt_set,A.stt_model),r('nai',A.ai_set,A.ai_model)))}
 // 06h3: a pop-up with an icon; no ok = no button (Testing…), ok = an OK button that runs it (or just closes)
 function popBox(ic,title,text,ok){const a=E('div',{className:'al'},E('span',{className:'ic'},ic),E('h3',{textContent:title}),E('p',{textContent:text}));
@@ -499,6 +505,11 @@ inline bool ap_only() {
   if (g_web.client().localIP() == WiFi.softAPIP()) return true;
   g_web.send(404, "text/plain", "Not found");
   return false;
+}
+inline void font_send(const uint8_t *d, size_t n) {  // the page's web font; same bytes until the firmware changes
+  if (!ap_only()) return;
+  g_web.sendHeader("Cache-Control", "max-age=86400");
+  g_web.send_P(200, "font/woff", (PGM_P)d, n);
 }
 
 inline void send_json(const JsonDocument &d, int code = 200) {
@@ -782,7 +793,13 @@ inline bool net_begin() {
   const String off = cfg_get("utc_off");  // last known offset: right clock before the first weather reply
   if (off.length()) g_utc_off = off.toInt();
   configTime(off.toInt(), 0, "pool.ntp.org", "time.google.com");
-  g_web.on("/", HTTP_GET, [] { if (ap_only()) g_web.send_P(200, "text/html; charset=utf-8", PAGE); });
+  g_web.on("/", HTTP_GET, [] {
+    if (!ap_only()) return;
+    g_web.sendHeader("Cache-Control", "no-store");  // a new firmware's page shows on the next reload
+    g_web.send_P(200, "text/html; charset=utf-8", PAGE);
+  });
+  g_web.on("/font/r.woff", HTTP_GET, [] { font_send(WEBFONT_R, sizeof WEBFONT_R); });
+  g_web.on("/font/b.woff", HTTP_GET, [] { font_send(WEBFONT_B, sizeof WEBFONT_B); });
   g_web.on("/api/status", HTTP_GET, api_status);
   g_web.on("/api/city", HTTP_GET, api_city);
   g_web.on("/api/join", HTTP_POST, api_join);
