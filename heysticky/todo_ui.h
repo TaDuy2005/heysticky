@@ -7,7 +7,7 @@
 
 inline String now_key() {  // "YYYY-MM-DD HH:MM", "" before NTP
   tm t;
-  if (!getLocalTime(&t, 0)) return "";
+  if (!local_now(t)) return "";
   char b[17];
   strftime(b, sizeof b, "%Y-%m-%d %H:%M", &t);
   return b;

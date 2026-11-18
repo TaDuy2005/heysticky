@@ -29,7 +29,7 @@ inline String fmt_date(const tm &t) {
 
 inline String now_clock(String *date = nullptr) {
   tm t;
-  if (!getLocalTime(&t, 0)) { if (date) *date = ""; return "--:--"; }
+  if (!local_now(t)) { if (date) *date = ""; return "--:--"; }
   char hm[6];
   strftime(hm, sizeof hm, "%H:%M", &t);
   if (date) *date = fmt_date(t);
@@ -125,17 +125,21 @@ inline void home_tick() {
   if (clock == g_shown.clock && date == g_shown.date && g_wx.at == g_shown.wxAt &&
       bool(digitalRead(PIN_USB_PRESENT)) == g_shown.plugged) return;  // checked often, acts once a minute (or on plug/unplug)
 
+  // Asleep: partial updates don't count toward the ghost-clearing full refresh; one full refresh on the hour instead.
+  const bool hourly = g_asleep && clock != g_shown.clock && clock.endsWith(":00");
+  const int every = g_asleep ? INT_MAX : FULL_EVERY;
+  auto part = [&](int x, int y, int w, int h) { if (!hourly) ui_partial(x, y, w, h, every); };
   if (clock != g_shown.clock || date != g_shown.date) {
     g_shown.clock = clock; g_shown.date = date;
     home_clock(date, clock);
-    ui_partial(40, 104, 400, 176);
+    part(40, 104, 400, 176);
     const int n = today_count();  // a task's day can arrive at midnight
-    if (n != g_shown.today) { home_today(g_shown.today = n); ui_partial(40, 561, 400, 72); }
+    if (n != g_shown.today) { home_today(g_shown.today = n); part(40, 561, 400, 72); }
   }
   if (g_wx.at != g_shown.wxAt) {
     g_shown.wxAt = g_wx.at;
     home_weather();
-    ui_partial(40, 288, 400, 143);
+    part(40, 288, 400, 143);
   }
   String temp, hum;
   if (g_asleep && !clock.endsWith("0")) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
@@ -143,15 +147,16 @@ inline void home_tick() {
   if (temp != g_shown.indoor || hum != g_shown.humidity) {
     g_shown.indoor = temp; g_shown.humidity = hum;
     home_indoor(temp, hum);
-    ui_partial(40, 445, 400, 102);
+    part(40, 445, 400, 102);
   }
   const int pct = ui_battery_pct();
   const bool wifi = !g_asleep && WiFi.status() == WL_CONNECTED;  // asleep: the moon stays, Wi-Fi comes and goes
   if (pct != g_shown.battery || wifi != g_shown.wifi || g_plugged != g_shown.plugged) {
     g_shown.battery = pct; g_shown.wifi = wifi; g_shown.plugged = g_plugged;
     ui_status_bar(pct);
-    ui_partial(0, 0, W, 40);
+    part(0, 0, W, 40);
   }
+  if (hourly) ui_full();
 }
 
 // ---------- Apps (01a) ----------
