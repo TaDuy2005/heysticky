@@ -49,6 +49,14 @@ inline String ui_drawable(const Font &f, const String &s) {
   return out;
 }
 
+// Local time; false until NTP has set the clock. Not getLocalTime(&t, 0): it skips the read when the
+// millisecond ticks between its two millis() calls, so the clock flickered to "--:--".
+inline bool local_now(tm &t) {
+  const time_t now = time(nullptr);
+  localtime_r(&now, &t);
+  return t.tm_year > 2016 - 1900;
+}
+
 inline void ui_icon(const Icon &i, int x, int y, uint16_t c = INK) { display.drawBitmap(x, y, i.bits, i.w, i.h, c); }
 
 // Figma frame with an inside stroke.
