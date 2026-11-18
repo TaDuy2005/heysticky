@@ -82,7 +82,7 @@ Plain text, readable on any computer:
                           - [x] Buy milk
 /notes/012.md             # Title
                           Body text …
-/fonts/<Name>/<slot>.vlw  user font, one file per size/style, added from the phone page (Upload fonts)
+/fonts/<Name>/<slot>.vlw  user font, one file per size/style, added from the phone page (Font book)
 /ai/note-instructions.txt how the AI writes notes, set on the phone page (Integrations › AI)
 ```
 
