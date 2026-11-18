@@ -35,6 +35,20 @@ inline int ui_text(const Font &f, String s, int x, int y, int h, Align a = AL_LE
   return display.drawString(s, x, y + (h - (f.asc + f.desc)) / 2);
 }
 
+// s without the characters font f has no glyph for (other scripts, emoji); spaces and line breaks stay.
+inline String ui_drawable(const Font &f, const String &s) {
+  ui_use(f);
+  String out;
+  uint8_t *b = (uint8_t *)s.c_str();
+  const uint16_t n = s.length();
+  for (uint16_t i = 0, a = 0; i < n; a = i) {
+    uint16_t cp = display.decodeUTF8(b, &i, n - i), g;
+    if (cp == ' ' || cp == '\n' || cp == '\r' || cp == '\t' || (cp != 0xFFFD && display.smoothFont().getUnicodeIndex(cp, &g)))
+      out += s.substring(a, i);
+  }
+  return out;
+}
+
 inline void ui_icon(const Icon &i, int x, int y, uint16_t c = INK) { display.drawBitmap(x, y, i.bits, i.w, i.h, c); }
 
 // Figma frame with an inside stroke.
