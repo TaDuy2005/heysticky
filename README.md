@@ -78,13 +78,18 @@ few characters, and they are never in the source or the `.bin`.
 Plain text, readable on any computer:
 
 ```
-/todo.md                  - [ ] Call the dentist @due(2026-11-17 09:00)
-                          - [x] Buy milk
-/notes/012.md             # Title
-                          Body text …
-/fonts/<Name>/<slot>.vlw  user font, one file per size/style, added from the phone page (Font book)
-/ai/note-instructions.txt how the AI writes notes, set on the phone page (Integrations › AI)
+microSD
+├── todo.md                    every to-do, one per line: - [ ] Call the dentist @due(2026-11-17 09:00)
+├── notes/
+│   └── 012.md                 one note per file: "# Title", then the body
+├── fonts/
+│   └── <Name>/
+│       └── R20.vlw … I25.vlw  user font, one file per size/style, added from the phone page (Font book)
+└── ai/
+    └── note-instructions.txt  how the AI writes notes, set on the phone page (Integrations › AI)
 ```
+
+On the Sticky, **Settings › About › SD card › Files** opens the same folders.
 
 ## Install
 

@@ -346,6 +346,13 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
 }
 
 inline void open_sdcard() { sd_files_scan(); show(SCR_SDCARD); }  // mounts a card put in since boot
+inline void files_open() { hw_beep(); g_filesPage = 0; sd_dir_scan(); show(SCR_FILES); }  // 04k at g_dir, page 1
+inline void files_tap(int y) {  // a folder row opens it; files do nothing
+  const int r = srow_at(y, IROW_H, FILES_ROWS), i = g_filesPage * FILES_ROWS + r;
+  if (r < 0 || i >= int(g_files.size()) || g_files[i].items < 0) return;
+  g_dir = (g_dir == "/" ? "" : g_dir) + "/" + g_files[i].name;
+  files_open();
+}
 
 inline void key_down(const KbKey &k) {
   if (g_screen == SCR_NOTEED) note_key(k);
@@ -556,6 +563,7 @@ inline void note_updown(int dir) { hw_beep(); if (g_ne.kbOpen) kb_hide(g_ne.kbOp
 inline void page_back() {
   if (settings_screen(g_screen)) {
     if (g_screen == SCR_FILES && g_filesPage > 0) turn(g_filesPage, -1);
+    else if (g_screen == SCR_FILES && g_dir != "/") { g_dir = sd_parent(g_dir); g_filesPage = 0; sd_dir_scan(); go(SCR_FILES); }  // up one folder
     else go(settings_parent());
   } else if (g_screen == SCR_APPS) go(SCR_HOME);
   else if (g_screen == SCR_NOTES) {
@@ -780,8 +788,8 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_CONFIG: if (srow_at(y0, SROW_H, 4) == 3) { hw_beep(); show(SCR_TEMP); } return;  // City: set on the phone setup page
     case SCR_TEMP: temp_tap(y0); return;
     case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(); open_sdcard(); } return;
-    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(); g_filesPage = 0; show(SCR_FILES); } return;
-    case SCR_FILES: return;
+    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { g_dir = "/"; files_open(); } return;
+    case SCR_FILES: files_tap(y0); return;
     case SCR_UPDATE: update_tap(x0, y0); return;
     case SCR_LANGFONT: langfont_tap(y0); return;
     case SCR_SYSLANG: syslang_tap(y0); return;
