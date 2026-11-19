@@ -95,13 +95,18 @@ inline size_t mic_stop() {
   return PCM_WAV_HEADER_SIZE + g_pcmLen;
 }
 
-// Development only (AI-01..AI-09): keep the last take as /ai/last.wav to check it on a computer.
+// Development only (AI-01..AI-09): keep every take as /ai/take001.wav, take002.wav, … to compare on a computer.
 inline void mic_save_last(size_t size) {
   if (!size || !g_sdOk) return;
   if (!SD.exists("/ai")) SD.mkdir("/ai");
-  File f = SD.open("/ai/last.wav", FILE_WRITE);
+  char path[24];
+  for (int i = 1; i < 1000; i++) {  // next free number
+    snprintf(path, sizeof path, "/ai/take%03d.wav", i);
+    if (!SD.exists(path)) break;
+  }
+  File f = SD.open(path, FILE_WRITE);
   const size_t w = f ? f.write(g_wav, size) : 0;
   f.close();
-  Serial.printf("[mic] %.1f s, peak %d dBFS, /ai/last.wav %s\n", mic_seconds(),
-                int(20 * log10f(max((int)g_micPeak, 1) / 32768.0f)), w == size ? "saved" : "write failed");
+  Serial.printf("[mic] %.1f s, peak %d dBFS, %s %s\n", mic_seconds(),
+                int(20 * log10f(max((int)g_micPeak, 1) / 32768.0f)), path, w == size ? "saved" : "write failed");
 }
