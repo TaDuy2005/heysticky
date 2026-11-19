@@ -185,7 +185,12 @@ constexpr int FULL_EVERY = 30;  // calibration knob: partial refreshes between g
 inline int g_partials = 0;
 
 inline void ui_full() { display.update(); g_partials = 0; }
+// The panel diffs its whole "previous image" RAM against the new one, but a partial refresh only rewrites
+// its own window there; after a full refresh the rest still holds the screen before it, so every small
+// partial re-drove that old change (ghosts of 05 on 05a, of Home on 05). The first partial after a full
+// refresh therefore covers the whole screen: only changed pixels move, and the RAM is in step again.
 inline void ui_partial(int x, int y, int w, int h, int fullEvery = FULL_EVERY) {
+  if (g_partials == 0) x = y = 0, w = W, h = H;
   if (++g_partials >= fullEvery) { ui_full(); return; }
   const uint32_t t = millis();
   display.updatePartial(x, y, w, h);

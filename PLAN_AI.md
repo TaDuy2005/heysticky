@@ -9,11 +9,11 @@ Branch `feature/ai`. Spec context: PLAN.md §3 (hold top button = AI), §4 (scre
 ## 1. Decisions
 
 - **Provider:** [OpenRouter](https://openrouter.ai), one key for both calls, base URL `https://openrouter.ai/api/v1`. Any OpenAI-compatible server (Groq, OpenAI, Mistral, self-hosted Whisper) works by changing the URL and model names.
-- **Speech-to-text:** `openai/whisper-large-v3` via `POST {url}/audio/transcriptions` (OpenAI-style multipart upload, `file` + `model`).
+- **Speech-to-text:** `mistralai/voxtral-small-transcribe-3-0` (OpenRouter: *Mistral: Voxtral Small Transcribe 3*; chosen in AI-09 over `openai/whisper-large-v3`) via `POST {url}/audio/transcriptions` (OpenAI-style multipart upload, `file` + `model`).
 - **Sorting / writing:** `deepseek/deepseek-v4.1-flash-1017` (a fixed version, chosen 2026-11-19 over the `~deepseek/deepseek-flash-latest` alias) via `POST {url}/chat/completions`. DeepSeek's own API (`api.deepseek.com`) is no longer special-cased: it has no zero-retention option. JSON is asked for in the prompt, not with `response_format: json_schema` (only some OpenRouter models support it).
-- **Two services, one key by default** (follows Figma 06h, which has a URL / model / key per section). Flash keys `stt_url`, `stt_model`, `stt_key`, `stt_order`, `ai_url`, `ai_model`, `ai_key`, `ai_auto`, `ai_sort`, `ai_order` (PLAN §8). Defaults: `stt_url` = OpenRouter, `stt_model` = `openai/whisper-large-v3`, `ai_model` = `deepseek/deepseek-v4.1-flash-1017` (an empty 06h2 Model saves this); an empty `ai_url` / `ai_key` means "same as speech-to-text", so one OpenRouter key is pasted once. Defaults live in `net.h` (`AI_URL_DEF`, `STT_MODEL_DEF`, `AI_MODEL_DEF`) and prefill the 06h1 / 06h2 forms. A service is saved only after the Sticky has tested it (`/api/ai_test`: 0.5 s of silence, or a 16-token "Hi" chat); the AI counts as added only once `ai_model` is saved, otherwise 05d *AI key missing*.
+- **Two services, one key by default** (follows Figma 06h, which has a URL / model / key per section). Flash keys `stt_url`, `stt_model`, `stt_key`, `stt_order`, `ai_url`, `ai_model`, `ai_key`, `ai_auto`, `ai_sort`, `ai_order` (PLAN §8). Defaults: `stt_url` = OpenRouter, `stt_model` = `mistralai/voxtral-small-transcribe-3-0`, `ai_model` = `deepseek/deepseek-v4.1-flash-1017` (an empty 06h2 Model saves this); an empty `ai_url` / `ai_key` means "same as speech-to-text", so one OpenRouter key is pasted once. Defaults live in `net.h` (`AI_URL_DEF`, `STT_MODEL_DEF`, `AI_MODEL_DEF`) and prefill the 06h1 / 06h2 forms. A service is saved only after the Sticky has tested it (`/api/ai_test`: 0.5 s of silence, or a 16-token "Hi" chat); the AI counts as added only once `ai_model` is saved, otherwise 05d *AI key missing*.
 - **Privacy and routing (OpenRouter URLs only; other APIs may reject unknown fields):** every call sends `provider.zdr = true`, so only zero-retention hosts are used and a model without one is refused (the 06h test fails, nothing is saved). Speech-to-text sends it as a multipart form field `provider` = `{"zdr":true}` (tested 2026-11-19: `openai/gpt-transcribe`, which has no zero-retention host, is then refused; `provider[zdr]=true` is ignored). 06h1 *Provider (optional)* → `order` (hosts tried first, fallback stays on). 06h2 *Auto router provider* on (default) → *Mode*: Balanced (no `sort`, default) / Fastest (`sort: throughput`) / Cheapest (`sort: price`); off → *Provider* → `order`. Chat also sends `reasoning.enabled = false` (V4.1 Flash 1017: ~1 s, 0 reasoning tokens). Speech-to-text has no speed data on OpenRouter, so it has no Mode. Built in `ai_parse.h` (`Route`, `route_json`).
-- **Mixed English / Vietnamese:** never send a `language` parameter (Whisper picks one language per 30 s window). English words inside Vietnamese sentences usually survive; whole-sentence switches may come out translated or garbled. Measured in AI-09.
+- **Mixed English / Vietnamese:** never send a `language` parameter. Measured in AI-09: Voxtral Small got all 4 mixed clips right (English words inside Vietnamese, a whole-sentence switch, an English book title); Whisper got 1 of 4.
 - **Recording:** 16 kHz, 16-bit mono PCM in PSRAM (32 KB/s). Max **60 s** (1.9 MB; OpenRouter/OpenAI file limit is 25 MB). Under **0.5 s** → "I didn't catch that".
 - **No on-device speech recognition:** Espressif's ESP-SR only does wake words / command lists and has no Vietnamese.
 
@@ -33,11 +33,22 @@ Assumes 20 clips a day × 15 s ≈ 150 min a month.
 
 | Part | Price | ≈ per month |
 |---|---|---|
-| `openai/whisper-large-v3` | $0.000008/s ($0.00048/min) | $0.07 |
+| `mistralai/voxtral-small-transcribe-3-0` | $0.000067/s ($4.00/hour) | $0.60 |
 | `deepseek/deepseek-v4.1-flash-1017` | $0.30 in / $1.20 out per 1M tokens, half price on weekends and weekdays 00–01, 04–06, 10–24 UTC; ~800 in + ~300 out per clip | $0.18–0.36 |
 | OpenRouter credit purchase fee | 5.5 %, $0.80 minimum per purchase | — |
 
-Alternatives on OpenRouter worth testing for Vietnamese: `qwen/qwen3-asr-1.7b` ($0.000008/s), `mistralai/voxtral-mini-transcribe-3-0` ($0.000058/s), `mistralai/voxtral-small-transcribe-3-0` ($0.000067/s). All have zero-retention hosts; `openai/gpt-transcribe` has none (checked 2026-11-19), so it is out. Avoid `whisper-1` and `gpt-4o-*-transcribe`: OpenAI shuts them down on 2027-02-26.
+AI-09 comparison (2026-11-19, the 20 device clips, `zdr: true`; clips fully right / meaning-changing errors / clips with invented text / typical speed / per month):
+
+| Model | Right | Wrong meaning | Invented text | Speed | Month |
+|---|---|---|---|---|---|
+| `mistralai/voxtral-small-transcribe-3-0` (default) | 18 | 0 | 0 | 2.0 s | $0.60 |
+| `microsoft/mai-transcribe-2` (Azure only; $0.10/hour, whole seconds) | 17 | 1 | 0 | 1.6 s | $0.25 |
+| `mistralai/voxtral-mini-transcribe-3-0` | 16 | 2 | 0 | 1.9 s | $0.52 |
+| `qwen/qwen3-asr-1.7b` (numbers as words) | 14 | 5 | 1 | 3.3 s | $0.07 |
+| `openai/whisper-large-v3` (old default) | 9 | 9 | 4 | 2.5 s | $0.07 |
+| `openai/whisper-large-v3-turbo` | 7 | 12 | 6 | 2.8 s | $0.03 |
+
+Whisper's invented lines ("Thank you", "Hẹn gặp lại các bạn trong những video tiếp theo") made the AI answer `unclear`, so 3 good clips ended on 05d. With Voxtral Small's transcripts the same prompt sorted 18 of 20 as expected (the other two follow what was said: "tối thứ Sáu" → Friday 19:00, "Thursday afternoon" on a Thursday → today 12:00). `openai/gpt-transcribe` has no zero-retention host (checked 2026-11-19), so it is out. Avoid `whisper-1` and `gpt-4o-*-transcribe`: OpenAI shuts them down on 2027-02-26.
 
 ## 4. Sorting prompt and reply
 
@@ -75,7 +86,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 - [x] AI-06 05b Review (transcript + To-do / Note / Record again), 05c Done (Added + list), 05d Failed (§5); EN + VI from Figma. Device-tested 2026-11-18. 05b saves the transcript as is (no AI). 05c buttons: Go to To-do / Go to Notes + Done (Figma 14:452 still says Try again). 05d Try again resends the same take for network / service failures
 - [x] AI-07 Host test `tools/ai_test.cpp`: WAV header, multipart body, JSON reply parsing (plain, fenced, wrapped in text, broken, each `type`). Needs ArduinoJson on the include path (README)
 - [x] AI-08 Phone page 06g Integrations → 06h AI (Figma, EN + VI): Speech-to-text and AI sections (Base URL, Model, API key each), Note instructions (type or upload .txt, 2,000 characters, saved to `/ai/note-instructions.txt`); Integrations row + keys footer on 06; `/api/ai` GET / POST. Keys come back only as a hint (`sk-or-••••`); an empty key field keeps the saved key. Notion, Home Assistant, Remote access stay hidden (Phase 3). Device-tested 2026-11-18 (key saved from the phone, shown masked). Replaced the same day by the 06h list + 06h1 / 06h2 pages (Add → Cancel / Save with a connection test → saved line with edit / delete, 06h3 pop-ups, 06h4 delete) with no Save button: `/api/ai_test`, `/api/ai_del`, `/api/ai_opts`. Checked in a browser against a mock API (EN, VI); not yet on the device
-- [ ] AI-09 Device test (06h test / edit / delete passed on the device 2026-11-19): 5–10 clips each in English and Vietnamese (to-do, note, unsure, deadlines like "tomorrow at 9"); compare the saved clips against the §3 alternatives with `curl`; then stop writing `/ai/last.wav`
+- [x] AI-09 Device test (06h test / edit / delete passed on the device 2026-11-19): 20 clips on 2026-11-19 (8 EN, 8 VI, 4 mixed; 4 at 60–70 cm), results in §3; speech-to-text default → Voxtral Small; `mic_save_last()` and the take files removed
 - [x] AI-10 Docs: PLAN §2, §4 (06h–06h4), §5, §6 (Phase 2 requirements REQ-20..25), §8, §9, §10, §12; README Features, Controls, AI setup (OpenRouter key, the 06h flow, cost, privacy), microSD layout. Done 2026-11-18
 - [ ] AI-11 Release v1.1.0: `FW_VERSION`, `tools/release.sh v1.1.0`, GitHub Release, OTA test from v1.0.2
 - [ ] AI-12 Seeed registry: refresh the prepared entry to v1.1.0, add the device photo, `npm test` + `npm run validate`, then wait for confirmation before fork / PR / form
@@ -83,8 +94,8 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 ## 7. Open
 
 - [x] Figma: check that 05–05d frames exist in both languages before AI-03 / AI-06. Checked by the user 2026-11-18: EN and VI frames exist
-- [x] Mic gain: ×2 after a DC blocker (AI-01); recheck with Vietnamese clips spoken at arm's length in AI-09
+- [x] Mic gain: ×2 after a DC blocker (AI-01); rechecked in AI-09: the 4 clips at 60–70 cm (EN + VI) all came out right with Voxtral Small
 - [x] "Plain (no AI)" → **Plain text** toggle on 06h under the AI key, plus a **Note instructions** toggle (hides the box; disabled while Plain text is on). Figma 06h EN + VI updated 2026-11-18. Plain notes drop characters the fonts can't draw; nothing left → 05d
 - [x] No way to delete a saved key → 06h4 Delete provider removes its URL, model and key (2026-11-18)
-- [ ] AI-09: add mixed English / Vietnamese clips to the model comparison
-- [ ] Battery cost of one clip (mic + Wi-Fi + TLS); read it from the gauge during AI-09
+- [x] AI-09: add mixed English / Vietnamese clips to the model comparison (§3)
+- [x] Battery cost of one clip (mic + Wi-Fi + TLS): 91 % → 86 % over 20 clips in ~46 min awake on battery, so at most ~0.25 % a clip (AI-09)

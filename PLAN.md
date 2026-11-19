@@ -43,7 +43,7 @@ Pin map (from the open-source sticky-2048 firmware):
 - Refresh: full on screen change and at boot (after a white clear); partial for clock, weather, indoor, status bar; a full refresh every 30 partials (20 while typing)
 - Measured on this unit: a partial refresh takes ~860 ms regardless of area. Touch is read by a FreeRTOS task on core 0 into a queue, so taps made during a refresh are applied in the next one; typing is silent (a beep per key cannot keep pace)
 - Services: **Open-Meteo** (weather + city lookup + timezone, no key), **NTP** (time)
-- Phase 2: PDM mic (clock GPIO19, data GPIO20, power GPIO38) recorded at 16 kHz mono into PSRAM, max 60 s. Any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`). Default: one [OpenRouter](https://openrouter.ai) key for `openai/whisper-large-v3` + `~deepseek/deepseek-flash-latest`. Both calls run in a FreeRTOS task (`ai.h`) so 05a can animate. Details, cost and tests: `PLAN_AI.md`
+- Phase 2: PDM mic (clock GPIO19, data GPIO20, power GPIO38) recorded at 16 kHz mono into PSRAM, max 60 s. Any **OpenAI-compatible** API — speech-to-text (`/audio/transcriptions`) and chat (`/chat/completions`). Default: one [OpenRouter](https://openrouter.ai) key for `mistralai/voxtral-small-transcribe-3-0` + `deepseek/deepseek-v4.1-flash-1017`. Both calls run in a FreeRTOS task (`ai.h`) so 05a can animate. Details, cost and tests: `PLAN_AI.md`
 
 ## 3. Interaction model
 
@@ -139,7 +139,7 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - [x] REQ-22 Everything is written in the system language; noise or invented text → 05d, not a to-do (known gap: a fluent fake still passes)
 - [x] REQ-23 Phone page 06h: one page per service; Save tests the connection and saves only on success; edit and delete; keys never go back to the browser
 - [x] REQ-24 Note instructions (typed or .txt, max 2,000 characters, on the card) and Plain text, saved as they change
-- [ ] REQ-25 Device test: English and Vietnamese clips, deadlines, Review, Failed, the 06h test / edit / delete (AI-09)
+- [x] REQ-25 Device test: English and Vietnamese clips, deadlines, Review, Failed, the 06h test / edit / delete (AI-09; Review device-tested in AI-06)
 
 ## 7. Phase 1 task list
 
@@ -174,8 +174,7 @@ microSD
 │   └── <Name>/
 │       └── R20.vlw … I25.vlw  user font, one file per slot, made by the phone page (06n)
 └── ai/
-    ├── note-instructions.txt  (Phase 2) how the AI writes notes, set on the phone setup page
-    └── take001.wav …          (Phase 2, development only) every recording, numbered; removed in AI-09
+    └── note-instructions.txt  (Phase 2) how the AI writes notes, set on the phone setup page
 ```
 
 **Device flash (`Preferences`)** — never in source, never in the `.bin`:

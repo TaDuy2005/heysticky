@@ -17,7 +17,6 @@ inline I2SClass g_mic;
 inline uint8_t *g_wav = nullptr;      // 44-byte header + PCM, with MIC_PRE bytes free before and MIC_POST after
 inline volatile size_t g_pcmLen = 0;  // PCM bytes recorded so far
 inline volatile int g_micLevel = 0;   // mean |sample| of the last 32 ms chunk (0..32767)
-inline volatile int g_micPeak = 0;    // loudest |sample| of the whole take
 inline volatile int g_micLevelMax = 0; // loudest g_micLevel since the waveform last read it
 inline volatile bool g_micRun = false;
 inline TaskHandle_t g_micTask = nullptr;
@@ -32,19 +31,15 @@ inline void mic_task(void *) {
     if (!n) continue;
     if (!primed) { px = chunk[0]; primed = true; }
     long sum = 0;
-    int peak = g_micPeak;
     for (size_t i = 0; i < n / 2; i++) {
       const float x = chunk[i], y = x - px + MIC_HP * py;
       px = x; py = y;
       chunk[i] = (int16_t)constrain(y * MIC_GAIN, -32768.0f, 32767.0f);
-      int a = abs(chunk[i]);
-      sum += a;
-      if (a > peak) peak = a;
+      sum += abs(chunk[i]);
     }
-    if (millis() - t0 < MIC_SETTLE_MS) { g_micPeak = 0; g_micLevelMax = 0; continue; }  // filters settle; keep nothing
+    if (millis() - t0 < MIC_SETTLE_MS) { g_micLevelMax = 0; continue; }  // filters settle; keep nothing
     g_micLevel = sum / long(n / 2);
     if (g_micLevel > g_micLevelMax) g_micLevelMax = g_micLevel;
-    g_micPeak = peak;
     n = min(n, MIC_MAX_PCM - g_pcmLen);
     memcpy(g_wav + PCM_WAV_HEADER_SIZE + g_pcmLen, chunk, n);
     g_pcmLen += n;
@@ -69,7 +64,7 @@ inline bool mic_start() {
     if (b) g_wav = b + MIC_PRE;
   }
   if (!g_wav) { Serial.println("[mic] no PSRAM buffer"); return false; }
-  g_pcmLen = 0; g_micLevel = 0; g_micPeak = 0; g_micLevelMax = 0;
+  g_pcmLen = 0; g_micLevel = 0; g_micLevelMax = 0;
   mic_power(true);
   g_mic.setPinsPdmRx(PIN_MIC_CLK, PIN_MIC_DATA);
   if (!g_mic.begin(I2S_MODE_PDM_RX, MIC_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
@@ -93,20 +88,4 @@ inline size_t mic_stop() {
   const pcm_wav_header_t h = PCM_WAV_HEADER_DEFAULT(g_pcmLen, 16, MIC_RATE, 1);
   memcpy(g_wav, &h, PCM_WAV_HEADER_SIZE);
   return PCM_WAV_HEADER_SIZE + g_pcmLen;
-}
-
-// Development only (AI-01..AI-09): keep every take as /ai/take001.wav, take002.wav, … to compare on a computer.
-inline void mic_save_last(size_t size) {
-  if (!size || !g_sdOk) return;
-  if (!SD.exists("/ai")) SD.mkdir("/ai");
-  char path[24];
-  for (int i = 1; i < 1000; i++) {  // next free number
-    snprintf(path, sizeof path, "/ai/take%03d.wav", i);
-    if (!SD.exists(path)) break;
-  }
-  File f = SD.open(path, FILE_WRITE);
-  const size_t w = f ? f.write(g_wav, size) : 0;
-  f.close();
-  Serial.printf("[mic] %.1f s, peak %d dBFS, %s %s\n", mic_seconds(),
-                int(20 * log10f(max((int)g_micPeak, 1) / 32768.0f)), path, w == size ? "saved" : "write failed");
 }
