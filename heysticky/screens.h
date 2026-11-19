@@ -892,10 +892,31 @@ inline void screens_input() {
   }
 }
 
+// Card in / out (detect switch, held 300 ms so a half-pushed card doesn't flicker): mount or drop it,
+// and redraw the screens that show it (REQ-16 live status). A pin read per loop: no measurable power.
+inline void sd_watch() {
+  static bool shown = sd_inserted();
+  static int8_t pending = -1;
+  static uint32_t at = 0;
+  const bool in = sd_inserted();
+  if (in == shown) { pending = -1; return; }
+  if (pending != in) { pending = in; at = millis(); return; }
+  if (millis() - at < 300) return;
+  shown = in;
+  pending = -1;
+  Serial.printf("[sd] card %s\n", in ? "in" : "out");
+  if (!in) { SD.end(); g_sdOk = false; }
+  else if (g_screen == SCR_SDCARD) sd_files_scan();  // mounts, and 04i shows the file count
+  else sd_mount();
+  if (g_screen == SCR_ABOUT || g_screen == SCR_SDCARD) g_redraw = true;
+  else if (g_screen == SCR_FILES && !in) show(SCR_SDCARD);
+}
+
 inline void screens_loop() {
   if (g_screen == SCR_LISTEN) { listen_loop(); return; }
   if (g_screen == SCR_WORKING) { working_loop(); return; }
   screens_input();
+  sd_watch();
   if (g_pageDirty) { g_pageDirty = false; show(g_screen); }  // the font or Wi-Fi switch changed from the phone page
   if (g_redraw) {
     g_redraw = false;
