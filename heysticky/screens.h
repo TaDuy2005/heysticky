@@ -896,7 +896,7 @@ inline void screens_loop() {
   if (g_screen == SCR_LISTEN) { listen_loop(); return; }
   if (g_screen == SCR_WORKING) { working_loop(); return; }
   screens_input();
-  if (g_fontDirty) { g_fontDirty = false; show(g_screen); }  // the font in use changed from the phone page
+  if (g_pageDirty) { g_pageDirty = false; show(g_screen); }  // the font or Wi-Fi switch changed from the phone page
   if (g_redraw) {
     g_redraw = false;
     draw_screen();

@@ -31,6 +31,7 @@ enum JoinResult : uint8_t { JR_NONE, JR_BUSY, JR_OK, JR_BADPASS, JR_FAIL };
 inline NetState g_ns = NS_IDLE;
 inline uint32_t g_nsAt = 0, g_retryAt = 0;
 inline bool g_scanOnly = false, g_wasOn = false;
+inline bool g_wifiOn = true;  // 06b Wi-Fi switch (flash "wifi_on" = "0" when off): off = never join a network
 inline WifiNet g_try;            // network being joined
 inline bool g_tryTest = false;   // asked from the phone page: report the result there
 inline String g_jrSsid;
@@ -106,7 +107,7 @@ inline void net_sta_step() {
     case NS_IDLE:
       if (on) { g_wasOn = true; return; }
       if (g_wasOn) { g_wasOn = false; g_retryAt = millis(); Serial.println("[net] Wi-Fi lost"); }
-      if (g_webOn || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
+      if (!g_wifiOn || g_webOn || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
       WiFi.scanNetworks(true);
       g_scanOnly = false;
       g_ns = NS_SCAN;
@@ -117,7 +118,7 @@ inline void net_sta_step() {
       if (n == WIFI_SCAN_RUNNING && millis() - g_nsAt < SCAN_TIMEOUT_MS) return;
       store_scan(n);
       g_ns = NS_IDLE;
-      if (g_scanOnly || on) return;
+      if (g_scanOnly || on || !g_wifiOn) return;
       if (!join_best_cached()) g_retryAt = millis() + WIFI_RETRY_MS;
       return;
     }
@@ -298,9 +299,13 @@ function render(){
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
- $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');
+ $('pv').textContent=S.name||'';$('wv').textContent=S.wifi_on===false?L('Off','Tắt'):cur||L('Not connected','Chưa kết nối');
  if(view==='wifi'){const w=$('v-wifi');w.replaceChildren();
   const net=s=>Object.assign({ssid:s},seen(s)||{});
+  const on=S.wifi_on!==false,sw=E('input',{type:'checkbox',className:'sw',id:'w-on',checked:on});  // 06b switch, saved as it flips
+  sw.onchange=async()=>{S.wifi_on=sw.checked;render();try{if(!(await api('/api/wifi_on',{on:sw.checked?1:0})).ok)throw 0}catch(e){alertBox(L('Couldn\'t save','Không lưu được'),'')}load()};
+  w.append(E('div',{className:'g'},E('div',{className:'r'},E('label',{htmlFor:'w-on',className:'n',style:'margin:0;font-size:16px',textContent:'Wi-Fi'}),sw)));
+  if(!on){w.append(E('p',{className:'note'},L('The Sticky won\'t join any network. Weather, clock sync, AI and updates need Wi\u2060-\u2060Fi.','Sticky sẽ không kết nối mạng nào. Thời tiết, đồng bộ giờ, AI và cập nhật cần Wi\u2060-\u2060Fi.')));return}
   if(cur)w.append(E('div',{className:'g'},row(Object.assign(net(cur),{rssi:S.cur.rssi}),{cur:1,info:1})));
   const my=S.saved.filter(s=>s!==cur);
   if(my.length)w.append(E('h2',{textContent:L('MY NETWORKS','MẠNG CỦA TÔI')}),E('div',{className:'g'},...my.map(s=>row(net(s),{info:1,tap:()=>join(s,'')}))));
@@ -547,6 +552,7 @@ inline void api_status() {
     n["enc"] = g_nets[i].enc;
   }
   d["scanning"] = g_ns == NS_SCAN;
+  d["wifi_on"] = g_wifiOn;
   d["lang"] = g_vi ? "vi" : "en";
   d["font"] = cfg_get("font");
   if (g_jr != JR_NONE) {
@@ -565,6 +571,7 @@ inline void api_join() {
   String ssid = g_web.arg("ssid"), pass = g_web.arg("pass");
   if (ssid.isEmpty() || !text_ok(ssid, 32) || !text_ok(pass, 63)) return api_reply(400, "Invalid input");
   if (g_ns == NS_SCAN) return api_reply(409, "Busy");
+  if (!g_wifiOn) return api_reply(409, "Wi-Fi is off");
   const int k = wl_find(g_wifi, ssid);
   if (pass.isEmpty() && k >= 0) pass = g_wifi.n[k].pass;
   g_jrSsid = ssid;
@@ -662,7 +669,7 @@ inline void api_font_done() {
   if (!ap_only()) return;
   if (g_upOk && cfg_get("font") == g_web.arg("name") && g_web.arg("slot") == FONT_SLOTS[FONT_SLOTS_N - 1].file) {
     font_apply(g_web.arg("name"));  // the font in use was replaced: take the new files after the last slot
-    g_fontDirty = true;
+    g_pageDirty = true;
   }
   api_reply(g_upOk ? 200 : 400, g_upOk ? "OK" : "Bad font file");
   g_upOk = false;
@@ -778,6 +785,15 @@ inline void api_ai_del() {
   api_reply(200, "OK");
 }
 
+inline void wifi_set_on(bool on);
+inline void api_wifi_on() {  // 06b switch, saved as it flips
+  if (!ap_only()) return;
+  const String v = g_web.arg("on");
+  if (v != "0" && v != "1") return api_reply(400, "Invalid input");
+  wifi_set_on(v == "1");
+  api_reply(200, "OK");
+}
+
 inline void api_ai_test();  // 06h1/06h2 Save, in ai.h (it needs ai_post)
 
 // Returns true when a network is saved; false = first setup, the hotspot is already on.
@@ -790,6 +806,7 @@ inline bool net_begin() {
     if (r != WIFI_REASON_ASSOC_LEAVE) g_discReason = r;  // not our own disconnect()
   }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   wifi_load();
+  g_wifiOn = cfg_get("wifi_on", "1") != "0";
   const String off = cfg_get("utc_off");  // last known offset: right clock before the first weather reply
   if (off.length()) g_utc_off = off.toInt();
   configTime(off.toInt(), 0, "pool.ntp.org", "time.google.com");
@@ -806,6 +823,7 @@ inline bool net_begin() {
   g_web.on("/api/forget", HTTP_POST, api_forget);
   g_web.on("/api/save", HTTP_POST, api_save);
   g_web.on("/api/scan", HTTP_POST, api_scan);
+  g_web.on("/api/wifi_on", HTTP_POST, api_wifi_on);
   g_web.on("/api/fonts", HTTP_GET, api_fonts);
   g_web.on("/api/font", HTTP_POST, api_font_done, api_font_part);
   g_web.on("/api/font_del", HTTP_POST, api_font_del);
@@ -905,6 +923,23 @@ inline bool net_weather() {
   }
   Serial.printf("[wx] %.1f (%.0f/%.0f) code=%d %s  utc%+ld\n", g_wx.temp, g_wx.hi, g_wx.lo, g_wx.code, wx_info(g_wx.code).label, off);
   return true;
+}
+
+// Off: leave the network now (the hotspot, if on, stays up) and show weather as Offline. On: join the strongest saved one.
+inline void wifi_set_on(bool on) {
+  if (on == g_wifiOn) return;
+  g_wifiOn = on;
+  cfg_set("wifi_on", on ? "1" : "0");
+  g_jr = JR_NONE;
+  if (on) { g_retryAt = 0; if (g_ns == NS_IDLE) join_best_cached(); }
+  else {
+    WiFi.disconnect();
+    if (g_ns == NS_JOIN) g_ns = NS_IDLE;  // a running scan finishes on its own and joins nothing
+    g_wasOn = false;
+    g_wx.ok = false;
+  }
+  g_pageDirty = true;  // status bar Wi-Fi icon and weather card now, not at the next minute
+  Serial.printf("[net] Wi-Fi %s\n", on ? "on" : "off");
 }
 
 inline void net_loop() {
