@@ -225,7 +225,11 @@ input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#f
 .add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:18px;margin-top:14px;border:2px dashed #000;border-radius:8px;background:#fff;font-size:16px;font-weight:600}.add b{font-size:20px}
 .ps{display:flex;align-items:center;gap:8px;margin-top:14px;border:2px solid #000;border-radius:8px;padding:10px 10px 10px 14px}.ps b{flex:1;font-weight:600;overflow-wrap:anywhere}
 .ib{flex:none;width:40px;height:40px;border:2px solid #000;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
-.pf{margin-top:14px;border:2px solid #000;border-radius:12px;padding:16px}.two{display:flex;gap:12px;margin-top:14px}
+.pf{margin-top:14px;border:2px solid #000;border-radius:12px;padding:16px}
+.lb{display:flex;align-items:center;gap:6px;position:relative;margin:10px 0 6px}.lb label{margin:0}.tg .lb{margin:0}
+.ii{flex:none;width:24px;height:24px;padding:0;border:0;background:none;color:#000;display:flex;align-items:center;justify-content:center}
+.pop{position:absolute;left:0;top:100%;margin-top:6px;width:260px;max-width:calc(100vw - 72px);background:#fff;border:2px solid #000;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:400;line-height:1.4;z-index:3;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px solid #000;border-radius:8px;color:#000;-webkit-appearance:none;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center}.two{display:flex;gap:12px;margin-top:14px}
 .two button{flex:1;height:50px;border:2px solid #000;border-radius:10px;background:#fff;font-size:17px;font-weight:700}.two .k{background:#000;color:#fff}
 .al .ic{display:flex;justify-content:center;margin:20px 0 -10px}.spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.up .sv{font-weight:600}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
@@ -454,12 +458,17 @@ const failText=(R,u)=>R.why==='stt'?L('Add speech-to-text first, or fill in the 
  :R.code===401||R.code===403?L('Wrong API key. Check it and try again.','Sai khoá API. Hãy kiểm tra rồi thử lại.')
  :R.code===400||R.code===404||R.code===422?L('Check the Base URL and model.','Hãy kiểm tra URL gốc và mô hình.')+(R.msg?' ('+R.msg+')':'')
  :L('The service answered ','Dịch vụ trả lời ')+R.code+(R.msg?': '+R.msg:'.');
+// A field label; tip = an (i) that opens a small pop-up on top (any tap elsewhere closes it)
+const lab=(id,t,tip)=>{const l=E('label',{htmlFor:id,textContent:t});if(!tip)return l;
+ const p=E('div',{className:'pop',hidden:true,textContent:tip}),b=E('button',{type:'button',className:'ii',ariaLabel:'Info'},H(svg(18,'<circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".4"/>')));
+ b.onclick=()=>p.hidden=!p.hidden;return E('div',{className:'lb'},l,b,p)};
+document.addEventListener('click',e=>{for(const p of document.querySelectorAll('.pop'))if(!p.parentNode.contains(e.target))p.hidden=true});
 // 06h1 / 06h2: dashed "Add model provider" -> form (Cancel / Save = test, then save) -> saved line with edit / delete
 async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLoad())return;
  const stt=id==='stt',svc=stt?'stt':'ai',p=svc+'_',SAME=L('Same as speech-to-text','Giống mục giọng nói thành chữ'),slot=E('div');
  v.append(E('div',{className:'sec'},E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')}),
   E('p',{className:'sd',textContent:stt?L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')
-   :L('Writes notes using your instructions and splits to-dos. Works with DeepSeek, OpenAI, or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với DeepSeek, OpenAI hoặc mọi API /chat/completions kiểu OpenAI.')}),slot));
+   :L('Writes notes using your instructions and splits to-dos. Works with OpenRouter or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với OpenRouter hoặc mọi API /chat/completions kiểu OpenAI.')}),slot));
  const show=()=>{if(!A[p+'set']){const b=E('button',{className:'add'},E('b',{textContent:'+'}),L('Add model provider','Thêm nhà cung cấp mô hình'));b.onclick=form;slot.replaceChildren(b);return}
   const ed=E('button',{className:'ib',ariaLabel:L('Edit','Sửa')},H(svg(20,'<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>')));
   const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
@@ -467,20 +476,32 @@ async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLo
   del.onclick=()=>alertBox(stt?L('Delete speech-to-text?','Xoá giọng nói thành chữ?'):L('Delete AI for notes & to-dos?','Xoá AI cho ghi chú & việc cần làm?'),
    L('The API key will be removed from the Sticky.','Khoá API sẽ bị xoá khỏi Sticky.'),L('Delete','Xoá'),async()=>{try{await api('/api/ai_del',{svc})}catch(e){}if(await aiLoad())show()});
   slot.replaceChildren(E('div',{className:'ps'},E('b',{textContent:A[p+'model']}),ed,del))};
- function form(){const inp={},f=(k,lab,val,ph,pw)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:200});
-   return[E('label',{htmlFor:'a-'+k,textContent:lab}),inp[k]]};
+ function form(){const inp={},f=(k,t,val,ph,pw,tip)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:k==='order'?100:200});
+   return[lab('a-'+k,t,tip),inp[k]]};
   const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')});
-  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':SAME),...f('model',L('Model','Mô hình'),A[p+'model']),
-   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(stt?L('Paste your API key','Dán khoá API'):SAME),1),
+  // OpenRouter only (hidden for other APIs): Provider = hosts tried first; 06h2 Auto router provider on = Mode instead
+  const prov=E('div',{},...f('order',L('Provider (optional)','Nhà cung cấp (không bắt buộc)'),A[p+'order'],L('Any (e.g. groq, deepinfra)','Bất kỳ (vd. groq, deepinfra)'),0,
+   L('Auto-fallback to other provider if it is down','Tự chuyển sang nhà cung cấp khác nếu nó lỗi')));
+  let route=prov;
+  if(!stt){const sw=E('input',{type:'checkbox',className:'sw',id:'a-auto',checked:A.ai_auto});
+   inp.sort=E('select',{id:'a-sort'},...[['',L('Balanced (price + speed)','Cân bằng (giá + tốc độ)')],['throughput',L('Fastest (Nitro)','Nhanh nhất (Nitro)')],
+    ['price',L('Cheapest (Floor)','Rẻ nhất (Floor)')]].map(([v,t])=>E('option',{value:v,textContent:t})));inp.sort.value=A.ai_sort||'';
+   inp.auto={get value(){return sw.checked?'1':'0'}};
+   const mode=E('div',{},lab('a-sort',L('Mode','Chế độ')),inp.sort),sync=()=>{mode.hidden=!sw.checked;prov.hidden=sw.checked};sw.onchange=sync;sync();
+   route=E('div',{},E('div',{className:'tg'},E('div',{},lab('a-auto',L('Auto router provider','Tự chọn nhà cung cấp'),L('OpenRouter picks the host for you.','OpenRouter tự chọn nơi chạy mô hình.'))),sw),mode,prov)}
+  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':SAME),
+   ...f('model',L('Model','Mô hình'),stt||A.ai_set?A[p+'model']:'',stt?'':A.ai_def),
+   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(stt?L('Paste your API key','Dán khoá API'):SAME),1),route,
    E('div',{className:'two'},E('button',{type:'button',textContent:L('Cancel','Huỷ'),onclick:show}),save)));
+  const orx=()=>route.hidden=!/openrouter\.ai/.test(inp.url.value.trim()||A.stt_url||'');inp.url.oninput=orx;orx();
   save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();
-   if((stt&&!b.url)||!b.model)return alertBox(L('Fill in the Base URL and model','Hãy điền URL gốc và mô hình'));
+   if(stt&&(!b.url||!b.model))return alertBox(L('Fill in the Base URL and model','Hãy điền URL gốc và mô hình'));
    if(stt&&!b.key&&!A.stt_set)return alertBox(L('Paste your API key','Dán khoá API'));
    const u=b.url||A.stt_url,sp=H(svg(36,'<circle cx="12" cy="12" r="9" opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/>'));sp.classList.add('spin');
    popBox(sp,L('Testing connection…','Đang kiểm tra kết nối…'),L('Sending a short test to ','Đang gửi một yêu cầu thử tới ')+host(u)+'.');
    let R;try{const r=await api('/api/ai_test',b);if(!r.ok)throw 0;R=await r.json()}catch(e){R={code:-9}}
    if(R.code===200){await aiLoad();popBox(H(svg(36,'<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff"/>')),
-    L('Connected','Đã kết nối'),b.model+L(' is ready to use.',' đã sẵn sàng.'),show)}
+    L('Connected','Đã kết nối'),(b.model||A.ai_def)+L(' is ready to use.',' đã sẵn sàng.'),show)}
    else popBox(H(svg(36,'<circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/>')),L('Couldn\'t connect','Không kết nối được'),failText(R,u),null)}}
  show();if(stt)return;
  // 06h2 only: Plain text + Note instructions, saved as they change (toggles at once, the text when the box loses focus)
@@ -707,7 +728,7 @@ inline void api_city() {
 // Defaults: one OpenRouter key for both. An empty AI URL / key means "same as speech-to-text".
 constexpr const char *AI_URL_DEF = "https://openrouter.ai/api/v1";
 constexpr const char *STT_MODEL_DEF = "openai/whisper-large-v3";
-constexpr const char *AI_MODEL_DEF = "~deepseek/deepseek-flash-latest";
+constexpr const char *AI_MODEL_DEF = "deepseek/deepseek-v4.1-flash-1017";  // has zero-retention hosts on OpenRouter
 constexpr const char *NOTE_INSTR_PATH = "/ai/note-instructions.txt";
 constexpr size_t NOTE_INSTR_MAX = 2000;  // characters
 
@@ -722,6 +743,12 @@ inline size_t utf8_len(const String &s) {
   return n;
 }
 inline bool url_ok(const String &u) { return u.isEmpty() || ((u.startsWith("https://") || u.startsWith("http://")) && text_ok(u, 200) && u.indexOf(' ') < 0); }
+inline bool hosts_ok(const String &s) {  // 06h Provider: host names, e.g. "groq, deepinfra"
+  if (s.length() > 100) return false;
+  for (const char c : s)
+    if (!isalnum(uint8_t(c)) && !strchr("-_./, ", c)) return false;
+  return true;
+}
 inline bool notes_ok(const String &s) {  // multi-line text: line breaks and tabs allowed, other control characters not
   if (utf8_len(s) > NOTE_INSTR_MAX) return false;
   for (const char c : s)
@@ -738,6 +765,11 @@ inline void api_ai_get() {
   d["ai_url"] = cfg_get("ai_url");
   d["ai_model"] = cfg_get("ai_model", AI_MODEL_DEF);
   d["ai_key"] = key_hint("ai_key");
+  d["ai_def"] = AI_MODEL_DEF;  // 06h2 Model left empty
+  d["stt_order"] = cfg_get("stt_order");
+  d["ai_order"] = cfg_get("ai_order");
+  d["ai_auto"] = cfg_get("ai_auto", "1") == "1";
+  d["ai_sort"] = cfg_get("ai_sort");
   d["stt_set"] = cfg_get("stt_key").length() > 0;  // a passed test saves the key; 06h4 deletes it
   d["ai_set"] = cfg_get("ai_model").length() > 0;  // the AI may borrow the key, so its model marks it saved
   d["plain"] = cfg_get("ai_plain") == "1";
@@ -777,11 +809,11 @@ inline void api_ai_opts() {
   api_reply(200, "OK");
 }
 
-// 06h4: forget one service's URL, model and key.
+// 06h4: forget one service's URL, model, key and provider choice.
 inline void api_ai_del() {
   if (!ap_only()) return;
   const String p = g_web.arg("svc") == "stt" ? "stt_" : "ai_";
-  for (const char *k : {"url", "model", "key"}) cfg_del((p + k).c_str());
+  for (const char *k : {"url", "model", "key", "order", "auto", "sort"}) cfg_del((p + k).c_str());
   api_reply(200, "OK");
 }
 

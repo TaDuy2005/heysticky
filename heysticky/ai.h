@@ -15,6 +15,7 @@ enum AiFail : uint8_t { AF_NONE, AF_SHORT, AF_NONET, AF_NOKEY, AF_STT, AF_EMPTY,
 
 struct AiCfg {
   String sttUrl, sttModel, sttKey, url, model, key, instr;
+  Route sttRoute, route;  // OpenRouter only: zdr + the 06h1 / 06h2 provider choice
   bool plain = false;  // 06h Plain text: a note keeps the exact transcript, the AI only picks to-do or note
 };
 
@@ -24,6 +25,9 @@ inline AiCfg ai_cfg() {  // an empty AI URL or key means the speech-to-text one
   if (c.url.isEmpty()) c.url = c.sttUrl;
   if (c.key.isEmpty()) c.key = c.sttKey;
   if (c.model.isEmpty()) c.key = "";  // AI not added on 06h2 (or deleted): 05d "AI key missing"
+  c.sttRoute = {is_openrouter(c.sttUrl), "", cfg_get("stt_order")};
+  const bool autoHost = cfg_get("ai_auto", "1") == "1";  // 06h2 Auto router provider: on = Mode, off = Provider
+  c.route = {is_openrouter(c.url), autoHost ? cfg_get("ai_sort") : String(), autoHost ? String() : cfg_get("ai_order")};
   c.plain = cfg_get("ai_plain") == "1";
   if (g_sdOk && !c.plain && cfg_get("ai_instr", "1") == "1") {  // 06h Note instructions toggle
     File f = SD.open(NOTE_INSTR_PATH);
@@ -55,7 +59,7 @@ inline int ai_post(const String &url, const String &key, const String &ctype, co
 // The take in g_wav (wavSize bytes) -> text. The multipart head and tail are written into the room mic.h keeps around it.
 inline int ai_transcribe(const AiCfg &c, size_t wavSize, String &text) {
   const String b = "HeySticky" + String(esp_random(), HEX);
-  const String head = mp_head(b, c.sttModel), tail = mp_tail(b);
+  const String head = mp_head(b, c.sttModel, c.sttRoute), tail = mp_tail(b);
   if (head.length() > MIC_PRE || tail.length() > MIC_POST) return -2;
   uint8_t *start = g_wav - head.length();
   memcpy(start, head.c_str(), head.length());
@@ -69,7 +73,7 @@ inline int ai_transcribe(const AiCfg &c, size_t wavSize, String &text) {
 
 // Transcript -> to-dos / note / unsure.
 inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, AiResult &r) {
-  const String body = ai_body(c.model, c.url.indexOf("api.deepseek.com") >= 0, g_vi, now, c.instr, transcript);
+  const String body = ai_body(c.model, c.route, g_vi, now, c.instr, transcript);
   String reply;
   const int code = ai_post(c.url + "/chat/completions", c.key, "application/json", (const uint8_t *)body.c_str(), body.length(), reply);
   if (code == 200) {
@@ -86,14 +90,18 @@ inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, 
 inline void api_ai_test() {
   if (!ap_only()) return;
   const bool stt = g_web.arg("svc") == "stt";
-  String url = g_web.arg("url"), model = g_web.arg("model"), key = g_web.arg("key");
-  for (String *s : {&url, &model, &key}) s->trim();
+  String url = g_web.arg("url"), model = g_web.arg("model"), key = g_web.arg("key"), order = g_web.arg("order"), sort = g_web.arg("sort");
+  for (String *s : {&url, &model, &key, &order}) s->trim();
   while (url.endsWith("/")) url.remove(url.length() - 1);
-  if ((stt && url.isEmpty()) || model.isEmpty() || !url_ok(url) || !text_ok(model, 100) || !text_ok(key, 200))
+  if (!stt && model.isEmpty()) model = AI_MODEL_DEF;  // 06h2 Model is optional
+  const bool autoHost = g_web.arg("auto") != "0";
+  if ((stt && url.isEmpty()) || model.isEmpty() || !url_ok(url) || !text_ok(model, 100) || !text_ok(key, 200) || !hosts_ok(order) ||
+      (sort.length() && sort != "throughput" && sort != "price"))
     return api_reply(400, "Invalid input");
   String u = url, k = key.length() ? key : cfg_get(stt ? "stt_key" : "ai_key");  // empty key field = keep the saved one
   if (!stt && u.isEmpty()) u = cfg_get("stt_url", AI_URL_DEF);  // the AI's empty URL / key = speech-to-text's
   if (!stt && k.isEmpty()) k = cfg_get("stt_key");
+  const Route r = stt ? Route{is_openrouter(u), "", order} : Route{is_openrouter(u), autoHost ? sort : String(), autoHost ? String() : order};
   JsonDocument d;
   if (k.isEmpty()) d["why"] = "stt";
   else if (WiFi.status() != WL_CONNECTED) d["why"] = "wifi";
@@ -102,7 +110,7 @@ inline void api_ai_test() {
     int code;
     if (stt) {  // 0.5 s of silence
       const size_t pcm = MIC_RATE;
-      const String b = "HeySticky" + String(esp_random(), HEX), head = mp_head(b, model), tail = mp_tail(b);
+      const String b = "HeySticky" + String(esp_random(), HEX), head = mp_head(b, model, r), tail = mp_tail(b);
       const size_t n = head.length() + PCM_WAV_HEADER_SIZE + pcm + tail.length();
       uint8_t *buf = (uint8_t *)ps_calloc(1, n);
       if (!buf) return api_reply(500, "No memory");
@@ -118,6 +126,7 @@ inline void api_ai_test() {
       q["max_tokens"] = 16;
       q["messages"][0]["role"] = "user";
       q["messages"][0]["content"] = "Hi";
+      route_chat(q, r);
       String body;
       serializeJson(q, body);
       code = ai_post(u + "/chat/completions", k, "application/json", (const uint8_t *)body.c_str(), body.length(), reply);
@@ -128,6 +137,11 @@ inline void api_ai_test() {
       cfg_set((p + "url").c_str(), url);
       cfg_set((p + "model").c_str(), model);
       if (key.length()) cfg_set((p + "key").c_str(), key);
+      cfg_set((p + "order").c_str(), order);
+      if (!stt) {
+        cfg_set("ai_auto", autoHost ? "1" : "0");
+        cfg_set("ai_sort", sort);
+      }
     } else {
       JsonDocument e;
       if (!deserializeJson(e, reply)) {

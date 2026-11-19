@@ -59,18 +59,21 @@ chat AI. Any OpenAI-compatible service works. The default is one [OpenRouter](ht
    (`https://openrouter.ai/api/v1`, `openai/whisper-large-v3`); paste your key and tap **Save**.
    The Sticky sends a short test (half a second of silence) and saves the provider only if it answers.
 4. **AI for notes & to-dos › + Add model provider.** Leave Base URL and API key empty to use the same
-   OpenRouter key; the model is `~deepseek/deepseek-flash-latest`. Tap **Save** (tested with a one-word chat).
+   OpenRouter key; leave Model empty for `deepseek/deepseek-v4.1-flash-1017`. **Auto router provider** (on) lets
+   OpenRouter pick the host, with **Mode** Balanced, Fastest or Cheapest; turn it off to name hosts in **Provider**.
+   Tap **Save** (tested with a one-word chat).
 5. Optional, on the same page: **Note instructions** (how notes should be written: an outline, a template or
    rules; typed or uploaded as .txt, up to 2,000 characters) or **Plain text** (save your exact words).
 
 Use the pencil to change a provider and the bin to delete it (its key is removed from the Sticky). To stop a key
 working everywhere, also delete it on openrouter.ai.
 
-**Cost:** about $0.20 a month at 20 memos a day of 15 s each (Whisper ≈ $0.07, DeepSeek Flash ≈ $0.12), plus
-OpenRouter's fee when you buy credit (5.5 %, at least $0.80). Prices checked 2026-11-17.
+**Cost:** about $0.25–0.45 a month at 20 memos a day of 15 s each (Whisper ≈ $0.07, DeepSeek V4.1 Flash ≈ $0.18–0.36),
+plus OpenRouter's fee when you buy credit (5.5 %, at least $0.80). Prices checked 2026-11-19.
 
 **Privacy:** each recording is sent over HTTPS to the speech-to-text service you set; with OpenRouter it is passed
-on to the model's provider. The transcript, your note instructions, the date, time and language go to the chat
+on to the model's provider, and the Sticky asks OpenRouter for zero-data-retention providers only (models without
+one are refused when you tap Save). The transcript, your note instructions, the date, time and language go to the chat
 service. Nothing else leaves the Sticky. Keys stay in the Sticky's flash: the phone page only ever shows their first
 few characters, and they are never in the source or the `.bin`.
 

@@ -2,13 +2,14 @@
 // Speech-to-text: OpenAI-style multipart upload, reply {"text": "..."}.
 // Sorting: OpenAI-style chat, the model answers one JSON object: todo / note / unsure.
 #pragma once
+#include <cctype>
 #include <string>
 #include <vector>
 #include <ArduinoJson.h>
 #include "todo.h"
 #include "notes.h"
 
-// Tested against DeepSeek V4 Flash on 2026-11-18 (EN, VI, ZH, mixed, ideas, mumbling, fake subtitles; see PLAN_AI.md AI-05).
+// Tested against DeepSeek V4 Flash on 2026-11-18 (V4.1 Flash 1017 via OpenRouter is the default since 2026-11-19) (EN, VI, ZH, mixed, ideas, mumbling, fake subtitles; see PLAN_AI.md AI-05).
 // ponytail: a fluent fake ("明天上午9点，9号楼") still passes as a to-do; a loudness gate before upload would catch it.
 constexpr const char *AI_PROMPT =
     "You sort one voice memo for a small e-paper to-do and notes device.\n"
@@ -29,9 +30,43 @@ constexpr unsigned AI_TASK_MAX = 200;  // bytes per to-do line text
 
 inline const char *const DAY_NAMES[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
+// ---------- OpenRouter routing (06h1 / 06h2), sent only to an OpenRouter URL: other APIs may reject unknown fields ----------
+// zdr: only hosts that keep no data; a model with none is refused, so the 06h test fails before it is saved.
+// sort: "" = OpenRouter's balanced default, "throughput" = Nitro, "price" = Floor.
+// order: "groq, deepinfra" = hosts tried first; fallback stays on, so a host that is down is not an error.
+struct Route {
+  bool on = false;
+  String sort, order;
+};
+inline bool is_openrouter(const String &url) { return url.indexOf("openrouter.ai") >= 0; }
+inline void route_json(JsonObject p, const Route &r) {
+  p["zdr"] = true;
+  if (r.sort.length()) p["sort"] = r.sort.c_str();
+  std::string t;
+  for (const char c : std::string(r.order.c_str()) + ",") {
+    if (c != ',') {
+      if (c != ' ') t += char(tolower(c));
+    } else if (t.size()) {
+      p["order"].add(t);
+      t.clear();
+    }
+  }
+}
+
 // ---------- speech-to-text: multipart body = head + WAV + tail ----------
-inline String mp_head(const String &boundary, const String &model) {
-  return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n" + model + "\r\n--" + boundary +
+inline String mp_field(const String &boundary, const char *name, const String &value) {
+  return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + name + "\"\r\n\r\n" + value + "\r\n";
+}
+inline String mp_head(const String &boundary, const String &model, const Route &r = Route()) {
+  String prov;
+  if (r.on) {
+    JsonDocument p;
+    route_json(p.to<JsonObject>(), r);
+    std::string j;
+    serializeJson(p, j);
+    prov = mp_field(boundary, "provider", String(j.c_str()));
+  }
+  return mp_field(boundary, "model", model) + prov + "--" + boundary +
          "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"memo.wav\"\r\nContent-Type: audio/wav\r\n\r\n";
 }
 inline String mp_tail(const String &boundary) { return "\r\n--" + boundary + "--\r\n"; }
@@ -45,14 +80,21 @@ inline String ai_text(const char *reply) {  // {"text": "..."} -> the transcript
 }
 
 // ---------- sorting ----------
-// now = "YYYY-MM-DD HH:MM" local. thinkingOff: DeepSeek's own API only (others may reject the unknown field).
+// OpenRouter only: zero data retention + the 06h2 routing, and no thinking (~1 s instead of ~4 s, same sorting).
+inline void route_chat(JsonDocument &d, const Route &r) {
+  if (!r.on) return;
+  route_json(d["provider"].to<JsonObject>(), r);
+  d["reasoning"]["enabled"] = false;
+}
+
+// now = "YYYY-MM-DD HH:MM" local.
 // vi: the device's system language; every item comes back in it, so the fonts can always draw it.
-inline String ai_body(const String &model, bool thinkingOff, bool vi, const String &now, const String &instructions, const String &transcript) {
+inline String ai_body(const String &model, const Route &r, bool vi, const String &now, const String &instructions, const String &transcript) {
   JsonDocument d;
   d["model"] = model.c_str();
   d["temperature"] = 0;
   d["response_format"]["type"] = "json_object";
-  if (thinkingOff) d["thinking"]["type"] = "disabled";  // ponytail: host check; a per-model setting if another API needs it
+  route_chat(d, r);
   JsonArray m = d["messages"].to<JsonArray>();
   JsonObject s = m.add<JsonObject>();
   s["role"] = "system";
