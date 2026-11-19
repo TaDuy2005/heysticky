@@ -755,7 +755,6 @@ inline void listen_loop() {
     return;
   }
   g_lastWav = mic_stop();  // released (the button poll ignores this release: it was reported as long)
-  mic_save_last(g_lastWav);
   ai_begin();
 }
 

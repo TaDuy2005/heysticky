@@ -727,7 +727,7 @@ inline void api_city() {
 // ---------- AI (06h): speech-to-text + AI for notes & to-dos, both OpenAI-compatible (PLAN_AI.md) ----------
 // Defaults: one OpenRouter key for both. An empty AI URL / key means "same as speech-to-text".
 constexpr const char *AI_URL_DEF = "https://openrouter.ai/api/v1";
-constexpr const char *STT_MODEL_DEF = "openai/whisper-large-v3";
+constexpr const char *STT_MODEL_DEF = "mistralai/voxtral-small-transcribe-3-0";
 constexpr const char *AI_MODEL_DEF = "deepseek/deepseek-v4.1-flash-1017";  // has zero-retention hosts on OpenRouter
 constexpr const char *NOTE_INSTR_PATH = "/ai/note-instructions.txt";
 constexpr size_t NOTE_INSTR_MAX = 2000;  // characters
