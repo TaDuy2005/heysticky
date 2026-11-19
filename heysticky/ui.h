@@ -7,6 +7,7 @@
 #include "src/icons.h"
 #include "hw.h"
 #include "lang.h"
+#include "wrap.h"
 
 extern Seeed_GFX display;
 constexpr int W = 480, H = 800;
@@ -141,26 +142,13 @@ inline String ui_fit_tail(const Font &f, String s, int maxW) {  // cut the start
 
 // Word-wrapped text, one line per lineH; x is the left edge (or the box's left edge when centred).
 // Word-wraps s into lines of width w; returns how many lines it takes (draw = false only counts them).
+inline std::vector<String> ui_lines(const Font &f, const String &s, int w, int maxLines) {
+  return wrap_lines(s, w, maxLines, [&](const String &t) { return ui_width(f, t); });
+}
 inline int ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT, bool draw = true) {
-  const int ax = a == AL_CENTER ? x + w / 2 : x;
-  String line;
-  int n = 0, i = 0;
-  while (i <= int(s.length()) && n < maxLines) {
-    int j = s.indexOf(' ', i);
-    if (j < 0) j = s.length();
-    const String word = s.substring(i, j), next = line.length() ? line + " " + word : word;
-    if (line.length() && ui_width(f, next) > w) {
-      if (draw) ui_text(f, line, ax, y + lineH * n, lineH, a);
-      n++;
-      line = word;
-    } else line = next;
-    i = j + 1;
-  }
-  if (line.length() && n < maxLines) {
-    if (draw) ui_text(f, line, ax, y + lineH * n, lineH, a);
-    n++;
-  }
-  return n;
+  const std::vector<String> ls = ui_lines(f, s, w, maxLines);
+  for (int i = 0; draw && i < int(ls.size()); i++) ui_text(f, ls[i], a == AL_CENTER ? x + w / 2 : x, y + lineH * i, lineH, a);
+  return ls.size();
 }
 
 // Figma Toggle (68x38): On = black pill, white knob right; Off = outline, black knob left.

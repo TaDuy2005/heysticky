@@ -409,12 +409,12 @@ inline void todo_tap(int x, int y) {
 
 inline void editor_tap(int x, int y) {
   if (top_right(x, y)) { hw_beep(); show(SCR_TODO); return; }
-  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back, placeholder gone
+  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, g_fieldH)) {  // tap field -> keyboard back, placeholder gone
     if (!g_ed.kbOpen || !g_ed.touched) g_ed.kbOpen = g_ed.touched = g_redraw = true;
     return;
   }
-  if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
-  else if (in(x, y, 40, ROW_TIME_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
+  if (in(x, y, 40, ROW_DATE_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
+  else if (in(x, y, 40, ROW_TIME_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
   else if (!g_ed.kbOpen && y >= 717 && y < 784) {
     if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(); show(SCR_DELTASK); }
     else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
