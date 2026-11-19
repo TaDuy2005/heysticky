@@ -253,7 +253,7 @@ HeySticky/
 - [x] User fonts use our own format, not Seeed's `.fpack`: plain VLW files per slot, made on the phone page (TASK-14)
 - [x] Web setup is a row in Settings (below Configuration). Everything (name, city, Wi-Fi, integrations) is set on the phone setup page, reached only through the Sticky's hotspot (04j On → edit → Save → Off). Sleep after is a row below Configuration (04l, TASK-11)
 - [x] Wi-Fi is set like iPhone Settings on the phone page (06b–06f), not on the Sticky: up to 5 saved networks, background auto-join, wrong-password alert, Forget. Hotspot gets a random password each time it is turned on (2026-11-17)
-- [ ] No microSD card: needs a Figma frame. Interim (TASK-08): "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button
+- [x] No microSD card: Figma **02k No microSD card** `316:1864` (EN) / `316:1903` (VI), 2026-11-19: To-do or Notes title, SD card icon, "No microSD card" + "Insert a FAT32 card, then tap Retry." + Retry button (retry icon). The code still draws the interim TASK-08 layout ("Back" at the top right, no icon). About › SD card keeps "No card"
 - [ ] Later: tap inside the text to put the cursor there (edit mid-text: map tap → character, insert/delete at the cursor). Today the cursor is always at the end.
 - [x] BQ27220 runs at 10× scale (factory config: design/full-charge capacity 7500 mAh for the 750 mAh cell), so its mA are divided by `GAUGE_SCALE` = 10 in `hw.h`. Its data memory is sealed (read-only check, 2026-11-17); we never write to the gauge. Charging stops by itself at full (100%, 0 mA, FC flag set)
 - [ ] 16 px edge margin for the status bar, page counter and bottom buttons is a visual choice; confirm against the visible-pixel test on the real panel
