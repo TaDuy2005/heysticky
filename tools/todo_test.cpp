@@ -27,6 +27,7 @@ inline String operator+(const String &a, const char *b) { return String(static_c
 inline String operator+(const char *a, const String &b) { return String(a + static_cast<const std::string &>(b)); }
 
 #include "todo.h"
+#include "wrap.h"
 
 int main() {
   // round trip, Vietnamese included; non-task lines survive untouched
@@ -45,20 +46,29 @@ int main() {
 
   // labels at Tue 2026-11-17 10:30
   const String now = "2026-11-17 10:30";
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-16 09:00)"), now) == "Overdue · Mon");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 09:00)"), now) == "Overdue · 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 19:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17)"), now) == "Today");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "24 Dec 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Overdue · 16/11");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 09:00)"), now) == "Overdue · 17/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 17/11 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17)"), now) == "Today 17/11");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 18/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 20/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "Thu 24/12 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), "") == "24/12 9:00");  // no clock yet
   g_vi = true;
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-16 09:00)"), now) == "Quá hạn · T2");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 19:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "24/12 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Quá hạn · 16/11");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 17/11 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 18/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 20/11 9:00");
   g_vi = false;
+
+  // wrap: 1 px a byte; spaces break, a too-long word breaks anywhere, "…" when out of lines
+  auto px = [](const String &s) { return int(s.length()); };
+  auto wrap = [&](const char *s, int w, int n) { std::string r; for (const String &l : wrap_lines(String(s), w, n, px)) r += l + "|"; return r; };
+  assert(wrap("Email Sarah about the meeting", 12, 5) == "Email Sarah|about the|meeting|");
+  assert(wrap("ejakfrkwejrhkqwe", 6, 5) == "ejakfr|kwejrh|kqwe|");
+  assert(wrap("Email Sarah about the meeting", 11, 2) == "Email Sarah|about th…|" && wrap("Email Sarah about the meeting", 12, 2) == "Email Sarah|about the…|");  // "…" is 3 bytes here
+  assert(wrap("  Buy milk  ", 20, 2) == "Buy milk|" && wrap("", 10, 2) == "");
+  assert(wrap("Gửi email", 6, 3) == "Gửi|email|");  // never splits a character
 
   // order: overdue, today, tomorrow, undated (file order), done last
   std::vector<Task> ts;

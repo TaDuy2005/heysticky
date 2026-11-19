@@ -117,23 +117,23 @@ inline String short_hm(const String &due) {  // "2026-11-17 09:00" -> "9:00"; ""
   return due[11] == '0' ? due.substring(12) : due.substring(11);
 }
 
-inline String day_month(long n) {  // "24 Nov"
+inline String day_month(long n) {  // "24/11", both languages
   int y, m, d;
   civil(n, y, m, d);
-  return g_vi ? String(d) + "/" + m : String(d) + " " + MON3[m - 1];  // VI: "24/11"
+  return String(d) + "/" + m;
 }
 
-// "Overdue · Mon", "Today 19:00", "Tomorrow 9:00", "Fri 9:00", "24 Nov 9:00"
+// Always the day and month (Figma 02): "Overdue · 16/11", "Today 19/11 19:00", "Tomorrow 20/11 9:00", "Mon 23/11 9:00"
 inline String todo_label(const Task &t, const String &now) {
   if (!t.due.length()) return "";
   const String hm = short_hm(t.due), sp = hm.length() ? " " : "";
-  if (!now.length()) return day_month(ymd_num(t.due)) + sp + hm;
-  const long day = ymd_num(t.due), today = ymd_num(now);
+  const long day = ymd_num(t.due);
+  if (!now.length()) return day_month(day) + sp + hm;
+  const long today = ymd_num(now);
   const bool overdue = t.due.length() == 16 ? t.due < now : day < today;
-  if (overdue) return String(TR("Overdue · ", "Quá hạn · ")) + (day == today ? hm : today - day < 7 ? String(day3(weekday(day))) : day_month(day));
-  if (day == today) return TR("Today", "Hôm nay") + sp + hm;
-  if (day == today + 1) return TR("Tomorrow", "Ngày mai") + sp + hm;
-  return (day - today < 7 ? String(day3(weekday(day))) : day_month(day)) + sp + hm;
+  if (overdue) return String(TR("Overdue · ", "Quá hạn · ")) + day_month(day) + sp + hm;
+  const String word = day == today ? TR("Today", "Hôm nay") : day == today + 1 ? TR("Tomorrow", "Ngày mai") : day3(weekday(day));
+  return word + " " + day_month(day) + sp + hm;
 }
 
 // ---------- 02h Time entry: HH and MM fields typed on a number pad ----------
