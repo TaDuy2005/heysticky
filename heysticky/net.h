@@ -669,7 +669,7 @@ inline void api_font_done() {
   if (!ap_only()) return;
   if (g_upOk && cfg_get("font") == g_web.arg("name") && g_web.arg("slot") == FONT_SLOTS[FONT_SLOTS_N - 1].file) {
     font_apply(g_web.arg("name"));  // the font in use was replaced: take the new files after the last slot
-    g_fontDirty = true;
+    g_pageDirty = true;
   }
   api_reply(g_upOk ? 200 : 400, g_upOk ? "OK" : "Bad font file");
   g_upOk = false;
@@ -938,6 +938,7 @@ inline void wifi_set_on(bool on) {
     g_wasOn = false;
     g_wx.ok = false;
   }
+  g_pageDirty = true;  // status bar Wi-Fi icon and weather card now, not at the next minute
   Serial.printf("[net] Wi-Fi %s\n", on ? "on" : "off");
 }
 
