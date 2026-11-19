@@ -26,8 +26,8 @@ inline AiCfg ai_cfg() {  // an empty AI URL or key means the speech-to-text one
   if (c.key.isEmpty()) c.key = c.sttKey;
   if (c.model.isEmpty()) c.key = "";  // AI not added on 06h2 (or deleted): 05d "AI key missing"
   c.sttRoute = {is_openrouter(c.sttUrl), "", cfg_get("stt_order")};
-  const bool autoHost = cfg_get("ai_auto", "1") == "1";  // 06h2 Auto router provider: on = Mode, off = Provider
-  c.route = {is_openrouter(c.url), autoHost ? cfg_get("ai_sort") : String(), autoHost ? String() : cfg_get("ai_order")};
+  const String order = cfg_get("ai_order");  // 06h2 Advanced: a Provider list wins over Mode
+  c.route = {is_openrouter(c.url), order.isEmpty() ? cfg_get("ai_sort") : String(), order};
   c.plain = cfg_get("ai_plain") == "1";
   if (g_sdOk && !c.plain && cfg_get("ai_instr", "1") == "1") {  // 06h Note instructions toggle
     File f = SD.open(NOTE_INSTR_PATH);
@@ -94,14 +94,13 @@ inline void api_ai_test() {
   for (String *s : {&url, &model, &key, &order}) s->trim();
   while (url.endsWith("/")) url.remove(url.length() - 1);
   if (!stt && model.isEmpty()) model = AI_MODEL_DEF;  // 06h2 Model is optional
-  const bool autoHost = g_web.arg("auto") != "0";
   if ((stt && url.isEmpty()) || model.isEmpty() || !url_ok(url) || !text_ok(model, 100) || !text_ok(key, 200) || !hosts_ok(order) ||
       (sort.length() && sort != "throughput" && sort != "price"))
     return api_reply(400, "Invalid input");
   String u = url, k = key.length() ? key : cfg_get(stt ? "stt_key" : "ai_key");  // empty key field = keep the saved one
   if (!stt && u.isEmpty()) u = cfg_get("stt_url", AI_URL_DEF);  // the AI's empty URL / key = speech-to-text's
   if (!stt && k.isEmpty()) k = cfg_get("stt_key");
-  const Route r = stt ? Route{is_openrouter(u), "", order} : Route{is_openrouter(u), autoHost ? sort : String(), autoHost ? String() : order};
+  const Route r = stt ? Route{is_openrouter(u), "", order} : Route{is_openrouter(u), order.isEmpty() ? sort : String(), order};
   JsonDocument d;
   if (k.isEmpty()) d["why"] = "stt";
   else if (WiFi.status() != WL_CONNECTED) d["why"] = "wifi";
@@ -138,10 +137,7 @@ inline void api_ai_test() {
       cfg_set((p + "model").c_str(), model);
       if (key.length()) cfg_set((p + "key").c_str(), key);
       cfg_set((p + "order").c_str(), order);
-      if (!stt) {
-        cfg_set("ai_auto", autoHost ? "1" : "0");
-        cfg_set("ai_sort", sort);
-      }
+      if (!stt) cfg_set("ai_sort", sort);
     } else {
       JsonDocument e;
       if (!deserializeJson(e, reply)) {

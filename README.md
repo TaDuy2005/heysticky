@@ -59,8 +59,8 @@ chat AI. Any OpenAI-compatible service works. The default is one [OpenRouter](ht
    (`https://openrouter.ai/api/v1`, `mistralai/voxtral-small-transcribe-3-0`); paste your key and tap **Save**.
    The Sticky sends a short test (half a second of silence) and saves the provider only if it answers.
 4. **AI for notes & to-dos › + Add model provider.** Leave Base URL and API key empty to use the same
-   OpenRouter key; leave Model empty for `deepseek/deepseek-v4.1-flash-1017`. **Auto router provider** (on) lets
-   OpenRouter pick the host, with **Mode** Balanced, Fastest or Cheapest; turn it off to name hosts in **Provider**.
+   OpenRouter key; leave Model empty for `deepseek/deepseek-v4.1-flash-1017`. Under **Advanced ›**, **Mode** (Balanced,
+   Fastest or Cheapest) tells OpenRouter how to pick the host; turn on **Provider** to name hosts yourself instead.
    Tap **Save** (tested with a one-word chat).
 5. Optional, on the same page: **Note instructions** (how notes should be written: an outline, a template or
    rules; typed or uploaded as .txt, up to 2,000 characters) or **Plain text** (save your exact words).
