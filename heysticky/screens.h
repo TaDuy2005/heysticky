@@ -566,6 +566,7 @@ inline void page_back() {
     else if (g_screen == SCR_FILES && g_dir != "/") { g_dir = sd_parent(g_dir); g_filesPage = 0; sd_dir_scan(); go(SCR_FILES); }  // up one folder
     else go(settings_parent());
   } else if (g_screen == SCR_APPS) go(SCR_HOME);
+  else if (g_screen == SCR_NOSD) go(SCR_APPS);  // no "Back" on 02k / 03j: swipe right or DOWN
   else if (g_screen == SCR_NOTES) {
     if (g_notesPage > 0) turn(g_notesPage, -1);
     else go(SCR_APPS);
@@ -818,8 +819,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(SCR_TASK); }
       return;
     case SCR_NOSD:
-      if (top_right(x0, y0)) { hw_beep(); show(SCR_APPS); }
-      else if (in(x0, y0, 40, 712, 400, 72)) {
+      if (in(x0, y0, 40, 712, 400, 72)) {
         hw_beep();
         if (g_nosdNotes ? notes_retry() : todo_retry()) show(g_nosdNotes ? SCR_NOTES : SCR_TODO);
         else show(SCR_NOSD);
