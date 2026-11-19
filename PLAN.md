@@ -122,7 +122,7 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - [x] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
 - [x] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city shown, auto timezone, 30-min refresh, °C/°F), About
-- [ ] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
+- [x] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
 - [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [x] REQ-11 No secrets in source or in the `.bin`
 - [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
@@ -175,7 +175,7 @@ microSD
 │       └── R20.vlw … I25.vlw  user font, one file per slot, made by the phone page (06n)
 └── ai/
     ├── note-instructions.txt  (Phase 2) how the AI writes notes, set on the phone setup page
-    └── last.wav               (Phase 2, development only) the last recording; removed in AI-09
+    └── take001.wav …          (Phase 2, development only) every recording, numbered; removed in AI-09
 ```
 
 **Device flash (`Preferences`)** — never in source, never in the `.bin`:
