@@ -301,14 +301,14 @@ inline void draw_delete(const char *question, const char *action = nullptr) {  /
   ui_button(247, 705, 193, 79, true, &ICON_X24, TR("Cancel", "Huỷ"));
 }
 
-// ---------- No microSD card ----------
-// ponytail: no Figma frame yet (PLAN.md §10 open question); plain layout in the house style.
+// ---------- No microSD card (Figma 02k To-do / 03j Notes) ----------
 inline bool g_nosdNotes = false;  // which app sent us here: Retry returns to it
 inline void draw_nosd() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_nosdNotes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), TR("Back", "Quay lại"));
-  ui_text(F_X30, TR("No microSD card", "Không có thẻ SD"), W / 2, 318, 40, AL_CENTER);
-  ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 374, 400, 35, 3, AL_CENTER);
-  ui_button(40, 712, 400, 72, true, nullptr, TR("Retry", "Thử lại"));
+  ui_topbar(g_nosdNotes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), "");
+  ui_icon(ICON_SD64, 208, 301);
+  ui_text(F_X30, TR("No microSD card", "Không có thẻ SD"), W / 2, 381, 40, AL_CENTER);
+  ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 437, 400, 33, 2, AL_CENTER);
+  ui_button(40, 712, 400, 72, true, &ICON_RETRY30, TR("Retry", "Thử lại"), 10);
 }
