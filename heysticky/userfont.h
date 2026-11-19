@@ -14,7 +14,7 @@ inline const FontSlot FONT_SLOTS[] = {{&F_R20, "R20"}, {&F_R25, "R25"}, {&F_R30,
 constexpr int FONT_SLOTS_N = sizeof FONT_SLOTS / sizeof FONT_SLOTS[0];
 constexpr size_t FONT_FILE_MAX = 512 * 1024;
 constexpr int FONTS_MAX = 8;  // 04c rows under "Default (built-in)"
-inline bool g_fontDirty = false;  // the font in use changed from the phone page: redraw the screen
+inline bool g_pageDirty = false;  // changed from the phone page (font in use, Wi-Fi switch): redraw the screen
 
 inline bool font_name_ok(const String &s) {  // folder name: 1-24 of A-Z a-z 0-9 space . _ -, not hidden
   if (s.isEmpty() || s.length() > 24 || s[0] == '.' || s[0] == ' ') return false;
@@ -77,6 +77,6 @@ inline bool font_delete(const String &name) {
   if (!font_name_ok(name) || !g_sdOk) return false;
   for (const FontSlot &s : FONT_SLOTS) { SD.remove(font_path(name, s.file)); SD.remove(font_path(name, s.file, ".tmp")); }
   const bool ok = SD.rmdir("/fonts/" + name);
-  if (cfg_get("font") == name) { cfg_set("font", ""); font_apply(""); g_fontDirty = true; }
+  if (cfg_get("font") == name) { cfg_set("font", ""); font_apply(""); g_pageDirty = true; }
   return ok;
 }
