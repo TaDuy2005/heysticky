@@ -15,7 +15,8 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
   "tomorrow at 9") or a note written your way. English and Vietnamese. Needs an API key (see AI setup).
 - **On-screen keyboard** with phone-like auto-capitals and double-space full stop.
 - **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
-  `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically).
+  `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically; a Wi-Fi switch on that page
+  keeps the Sticky offline).
 - **Settings:** Sound (on/off, volume Low / Medium / High), Language (English / Tiếng Việt), User Font, Software Update, Configuration
   (city, timezone, °C/°F), Sleep after, Web setup, About (SN, MAC, version, SD card).
 - **Power:** sleeps after 1–10 min idle (Home with a moon, clock still updates every minute, weather every
