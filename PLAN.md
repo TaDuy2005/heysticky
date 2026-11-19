@@ -187,7 +187,7 @@ microSD
 | `rotate`, `lang`, `font`, `ota_last` | ✓ | |
 | `wifi_on` = `0` when the 06b Wi-Fi switch is Off (the Sticky leaves its network, joins none, weather shows *Offline*; the hotspot still works) | ✓ | |
 | `stt_url`, `stt_model`, `stt_key`, `stt_order` (Provider, optional) — saved by a passed test on 06h1; set = a key is saved | | ✓ |
-| `ai_url`, `ai_model`, `ai_key`, `ai_auto` (Auto router provider, default 1), `ai_sort` (Mode: empty = Balanced, `throughput`, `price`), `ai_order` (Provider) — saved by a passed test on 06h2; empty URL / key = speech-to-text's; set = a model is saved (none → *AI key missing*) | | ✓ |
+| `ai_url`, `ai_model`, `ai_key`, `ai_sort` (Advanced › Mode: empty = Balanced, `throughput`, `price`), `ai_order` (Advanced › Provider; when set it wins over Mode) — saved by a passed test on 06h2; empty URL / key = speech-to-text's; set = a model is saved (none → *AI key missing*) | | ✓ |
 | `ai_plain` (Plain text, default 0), `ai_instr` (Note instructions, default 1) | | ✓ |
 
 ## 9. Network
@@ -244,7 +244,7 @@ HeySticky/
 - [x] City is typed by the user (no IP geolocation)
 - [x] Hold top button is reserved for AI; sleep is idle-only
 - [x] AI providers are OpenAI-compatible and user-configurable (DeepSeek V4.1 Flash via OpenRouter for chat; a separate speech-to-text provider, since DeepSeek has no audio API)
-- [x] OpenRouter calls use zero-data-retention hosts only (`provider.zdr`); 06h1 / 06h2 choose the host (Provider, Auto router provider, Mode) (2026-11-19)
+- [x] OpenRouter calls use zero-data-retention hosts only (`provider.zdr`); 06h1 / 06h2 choose the host (Advanced › Mode, Provider) (2026-11-19, Advanced 2026-11-20)
 - [x] AI keys are saved only after the Sticky has tested them (06h3), and each service can be deleted (06h4) (2026-11-18)
 - [ ] Device + microSD card needed on USB-C from TASK-02
 - [ ] Deadline reminder beeps — Phase 3 unless pulled into Phase 1

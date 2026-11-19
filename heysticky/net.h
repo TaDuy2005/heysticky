@@ -226,6 +226,8 @@ input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#f
 .ps{display:flex;align-items:center;gap:8px;margin-top:14px;border:2px solid #000;border-radius:8px;padding:10px 10px 10px 14px}.ps b{flex:1;font-weight:600;overflow-wrap:anywhere}
 .ib{flex:none;width:40px;height:40px;border:2px solid #000;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
 .pf{margin-top:14px;border:2px solid #000;border-radius:12px;padding:16px}
+.adv summary{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;margin-top:14px;cursor:pointer;list-style:none}.adv summary::-webkit-details-marker{display:none}
+.adv summary:after{content:'›';font-size:22px;font-weight:400;line-height:1}.adv[open] summary:after{transform:rotate(90deg)}.adv .gr{opacity:.4}
 .lb{display:flex;align-items:center;gap:6px;position:relative;margin:10px 0 6px}.lb label{margin:0}.tg .lb{margin:0}
 .ii{flex:none;width:24px;height:24px;padding:0;border:0;background:none;color:#000;display:flex;align-items:center;justify-content:center}
 .pop{position:absolute;left:0;top:100%;margin-top:6px;width:260px;max-width:calc(100vw - 72px);background:#fff;border:2px solid #000;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:400;line-height:1.4;z-index:3;box-shadow:0 4px 12px rgba(0,0,0,.25)}
@@ -465,7 +467,7 @@ const lab=(id,t,tip)=>{const l=E('label',{htmlFor:id,textContent:t});if(!tip)ret
 document.addEventListener('click',e=>{for(const p of document.querySelectorAll('.pop'))if(!p.parentNode.contains(e.target))p.hidden=true});
 // 06h1 / 06h2: dashed "Add model provider" -> form (Cancel / Save = test, then save) -> saved line with edit / delete
 async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLoad())return;
- const stt=id==='stt',svc=stt?'stt':'ai',p=svc+'_',SAME=L('Same as speech-to-text','Giống mục giọng nói thành chữ'),slot=E('div');
+ const stt=id==='stt',svc=stt?'stt':'ai',p=svc+'_',slot=E('div');
  v.append(E('div',{className:'sec'},E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')}),
   E('p',{className:'sd',textContent:stt?L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')
    :L('Writes notes using your instructions and splits to-dos. Works with OpenRouter or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với OpenRouter hoặc mọi API /chat/completions kiểu OpenAI.')}),slot));
@@ -479,22 +481,22 @@ async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLo
  function form(){const inp={},f=(k,t,val,ph,pw,tip)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:k==='order'?100:200});
    return[lab('a-'+k,t,tip),inp[k]]};
   const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')});
-  // OpenRouter only (hidden for other APIs): Provider = hosts tried first; 06h2 Auto router provider on = Mode instead
-  const prov=E('div',{},...f('order',L('Provider (optional)','Nhà cung cấp (không bắt buộc)'),A[p+'order'],L('Any (e.g. groq, deepinfra)','Bất kỳ (vd. groq, deepinfra)'),0,
-   L('Auto-fallback to other provider if it is down','Tự chuyển sang nhà cung cấp khác nếu nó lỗi')));
-  let route=prov;
-  if(!stt){const sw=E('input',{type:'checkbox',className:'sw',id:'a-auto',checked:A.ai_auto});
-   inp.sort=E('select',{id:'a-sort'},...[['',L('Balanced (price + speed)','Cân bằng (giá + tốc độ)')],['throughput',L('Fastest (Nitro)','Nhanh nhất (Nitro)')],
+  // OpenRouter only (hidden for other APIs), Figma 06h1 / 06h2: Advanced › = 06h2 Mode, then Provider (on = hosts tried first, Mode greyed)
+  const psw=E('input',{type:'checkbox',className:'sw',id:'a-psw',checked:!!A[p+'order']}),route=E('details',{className:'adv',open:!!A[p+'order']},E('summary',{textContent:L('Advanced','Nâng cao')}));
+  let mode=E('div');
+  if(!stt){inp.sort=E('select',{id:'a-sort'},...[['',L('Balanced (price + speed)','Cân bằng (giá + tốc độ)')],['throughput',L('Fastest (Nitro)','Nhanh nhất (Nitro)')],
     ['price',L('Cheapest (Floor)','Rẻ nhất (Floor)')]].map(([v,t])=>E('option',{value:v,textContent:t})));inp.sort.value=A.ai_sort||'';
-   inp.auto={get value(){return sw.checked?'1':'0'}};
-   const mode=E('div',{},lab('a-sort',L('Mode','Chế độ')),inp.sort),sync=()=>{mode.hidden=!sw.checked;prov.hidden=sw.checked};sw.onchange=sync;sync();
-   route=E('div',{},E('div',{className:'tg'},E('div',{},lab('a-auto',L('Auto router provider','Tự chọn nhà cung cấp'),L('OpenRouter picks the host for you.','OpenRouter tự chọn nơi chạy mô hình.'))),sw),mode,prov)}
-  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':SAME),
+   mode=E('div',{},lab('a-sort',L('Mode','Chế độ'),L('OpenRouter picks the host for you.','OpenRouter tự chọn nơi chạy mô hình.')),inp.sort);route.append(mode)}
+  inp.order=E('input',{id:'a-order',value:A[p+'order']||'',placeholder:L('Any (e.g. groq, deepinfra)','Bất kỳ (vd. groq, deepinfra)'),autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:100});
+  route.append(E('div',{className:'tg'},E('div',{},lab('a-psw',L('Provider','Nhà cung cấp'),L('Auto-fallback to other provider if it is down','Tự chuyển sang nhà cung cấp khác nếu nó lỗi'))),psw),inp.order);
+  const sync=()=>{inp.order.hidden=!psw.checked;mode.classList.toggle('gr',psw.checked);if(inp.sort)inp.sort.disabled=psw.checked};psw.onchange=sync;sync();
+  // 06h2: empty URL / key = speech-to-text's, shown as the grey placeholder
+  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':A.stt_url),
    ...f('model',L('Model','Mô hình'),stt||A.ai_set?A[p+'model']:'',stt?'':A.ai_def),
-   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(stt?L('Paste your API key','Dán khoá API'):SAME),1),route,
+   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(!stt&&A.stt_key?A.stt_key+L(' (speech-to-text)',' (giọng nói)'):L('Paste your API key','Dán khoá API')),1),route,
    E('div',{className:'two'},E('button',{type:'button',textContent:L('Cancel','Huỷ'),onclick:show}),save)));
   const orx=()=>route.hidden=!/openrouter\.ai/.test(inp.url.value.trim()||A.stt_url||'');inp.url.oninput=orx;orx();
-  save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();
+  save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();if(!psw.checked)b.order='';
    if(stt&&(!b.url||!b.model))return alertBox(L('Fill in the Base URL and model','Hãy điền URL gốc và mô hình'));
    if(stt&&!b.key&&!A.stt_set)return alertBox(L('Paste your API key','Dán khoá API'));
    const u=b.url||A.stt_url,sp=H(svg(36,'<circle cx="12" cy="12" r="9" opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/>'));sp.classList.add('spin');
@@ -768,7 +770,6 @@ inline void api_ai_get() {
   d["ai_def"] = AI_MODEL_DEF;  // 06h2 Model left empty
   d["stt_order"] = cfg_get("stt_order");
   d["ai_order"] = cfg_get("ai_order");
-  d["ai_auto"] = cfg_get("ai_auto", "1") == "1";
   d["ai_sort"] = cfg_get("ai_sort");
   d["stt_set"] = cfg_get("stt_key").length() > 0;  // a passed test saves the key; 06h4 deletes it
   d["ai_set"] = cfg_get("ai_model").length() > 0;  // the AI may borrow the key, so its model marks it saved
@@ -813,7 +814,7 @@ inline void api_ai_opts() {
 inline void api_ai_del() {
   if (!ap_only()) return;
   const String p = g_web.arg("svc") == "stt" ? "stt_" : "ai_";
-  for (const char *k : {"url", "model", "key", "order", "auto", "sort"}) cfg_del((p + k).c_str());
+  for (const char *k : {"url", "model", "key", "order", "auto", "sort"}) cfg_del((p + k).c_str());  // "auto": the old 06h2 switch
   api_reply(200, "OK");
 }
 
