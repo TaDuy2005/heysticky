@@ -8,7 +8,7 @@
 constexpr uint32_t MIC_RATE = 16000;
 constexpr uint32_t MIC_MAX_S = 60;
 constexpr size_t MIC_MAX_PCM = MIC_RATE * 2 * MIC_MAX_S;  // 1.92 MB
-constexpr size_t MIC_PRE = 512, MIC_POST = 64;  // room around the WAV for the upload's multipart head and tail (ai.h)
+constexpr size_t MIC_PRE = 1024, MIC_POST = 64;  // room around the WAV for the upload's multipart head (model + provider fields) and tail (ai.h)
 constexpr uint32_t MIC_SETTLE_MS = 300;  // PDM filter warm-up, thrown away (clip01: first 250 ms was a transient)
 constexpr float MIC_GAIN = 2;            // calibration knob: x4 peaked at -3 dBFS on normal speech; x2 leaves ~9 dB headroom
 constexpr float MIC_HP = 0.995f;         // DC blocker pole (~13 Hz); the raw PDM output sits ~1500 off zero

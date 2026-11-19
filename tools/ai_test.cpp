@@ -15,6 +15,7 @@ struct String : std::string {
   unsigned length() const { return unsigned(size()); }
   String substring(size_t a, size_t b = npos) const { return a >= size() ? "" : String(substr(a, b == npos ? npos : b - a)); }
   int indexOf(char c, size_t from = 0) const { auto p = find(c, from); return p == npos ? -1 : int(p); }
+  int indexOf(const char *s) const { auto p = find(s); return p == npos ? -1 : int(p); }
   int lastIndexOf(char c) const { auto p = rfind(c); return p == npos ? -1 : int(p); }
   int lastIndexOf(const char *s) const { auto p = rfind(s); return p == npos ? -1 : int(p); }
   bool startsWith(const String &s) const { return rfind(s, 0) == 0; }
@@ -37,22 +38,31 @@ int main() {
   assert(h == "--B1\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nopenai/whisper-large-v3\r\n--B1\r\n"
               "Content-Disposition: form-data; name=\"file\"; filename=\"memo.wav\"\r\nContent-Type: audio/wav\r\n\r\n");
   assert(t == "\r\n--B1--\r\n");
+  assert(mp_head("B1", "m", Route{false, "", "groq"}) == mp_head("B1", "m"));  // not OpenRouter: nothing extra
+  assert(mp_head("B1", "m", Route{true, "", " Groq, ,deepinfra "}) ==
+         "--B1\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nm\r\n--B1\r\nContent-Disposition: form-data; name=\"provider\"\r\n\r\n"
+         "{\"zdr\":true,\"order\":[\"groq\",\"deepinfra\"]}\r\n--B1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"memo.wav\"\r\n"
+         "Content-Type: audio/wav\r\n\r\n");
+  assert(is_openrouter("https://openrouter.ai/api/v1") && !is_openrouter("https://api.deepseek.com"));
 
   // speech-to-text reply (OpenRouter's, recorded 2026-11-18)
   assert(ai_text("{\"text\":\" Hello, hello, how are you?  Do you hear me?\",\"usage\":{\"seconds\":5.92}}") ==
          "Hello, hello, how are you?  Do you hear me?");
   assert(ai_text("{\"error\":{\"message\":\"bad\"}}") == "" && ai_text("not json") == "");
 
-  // chat request: thinking switch only when asked; weekday from the date; instructions and transcript in the user turn
+  // chat request: OpenRouter gets zdr + the 06h2 choice + no thinking; weekday from the date; instructions and transcript in the user turn
   JsonDocument d;
-  assert(!deserializeJson(d, ai_body("deepseek-v4-flash", true, false, "2026-11-18 21:30", "", "Mua sữa").c_str()));
-  assert(String(d["model"] | "") == "deepseek-v4-flash" && String(d["thinking"]["type"] | "") == "disabled");
+  assert(!deserializeJson(d, ai_body("deepseek/deepseek-v4.1-flash-1017", Route{true, "price", ""}, false, "2026-11-18 21:30", "", "Mua sữa").c_str()));
+  assert(String(d["model"] | "") == "deepseek/deepseek-v4.1-flash-1017" && d["provider"]["zdr"] == true && String(d["provider"]["sort"] | "") == "price");
+  assert(d["provider"]["order"].isNull() && d["reasoning"]["enabled"] == false);
   assert(String(d["response_format"]["type"] | "") == "json_object" && d["temperature"] == 0);
   assert(String(d["messages"][0]["role"] | "") == "system" &&
          String(d["messages"][1]["content"] | "") ==
              "Now: 2026-11-18 21:30 (Wednesday)\nOutput language: English\nNote instructions: (none)\nTranscript: Mua sữa");
-  assert(!deserializeJson(d, ai_body("~deepseek/deepseek-flash-latest", false, true, "", "# Title", "x").c_str()));
-  assert(d["thinking"].isNull() &&
+  assert(!deserializeJson(d, ai_body("deepseek/deepseek-v4.1-flash-1017", Route{true, "", "wafer"}, false, "", "", "x").c_str()));
+  assert(d["provider"]["sort"].isNull() && String(d["provider"]["order"][0] | "") == "wafer" && d["provider"]["order"].size() == 1);
+  assert(!deserializeJson(d, ai_body("gpt-4o-mini", Route(), true, "", "# Title", "x").c_str()));  // other APIs: no extra fields
+  assert(d["provider"].isNull() && d["reasoning"].isNull() &&
          String(d["messages"][1]["content"] | "") == "Now: \nOutput language: Vietnamese\nNote instructions: # Title\nTranscript: x");
 
   // chat reply -> content
