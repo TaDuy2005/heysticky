@@ -36,7 +36,7 @@ inline bool top_pressed() { return digitalRead(PIN_BTN_TOP) != g_btn[0].idle; }
 
 // Wi-Fi on long enough for weather and one NTP reply (the sleep clock drifts), then off again.
 inline void sleep_sync() {
-  if (!g_wifi.count) return;
+  if (!g_wifiOn || !g_wifi.count) return;
   const uint32_t t0 = millis(), wxAt = g_wx.at;
   WiFi.mode(WIFI_STA);
   g_retryAt = 0;
