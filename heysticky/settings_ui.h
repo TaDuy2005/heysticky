@@ -179,7 +179,8 @@ inline String about_sn() {
 }
 
 inline String sd_free_text() {
-  if (!g_sdOk) return sd_inserted() ? TR("Not mounted", "Chưa gắn") : TR("No card", "Không có thẻ");
+  if (!sd_inserted()) return TR("No card", "Không có thẻ");  // even if it was mounted before being pulled out
+  if (!g_sdOk) return TR("Not mounted", "Chưa gắn");
   const String x = size_text(SD.totalBytes() - SD.usedBytes());
   return TR(x + " free", "Trống " + x);
 }
@@ -192,7 +193,7 @@ inline void draw_about() {
   // ponytail: certifications are a static line until the device label's text is confirmed (PLAN §12)
   const String rows[][2] = {{TR("Name", "Tên"), "HeySticky"}, {"SN", about_sn()}, {"MAC", WiFi.macAddress()},
                             {TR("Software version", "Phiên bản"), FW_VERSION}, {TR("Certifications", "Chứng nhận"), "FCC · CE"}, {TR("SD card", "Thẻ SD"), sd_free_text()}};
-  for (int i = 0; i < 6; i++) info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, rows[i][0], rows[i][1], i == ABOUT_SD_ROW);
+  for (int i = 0; i < 6; i++) info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, rows[i][0], rows[i][1], i == ABOUT_SD_ROW && sd_inserted());  // no card: no ›, no tap
 }
 
 // ---------- 04i SD Card ----------

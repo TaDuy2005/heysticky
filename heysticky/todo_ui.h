@@ -312,3 +312,13 @@ inline void draw_nosd() {
   ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 437, 400, 33, 2, AL_CENTER);
   ui_button(40, 712, 400, 72, true, &ICON_RETRY30, TR("Retry", "Thử lại"), 10);
 }
+
+// Figma 02l / 03k: shown at once while a card that is in but not mounted yet is read (the spin icon's grey track drops out on 1-bit).
+inline void draw_sd_loading(bool notes) {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar(notes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), "");
+  ui_icon(ICON_SPIN64, 208, 342);
+  ui_text(F_X30, TR("Loading…", "Đang tải…"), W / 2, 422, 40, AL_CENTER);
+  ui_partial(0, 0, W, H);
+}

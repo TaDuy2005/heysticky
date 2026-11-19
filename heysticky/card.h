@@ -15,6 +15,8 @@ inline bool g_sdOk = false;
 inline bool g_todoUnsaved = false;  // a change that did not reach the card yet (card pulled)
 inline std::vector<Task> g_tasks;
 
+inline bool sd_inserted() { return digitalRead(PIN_SD_DETECT) == LOW; }  // card-detect switch pulls the pin low
+
 inline bool sd_mount() {
   SD.end();
   for (gpio_num_t p : {GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14, GPIO_NUM_8}) gpio_set_pull_mode(p, GPIO_PULLUP_ONLY);
@@ -22,6 +24,10 @@ inline bool sd_mount() {
   digitalWrite(PIN_SD_EN, HIGH);  // slot power
   pinMode(PIN_SD_DETECT, INPUT_PULLUP);
   delay(100);
+  if (!sd_inserted()) {  // card-detect switch: no card -> no slow SD.begin() attempts (they froze To-do / Notes)
+    Serial.println("[sd] no card (detect)");
+    return g_sdOk = false;
+  }
   SPIClass *spi = static_cast<Bus_SPI &>(display.panel().driver().bus()).spiInstance();
   for (uint32_t hz : {4000000u, 1000000u}) {
     if (spi && SD.begin(PIN_SD_CS, *spi, hz)) {
@@ -174,7 +180,6 @@ inline bool notes_retry() {
 }
 
 // ---------- 04i SD Card / SD Files ----------
-inline bool sd_inserted() { return digitalRead(PIN_SD_DETECT) == LOW; }  // card-detect switch pulls the pin low
 
 struct SdFile { String name; uint32_t size; int items; };  // items >= 0: a folder holding that many entries
 inline String g_dir = "/";            // the folder 04k shows

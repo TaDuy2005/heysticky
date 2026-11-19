@@ -250,6 +250,7 @@ inline void nosd(bool notes) { g_nosdNotes = notes; show(SCR_NOSD); }
 
 inline void open_todo() {
   g_todoPage = 0;
+  if (!g_sdOk && sd_inserted()) draw_sd_loading(false);
   if (g_sdOk || todo_retry()) show(SCR_TODO);
   else nosd(false);
 }
@@ -259,6 +260,7 @@ inline void todo_commit(Screen next) { if (todo_save()) show(next); else nosd(fa
 // ---------- Notes ----------
 inline void open_notes() {  // the list is read fresh each time: the card may have been edited on a computer
   g_notesPage = 0;
+  if (!g_sdOk && sd_inserted()) draw_sd_loading(true);
   if (notes_scan() || notes_retry()) show(SCR_NOTES);
   else nosd(true);
 }
@@ -777,7 +779,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     note_scroll(dy < 0 ? 1 : -1);  // drag the text up = see later lines, like a phone
     return;
   }
-  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE ||
+  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE || g_screen == SCR_NOSD ||
                 settings_screen(g_screen))) {
     if (dx < 0) page_fwd();
     else page_back();
@@ -788,7 +790,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_SETTINGS: settings_tap(x0, y0); return;
     case SCR_CONFIG: if (srow_at(y0, SROW_H, 4) == 3) { hw_beep(); show(SCR_TEMP); } return;  // City: set on the phone setup page
     case SCR_TEMP: temp_tap(y0); return;
-    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(); open_sdcard(); } return;
+    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW && sd_inserted()) { hw_beep(); open_sdcard(); } return;
     case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { g_dir = "/"; files_open(); } return;
     case SCR_FILES: files_tap(y0); return;
     case SCR_UPDATE: update_tap(x0, y0); return;
@@ -821,6 +823,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_NOSD:
       if (in(x0, y0, 40, 712, 400, 72)) {
         hw_beep();
+        if (sd_inserted()) draw_sd_loading(g_nosdNotes);
         if (g_nosdNotes ? notes_retry() : todo_retry()) show(g_nosdNotes ? SCR_NOTES : SCR_TODO);
         else show(SCR_NOSD);
       }
