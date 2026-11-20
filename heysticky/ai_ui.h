@@ -51,9 +51,9 @@ inline int g_aiStep = 1;  // the step in progress: 1 sorting (Heard you is done 
 constexpr int WORK_Y = 463, WORK_H = 133;  // the steps
 constexpr int DOTS_X = 205, DOTS_Y = 296, DOTS_W = 70, DOTS_H = 14;  // the dots inside the badge (centre 240,303)
 
-inline void draw_working_dots(int frame) {  // 1, 2, 3 dots, again: "still working" on a 1-bit panel
-  display.fillRect(DOTS_X, DOTS_Y, DOTS_W, DOTS_H, PAPER);
-  for (int k = 0; k <= frame % 3; k++) display.fillCircle(218 + 22 * k, 303, 3, INK);
+inline void draw_working_dots(int frame) {  // 1, 2, 3 white dots, again: "still working" on a 1-bit panel
+  display.fillRect(DOTS_X, DOTS_Y, DOTS_W, DOTS_H, INK);
+  for (int k = 0; k <= frame % 3; k++) display.fillCircle(218 + 22 * k, 303, 3, PAPER);
 }
 
 inline void draw_working_steps() {
@@ -75,8 +75,7 @@ inline void draw_working_steps() {
 inline void draw_working() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  display.fillCircle(240, 303, 75, INK);  // Badge 150 at 165,228, 5 px ring
-  display.fillCircle(240, 303, 70, PAPER);
+  display.fillCircle(240, 303, 75, INK);  // Badge 150 at 165,228, solid black: its ghost blends into 05c's black badge
   draw_working_dots(2);
   ui_text(F_X32, TR("Working on it…", "Đang xử lý…"), W / 2, 398, 45, AL_CENTER);  // Figma: ExtraBold 34
   draw_working_steps();

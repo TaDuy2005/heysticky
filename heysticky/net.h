@@ -152,8 +152,11 @@ inline void net_sta_step() {
 }
 
 // ---------- hotspot (04j) ----------
+inline uint32_t g_webSeen = 0;  // millis() of the last request from the phone page (it asks for /api/status every 1.5 s)
+
 inline void net_hotspot(bool on) {
   if (on == g_webOn) return;
+  g_webSeen = millis();
   if (on) {
     for (uint32_t t0 = millis(); g_ns == NS_SCAN && millis() - t0 < SCAN_TIMEOUT_MS; delay(50)) net_sta_step();
     // The page's network list. Scanning while softAP() starts crashed the Wi-Fi driver on core 3.3.12,
@@ -556,6 +559,7 @@ inline bool text_ok(const String &s, size_t maxLen) {
 
 inline void api_status() {
   if (!ap_only()) return;
+  g_webSeen = millis();
   JsonDocument d;
   d["name"] = cfg_get("name");
   d["city"] = cfg_get("city");
