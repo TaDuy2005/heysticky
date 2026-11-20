@@ -170,7 +170,7 @@ inline void phone_loop() {
   if (g_phoneNotes) {
     g_phoneNotes = false;
     const Screen s = g_screen;
-    if (s == SCR_NOTE || s == SCR_NOTEED || s == SCR_DELNOTE) { notes_scan(); show(SCR_NOTES); }
+    if (s == SCR_NOTE || s == SCR_DELNOTE) { notes_scan(); show(SCR_NOTES); }
     else if (s == SCR_NOTES) { notes_scan(); show(s); }
   }
 }
