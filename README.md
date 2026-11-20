@@ -8,19 +8,22 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 
 - **Home:** "Hello, {name}", big clock and date, weather (Open-Meteo, no API key), indoor temperature and
   humidity, today's to-do count, app dock.
-- **To-do:** add, tick, edit (long-tap), delete with confirmation, optional deadline (date and/or time).
+- **To-do:** tick, open (long-tap) to set a deadline (date and/or time) or delete; add and edit by voice or on
+  the phone page.
   Stored as plain Markdown in `/todo.md` on the microSD card.
-- **Notes:** create, view, edit, delete. One Markdown file per note in `/notes/`.
+- **Notes:** view (scrolls) and delete on the Sticky; create and edit by voice or on the phone page. One Markdown
+  file per note in `/notes/`. To-dos and notes keep their created date and time.
 - **AI voice:** hold the top button and talk. Speech-to-text, then an AI turns it into to-dos (with deadlines,
   "tomorrow at 9") or a note written your way. English and Vietnamese. Needs an API key (see AI setup).
-- **On-screen keyboard** with phone-like auto-capitals and double-space full stop.
+- **Phone To-do and Notes pages** (on the Sticky's hotspot): add, edit, tick and delete; the Sticky redraws at once.
+- **Clock:** the built-in RTC keeps the time with Wi-Fi off; 12-hour with AM / PM.
 - **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
   `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically; a Wi-Fi switch on that page
   keeps the Sticky offline).
 - **Settings:** Sound (on/off, volume Low / Medium / High), Language (English / Tiếng Việt), User Font, Software Update, Configuration
   (city, timezone, °C/°F), Sleep after, Web setup, About (SN, MAC, version, SD card).
 - **Power:** sleeps after 1–10 min idle (Home with a moon, clock still updates every minute, weather every
-  30 min); shutdown with UP + DOWN; turns itself off when the battery is empty.
+  60 min); shutdown with UP + DOWN; turns itself off when the battery is empty.
 - **Software Update:** checks this repository's GitHub Releases and installs over Wi-Fi, with rollback if the
   new version fails to start.
 
@@ -29,9 +32,11 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 | Action | How |
 |---|---|
 | Home | Press the top button, or swipe up from the bottom edge |
-| Back / forward | DOWN / UP, or swipe right / left |
+| Back | DOWN, or swipe left-to-right |
+| Next / previous page (To-do, Notes) | Swipe up / down (pages loop) |
+| Scroll a note or SD Files | Swipe, or DOWN = later / UP = earlier |
 | Tick a to-do | Tap it |
-| Edit a to-do | Long-tap it |
+| Open a to-do | Long-tap it |
 | Talk to AI | Hold the top button while you speak (up to 60 s), then let go |
 | Wake from sleep | Press the top button |
 | Turn off | Hold UP + DOWN together for 3 s |
@@ -153,8 +158,8 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | | |
 |---|---|
 | Hardware | reTerminal Sticky (ESP32-S3R8, 8 MB PSRAM, 32 MB flash, 3.97" e-paper, GT911 touch) |
-| Firmware | HeySticky v1.0.0 – v1.1.0, built with ESP32 Arduino core 3.3.12 |
-| Date | 2026-11-17 (v1.0.0), 2026-11-20 (v1.1.0) |
+| Firmware | HeySticky v1.0.0 – v1.2.0, built with ESP32 Arduino core 3.3.12 |
+| Date | 2026-11-17 (v1.0.0), 2026-11-20 (v1.1.0, v1.2.0) |
 
 | Test | Result |
 |---|---|
@@ -169,6 +174,10 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | v1.1.0: hold the top button to talk → to-dos or a note (20 clips, English / Vietnamese / mixed, 18 right) | Pass |
 | v1.1.0: phone page AI setup (06h1 / 06h2): test, save, edit, delete | Pass |
 | v1.1.0: Web setup turns off after 5 min without the phone; an open editor sleeps on its own screen | Pass |
+| v1.2.0: RTC clock right before Wi-Fi joins and after off / on with Wi-Fi off | Pass |
+| v1.2.0: lists loop by swipe, Back gestures, 02e Deadline drop-down / Done / Discard, 03c and 04k scroll | Pass |
+| v1.2.0: phone To-do / Notes add, edit, tick, delete; the Sticky redraws; created date and time | Pass |
+| v1.2.0: 12-hour AM / PM times (Home, labels, Created, 02h, phone page) | Pass |
 
 ## Credits and licences
 
