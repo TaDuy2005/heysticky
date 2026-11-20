@@ -3,7 +3,7 @@
 #pragma once
 #include "ui.h"
 #include "card.h"
-#include "todo_ui.h"  // dmy()
+#include "todo_ui.h"  // stamp()
 
 inline String note_title(const String &title, int num) { return title.length() ? title : TR("Note ", "Ghi chú ") + note_tag(num); }
 inline std::vector<String> wrap(const Font &f, const String &s, int w) {
@@ -57,7 +57,7 @@ inline void draw_note_view() {
   if (title.size() > VTITLE_MAX) { title.resize(VTITLE_MAX); title.back() = ui_fit(F_X30, title.back() + " …", 400); }
   for (size_t i = 0; i < title.size(); i++) ui_text(F_X30, title[i], 40, VIEW_TOP + i * VTITLE_LH, VTITLE_LH);
   int top = VIEW_TOP + title.size() * VTITLE_LH + 4;
-  if (g_note.created.length()) { ui_text(F_R20, dmy(ymd_num(g_note.created)), 440, top, 26, AL_RIGHT); top += 30; }
+  if (g_note.created.length()) { ui_text(F_R20, stamp(g_note.created), 440, top, 26, AL_RIGHT); top += 30; }
   top += 8;
   const std::vector<String> body = wrap(F_R25, g_note.body, 400);
   const int n = body.size(), shown = max(1, (VIEW_BOTTOM - top) / VIEW_LH);

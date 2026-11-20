@@ -29,10 +29,8 @@ inline String fmt_date(const tm &t) {
 inline String now_clock(String *date = nullptr) {
   tm t;
   if (!local_now(t)) { if (date) *date = ""; return "--:--"; }
-  char hm[6];
-  strftime(hm, sizeof hm, "%H:%M", &t);
   if (date) *date = fmt_date(t);
-  return hm;
+  return hm12(t.tm_hour * 60 + t.tm_min);  // "9:41 AM"
 }
 
 inline const Icon &wx_icon(WxIcon i) {
@@ -59,7 +57,12 @@ inline void read_indoor(String &temp, String &hum) {
 inline void home_clock(const String &date, const String &clock) {
   display.fillRect(40, 104, 400, 176, PAPER);
   ui_text(F_R30, date, W / 2, 104, 40, AL_CENTER);
-  ui_text(F_X120, clock, W / 2, 144, 126, AL_CENTER);
+  const int sp = clock.indexOf(' ');  // "9:41 AM": big digits, Bold AM / PM beside them, the pair centred (Figma 01)
+  if (sp < 0) { ui_text(F_X120, clock, W / 2, 144, 126, AL_CENTER); return; }  // "--:--" before the clock is set
+  const String hm = clock.substring(0, sp), ap = clock.substring(sp + 1);
+  const int wd = ui_width(F_X120, hm), x = W / 2 - (wd + 10 + ui_width(F_B35, ap)) / 2;
+  ui_text(F_X120, hm, x, 144, 126);
+  ui_text(F_B35, ap, x + wd + 10, 210, 46);
 }
 
 inline void home_weather() {
@@ -125,7 +128,8 @@ inline void home_tick() {
       bool(digitalRead(PIN_USB_PRESENT)) == g_shown.plugged) return;  // checked often, acts once a minute (or on plug/unplug)
 
   // Asleep: partial updates don't count toward the ghost-clearing full refresh; one full refresh on the hour instead.
-  const bool hourly = g_asleep && clock != g_shown.clock && clock.endsWith(":00");
+  const int sp = clock.indexOf(' ');  // "9:41 AM"; "--:--" has none
+  const bool hourly = g_asleep && clock != g_shown.clock && sp > 0 && clock.substring(sp - 3, sp) == ":00";
   const int every = g_asleep ? INT_MAX : FULL_EVERY;
   auto part = [&](int x, int y, int w, int h) { if (!hourly) ui_partial(x, y, w, h, every); };
   if (clock != g_shown.clock || date != g_shown.date) {
@@ -141,7 +145,7 @@ inline void home_tick() {
     part(40, 288, 400, 143);
   }
   String temp, hum;
-  if (g_asleep && !clock.endsWith("0")) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
+  if (g_asleep && !(sp > 0 && clock[sp - 1] == '0')) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
   else read_indoor(temp, hum);
   if (temp != g_shown.indoor || hum != g_shown.humidity) {
     g_shown.indoor = temp; g_shown.humidity = hum;
@@ -450,6 +454,8 @@ inline void time_tap(int x, int y) {
   if (!g_ed.dl.timeOn) { if (in(x, y, 40, 711, 400, 73)) { hw_beep(); show(SCR_TASK); } return; }
   for (int i = 0; i < 2; i++)
     if (in(x, y, TF_X[i], TF_Y, TF_W, TF_H)) { g_te.active = i; g_te.fresh = true; g_timeDirty = true; }
+  for (int i = 0; i < 2; i++)
+    if (in(x, y, AP_X[i], AP_Y, AP_W, AP_H) && g_te.pm != bool(i)) { hw_beep(); g_te.pm = i; g_timeDirty = true; }
 }
 
 inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
@@ -806,6 +812,6 @@ inline void screens_loop() {
   else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one
     g_timeDirty = false;
     time_fields();
-    ui_partial(40, TF_Y, 400, TF_H, KBD_FULL_EVERY);
+    ui_partial(40, TF_Y, 400, AP_Y + AP_H - TF_Y, KBD_FULL_EVERY);
   }
 }

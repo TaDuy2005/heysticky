@@ -562,7 +562,8 @@ const ico=b=>H('<svg class="ico" viewBox="0 0 24 24" width="22" height="22" fill
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'],MS=MON.map(m=>m.slice(0,3));
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DV=['CN','T2','T3','T4','T5','T6','T7'];
 const fmtDate=s=>{const[y,m,d]=s.split('-').map(Number),w=new Date(Date.UTC(y,m-1,d)).getUTCDay();return L(DAYS[w]+' '+d+' '+MS[m-1]+' '+y,DV[w]+' '+p2(d)+'/'+p2(m)+'/'+y)};
-const fmtTime=t=>{const h=Math.floor(t/60);return((h+11)%12+1)+':'+p2(t%60)+' '+(h>=12?L('PM','CH'):L('AM','SA'))};
+const fmtTime=t=>{const h=Math.floor(t/60);return((h+11)%12+1)+':'+p2(t%60)+' '+(h>=12?'PM':'AM')};
+const stamp=c=>dmy(c)+(c&&c.length==16?' '+fmtTime(+c.slice(11,13)*60+ +c.slice(14)):'');  // "20/11/26 9:05 AM"
 const VOICE=()=>L('Add one here, or hold ● on the Sticky to add one by voice.','Thêm ở đây, hoặc giữ ● trên Sticky để thêm bằng giọng nói.');
 const empty=(t,h)=>E('div',{className:'emp'},E('b',{textContent:t}),E('p',{textContent:h}));
 const sw=on=>E('input',{type:'checkbox',className:'sw',checked:on});
@@ -579,7 +580,7 @@ async function todoView(){const v=$('v-todo'),d=await getJ('/api/todo');if(!d)re
   cb.onclick=async e=>{e.stopPropagation();await post('/api/todo_set',{i:t.i,was:t.was,text:t.text,due:t.due,done:t.done?0:1});todoView()};
   const tx=E('span',{className:'t'},E('b',{className:t.done?'dn':'',textContent:t.text}));if(t.label)tx.append(E('small',{textContent:t.label}));
   const r=E('div',{className:'r',role:'button',tabIndex:0},cb,tx,E('span',{className:'ch',textContent:'›'}));r.onclick=()=>nav('task',String(t.i));return r});
- v.replaceChildren(add,E('div',{className:'g'},...rows),E('p',{className:'foot',textContent:L('Tap a box to tick. Tap a task to edit it.','Chạm ô để đánh dấu xong. Chạm một việc để sửa.')}))}
+ v.replaceChildren(add,E('div',{className:'g'},...rows))}
 
 // 06p: Date and Time each have a switch; on, a month calendar / an hour : min : AM-PM wheel opens (tap the name to show / hide it).
 // Same deadline rules as the Sticky: Date only = a date-only deadline, Time only = today at that time.
@@ -607,7 +608,7 @@ function taskView(){const v=$('v-task'),nw=det==='new',src=nw?null:TD.tasks.find
    const mark=k=>[...c.children].forEach((d,j)=>{d.style.color=j-1===k?'#000':'#999';d.style.fontWeight=j-1===k?'700':''});mark(idx);
    c.dataset.i=idx;let tm;c.onscroll=()=>{clearTimeout(tm);tm=setTimeout(()=>{const k=Math.round(c.scrollTop/36);mark(k);on(k);upd()},120)};return c};
   return E('div',{className:'wh'},E('div',{className:'band'}),col(['12','1','2','3','4','5','6','7','8','9','10','11'],hi,k=>hi=k),E('span',{className:'co',textContent:':'}),
-   col([...Array(60)].map((_,k)=>p2(k)),mm,k=>mm=k),col([L('AM','SA'),L('PM','CH')],ap,k=>ap=k))};
+   col([...Array(60)].map((_,k)=>p2(k)),mm,k=>mm=k),col(['AM','PM'],ap,k=>ap=k))};
  function draw(){tSub=E('small',{textContent:T.time>=0?fmtTime(T.time):''});
   const dr=head('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',L('Date','Ngày'),E('small',{textContent:T.date?fmtDate(T.date):''}),!!T.date,
    on=>{T.date=on?T.date||today:'';T.dOpen=on;if(on)[T.cy,T.cm]=T.date.split('-').map(Number);draw()},()=>{T.dOpen=!T.dOpen;draw()});
@@ -624,7 +625,7 @@ function taskView(){const v=$('v-task'),nw=det==='new',src=nw?null:TD.tasks.find
  if(!nw){const del=E('button',{type:'button',textContent:L('Delete','Xoá')});btns.append(del);
   del.onclick=()=>alertBox(L('Delete task?','Xoá việc này?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/todo_del',{i:src.i,was:src.was})){dirty=()=>false;history.back()}})}
  btns.append(save);
- v.replaceChildren(E('label',{htmlFor:'t-text',textContent:L('Task','Việc')}),ta,card,...(src&&src.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+dmy(src.created)})]:[]),btns)}
+ v.replaceChildren(E('label',{htmlFor:'t-text',textContent:L('Task','Việc')}),ta,card,...(src&&src.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(src.created)})]:[]),btns)}
 
 async function notesView(){const v=$('v-notes'),d=await getJ('/api/notes');if(!d)return;
  const add=E('button',{className:'btn k',style:'margin:0 0 22px',textContent:L('+  Add note','+  Thêm ghi chú')});add.onclick=()=>nav('noteed','new');
@@ -635,7 +636,7 @@ async function notesView(){const v=$('v-notes'),d=await getJ('/api/notes');if(!d
 async function noteView(){const v=$('v-note');v.replaceChildren();const n=await getJ('/api/note?num='+det);if(!n)return;N=n;
  const ed=E('button',{type:'button',className:'k',textContent:L('Edit','Sửa')}),del=E('button',{type:'button',textContent:L('Delete','Xoá')});ed.onclick=()=>nav('noteed',det);
  del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num}))history.back()});
- v.replaceChildren(E('div',{className:'nv'},E('h2',{textContent:n.title||L('Untitled','Không tiêu đề')}),E('p',{className:'cd',textContent:dmy(n.created)}),E('p',{className:'bd',textContent:n.body})),E('div',{className:'two'},ed,del))}
+ v.replaceChildren(E('div',{className:'nv'},E('h2',{textContent:n.title||L('Untitled','Không tiêu đề')}),E('p',{className:'cd',textContent:stamp(n.created)}),E('p',{className:'bd',textContent:n.body})),E('div',{className:'two'},ed,del))}
 
 async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildren();
  let n={num:0,title:'',body:'',created:''};if(!nw){n=N&&String(N.num)===det?N:await getJ('/api/note?num='+det);if(!n)return}
@@ -647,7 +648,7 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
  if(!nw){const del=E('button',{type:'button',textContent:L('Delete','Xoá')});btns.append(del);
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
- v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+dmy(n.created)})]:[]),btns)}
+ v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 

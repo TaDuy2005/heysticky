@@ -131,9 +131,17 @@ inline int todo_due_today(const std::vector<Task> &ts, const String &now) {  // 
   return n;
 }
 
-inline String short_hm(const String &due) {  // "2026-11-17 09:00" -> "9:00"; "" for a date-only due
+// Every time shown is 12-hour with AM/PM, in both languages (user choice, 2026-11-20). Files keep 24-hour.
+inline String hm12(int mins) {  // 0..1439 -> "9:05 AM", "12:00 PM"
+  const int h = mins / 60 % 24;
+  char b[9];
+  snprintf(b, sizeof b, "%d:%02d %s", (h + 11) % 12 + 1, mins % 60, h < 12 ? "AM" : "PM");
+  return b;
+}
+
+inline String short_hm(const String &due) {  // "2026-11-17 19:00" -> "7:00 PM"; "" for a date-only due
   if (due.length() != 16) return "";
-  return due[11] == '0' ? due.substring(12) : due.substring(11);
+  return hm12(due.substring(11, 13).toInt() * 60 + due.substring(14).toInt());
 }
 
 inline String day_month(long n) {  // "24/11", both languages
@@ -155,17 +163,17 @@ inline String todo_label(const Task &t, const String &now) {
   return String(day3(weekday(day))) + " " + day_month(day) + sp + hm;
 }
 
-// ---------- 02h Time entry: HH and MM fields typed on a number pad ----------
-struct TimeEntry { String f[2]; int active = 0; bool fresh = true; };  // fresh: next digit replaces the field
+// ---------- 02h Time entry: hour (1-12) and minute fields typed on a number pad, plus AM | PM ----------
+struct TimeEntry { String f[2]; int active = 0; bool fresh = true; bool pm = false; };  // f[0] = 1..12; fresh: next digit replaces the field
 
 // Typing fills the hour, then the minute. A first digit that cannot start a valid value is
 // taken as "0d" (9 -> 09). Returns false when the digit would make an invalid time.
 inline bool time_digit(TimeEntry &te, char c) {
   String &f = te.f[te.active];
   if (te.fresh || f.length() >= 2) { f = ""; te.fresh = false; }
-  if (!f.length() && c - '0' > (te.active ? 5 : 2)) f = "0";
+  if (!f.length() && c - '0' > (te.active ? 5 : 1)) f = "0";
   f += c;
-  if (f.toInt() > (te.active ? 59 : 23)) { f = f.substring(0, f.length() - 1); return false; }
+  if (f.toInt() > (te.active ? 59 : 12) || (!te.active && f == "00")) { f = f.substring(0, f.length() - 1); return false; }
   if (f.length() == 2 && te.active == 0) { te.active = 1; te.fresh = true; }
   return true;
 }
