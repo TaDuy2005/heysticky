@@ -55,21 +55,34 @@ int main() {
   assert(weekday(ymd_num("2026-11-17")) == 2);  // Tuesday
   assert(ymd(ymd_num("2026-12-31") + 1) == "2027-01-01");
 
+  // 12-hour times; hour entry takes 1-12
+  assert(hm12(0) == "12:00 AM" && hm12(9 * 60 + 5) == "9:05 AM" && hm12(12 * 60) == "12:00 PM" && hm12(23 * 60 + 59) == "11:59 PM");
+  {
+    TimeEntry te;
+    assert(time_digit(te, '1') && time_digit(te, '2') && te.f[0] == "12" && te.active == 1);  // 12 fills the hour
+    te = TimeEntry();
+    assert(time_digit(te, '7') && te.f[0] == "07" && te.active == 1);                        // 7 -> 07
+    te = TimeEntry();
+    assert(time_digit(te, '1') && !time_digit(te, '3') && te.f[0] == "1");                   // 13 refused
+    te = TimeEntry();
+    assert(time_digit(te, '0') && !time_digit(te, '0') && te.f[0] == "0");                   // 00 refused
+  }
+
   // labels at Tue 2026-11-17 10:30
   const String now = "2026-11-17 10:30";
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Overdue · 16/11");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 09:00)"), now) == "Overdue · 17/11 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 09:00)"), now) == "Overdue · 17/11 9:00 AM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 7:00 PM");
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-17)"), now) == "Today");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 20/11 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "Thu 24/12 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), "") == "24/12 9:00");  // no clock yet
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 9:00 AM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 20/11 9:00 AM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "Thu 24/12 9:00 AM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), "") == "24/12 9:00 AM");  // no clock yet
   g_vi = true;
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Quá hạn · 16/11");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 19:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 20/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 7:00 PM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 9:00 AM");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 20/11 9:00 AM");
   g_vi = false;
 
   // wrap: 1 px a byte; spaces break, a too-long word breaks anywhere, "…" when out of lines
@@ -91,18 +104,19 @@ int main() {
   assert(got == "overdue|today|tomorrow|buy milk|second undated|done|");
   assert(todo_left(ts) == 5 && todo_due_today(ts, now) == 1);
 
-  // 02h time entry ('<' = backspace); returns "HH:MM" plus any refused keys
+  // 02h time entry ('<' = backspace); returns "hh:MM" (12-hour) plus any refused keys
   auto type = [](const char *keys) {
     TimeEntry te; te.f[0] = "09"; te.f[1] = "00";
     std::string bad;
     for (const char *k = keys; *k; k++) { if (*k == '<') time_back(te); else if (!time_digit(te, *k)) bad += *k; }
     return std::string(te.f[0]) + ":" + std::string(te.f[1]) + (bad.size() ? " !" + bad : "");
   };
-  assert(type("1830") == "18:30");
+  assert(type("1030") == "10:30");
   assert(type("930") == "09:30");       // 9 can only start 09
-  assert(type("187") == "18:07");       // so can a minute of 7
-  assert(type("25359") == "23:59 !5");  // 25 refused
-  assert(type("18<9") == "19:00");      // backspace from a fresh minute goes back into the hour
-  assert(type("1830<5") == "18:35");
+  assert(type("107") == "10:07");       // so can a minute of 7
+  assert(type("132") == "12:00 !3");    // 13 refused (hour is 1-12)
+  assert(type("00") == "0:00 !0");      // 00 refused
+  assert(type("10<1") == "11:00");      // backspace from a fresh minute goes back into the hour
+  assert(type("1030<5") == "10:35");
   puts("todo_test OK");
 }

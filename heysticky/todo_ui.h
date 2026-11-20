@@ -138,6 +138,11 @@ inline String dmy(long n) {  // "17/11/26"
   return b;
 }
 
+inline String stamp(const String &at) {  // Created: "2026-11-20 09:05" -> "20/11/26 9:05 AM"
+  const String hm = short_hm(at);
+  return dmy(ymd_num(at)) + (hm.length() ? " " + hm : String(""));
+}
+
 // Settings-style rows (Figma Row/...): Bold 28 label; value + chevron, or a toggle.
 inline void link_row(int y, const String &label, const String &value) {
   ui_text(F_B28, label, 40, y + 18, 37);
@@ -170,18 +175,18 @@ inline void draw_task_editor() {
   ui_card(FIELD_X, FIELD_Y, FIELD_W, g_fieldH, 10, 3);
   for (int i = 0; i < int(ls.size()); i++) ui_text(F_B26, ls[i], 59, 153 + 34 * i, 34);
   int y = row0();
-  ui_text(F_B25, TR("DEADLINE (OPTIONAL)", "HẠN CHÓT (TUỲ CHỌN)"), 40, y + 19, 33);
+  ui_text(F_B25, TR("Deadline (Optional)", "Hạn chót (Tuỳ chọn)"), 40, y + 19, 33);
   if (g_ed.dlOpen) chevron_down(414, y + 23);
   else ui_icon(ICON_CHEV, 414, y + 23);
   y += 80;
   if (g_ed.dlOpen) {
     link_row(y, TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
-    link_row(y + 80, TR("Time", "Giờ"), g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : TR("Off", "Tắt"));
+    link_row(y + 80, TR("Time", "Giờ"), g_ed.dl.timeOn ? hm12(g_ed.dl.mins) : TR("Off", "Tắt"));
     y += 160;
   }
   if (g_ed.created.length()) {
     ui_text(F_B28, TR("Created", "Ngày tạo"), 40, y + 18, 37);
-    ui_text(F_R25, dmy(ymd_num(g_ed.created)), 440, y + 20, 33, AL_RIGHT);
+    ui_text(F_R25, stamp(g_ed.created), 440, y + 20, 33, AL_RIGHT);
   }
   ui_button(40, 717, 194, 67, false, &ICON_TRASH24, TR("Delete", "Xoá"));
   ui_button(246, 717, 194, 67, true, &ICON_CHECK24, TR("Done", "Xong"));
@@ -239,15 +244,22 @@ inline bool date_day_at(int x, int y) {  // tap on a day cell -> select it
 inline TimeEntry g_te;
 constexpr int TF_Y = 224, TF_W = 140, TF_H = 100;
 inline const int TF_X[2] = {65, 276};
+constexpr int AP_Y = 356, AP_W = 194, AP_H = 67;  // AM | PM under the fields (Figma 02h)
+inline const int AP_X[2] = {40, 246};
 
 inline void time_begin() {
   g_te = TimeEntry();
-  const String t = hhmm(g_ed.dl.mins);
-  g_te.f[0] = t.substring(0, 2);
-  g_te.f[1] = t.substring(3);
+  const int h = g_ed.dl.mins / 60;
+  char b[3];
+  snprintf(b, sizeof b, "%02d", (h + 11) % 12 + 1);
+  g_te.f[0] = b;
+  g_te.f[1] = hhmm(g_ed.dl.mins).substring(3);
+  g_te.pm = h >= 12;
 }
 
-inline void time_commit() { g_ed.dl.mins = g_te.f[0].toInt() * 60 + g_te.f[1].toInt(); }  // "" counts as 0
+inline void time_commit() {  // 12 AM = 0:xx; "" counts as 0, i.e. 12
+  g_ed.dl.mins = (g_te.f[0].toInt() % 12 + (g_te.pm ? 12 : 0)) * 60 + g_te.f[1].toInt();
+}
 
 inline void time_fields() {
   display.fillRect(40, TF_Y, 400, TF_H, PAPER);
@@ -258,6 +270,8 @@ inline void time_fields() {
     ui_text(F_X64, g_te.f[i], TF_X[i] + TF_W / 2, TF_Y + 8, 84, AL_CENTER, on ? PAPER : INK, on ? INK : PAPER);
   }
   ui_text(F_X64, ":", W / 2, TF_Y + 8, 84, AL_CENTER);
+  display.fillRect(40, AP_Y, 400, AP_H, PAPER);
+  for (int i = 0; i < 2; i++) ui_button(AP_X[i], AP_Y, AP_W, AP_H, g_te.pm == bool(i), nullptr, i ? "PM" : "AM");
 }
 
 // Keypad keys 0..11 = 1-9, backspace, 0, Done (Figma Keypad: 3 x 146 px columns, 68 px rows).
