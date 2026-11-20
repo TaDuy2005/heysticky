@@ -943,14 +943,14 @@ struct Weather { bool ok = false; float temp = 0, hi = 0, lo = 0; int code = 0; 
 inline Weather g_wx;               // ok=false -> show "Offline"
 constexpr uint32_t WX_EVERY_MS = 30UL * 60 * 1000, WX_RETRY_MS = 60UL * 1000;
 
-inline bool net_weather() {
+inline bool net_weather(Weather &w) {
   if (WiFi.status() != WL_CONNECTED || !net_geocode()) return false;
   String url = "https://api.open-meteo.com/v1/forecast?latitude=" + cfg_get("lat") + "&longitude=" + cfg_get("lon") +
                "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
   if (cfg_get("units", "C") == "F") url += "&temperature_unit=fahrenheit";
   JsonDocument d;
   if (!http_json(url, d)) return false;
-  g_wx = {true, d["current"]["temperature_2m"].as<float>(), d["daily"]["temperature_2m_max"][0].as<float>(),
+  w = {true, d["current"]["temperature_2m"].as<float>(), d["daily"]["temperature_2m_max"][0].as<float>(),
           d["daily"]["temperature_2m_min"][0].as<float>(), d["current"]["weather_code"].as<int>(), millis()};
   const long off = d["utc_offset_seconds"].as<long>();
   if (off != g_utc_off) {  // follows DST within 30 min; kept for the next boot
@@ -958,8 +958,22 @@ inline bool net_weather() {
     cfg_set("utc_off", String(off));
     configTime(off, 0, "pool.ntp.org", "time.google.com");
   }
-  Serial.printf("[wx] %.1f (%.0f/%.0f) code=%d %s  utc%+ld\n", g_wx.temp, g_wx.hi, g_wx.lo, g_wx.code, wx_info(g_wx.code).label, off);
+  Serial.printf("[wx] %.1f (%.0f/%.0f) code=%d %s  utc%+ld\n", g_wx.temp, g_wx.hi, g_wx.lo, g_wx.code, wx_info(w.code).label, off);
   return true;
+}
+
+// The weather calls (two HTTPS requests, up to 8 s each) run in their own task on core 0, like the AI calls,
+// so touches, buttons and the phone page keep working. net_loop() takes the result.
+enum WxJob : uint8_t { WXJ_IDLE, WXJ_RUNNING, WXJ_OK, WXJ_FAIL };
+inline volatile WxJob g_wxJob = WXJ_IDLE;
+inline Weather g_wxNew;
+
+inline void wx_task(void *) {
+  Weather w;
+  const bool ok = net_weather(w);
+  if (ok) g_wxNew = w;
+  g_wxJob = ok ? WXJ_OK : WXJ_FAIL;
+  vTaskDelete(nullptr);
 }
 
 // Off: leave the network now (the hotspot, if on, stays up) and show weather as Offline. On: join the strongest saved one.
@@ -982,9 +996,16 @@ inline void wifi_set_on(bool on) {
 inline void net_loop() {
   net_sta_step();
   if (g_webOn) { g_dns.processNextRequest(); g_web.handleClient(); }
-  if (WiFi.status() == WL_CONNECTED && millis() >= g_wx_next) {
-    const bool ok = net_weather();
-    g_wx_next = millis() + (ok ? WX_EVERY_MS : WX_RETRY_MS);
+  if (g_wxJob == WXJ_OK || g_wxJob == WXJ_FAIL) {
+    const bool ok = g_wxJob == WXJ_OK;
+    if (ok && g_wifiOn) g_wx = g_wxNew;  // Wi-Fi switched off meanwhile: stays Offline
+    if (g_wx_next) g_wx_next = millis() + (ok ? WX_EVERY_MS : WX_RETRY_MS);  // 0: asked again meanwhile (new city, units)
+    g_wxJob = WXJ_IDLE;
+  }
+  if (g_wxJob == WXJ_IDLE && WiFi.status() == WL_CONNECTED && millis() >= g_wx_next) {
+    g_wxJob = WXJ_RUNNING;
+    g_wx_next = UINT32_MAX;
+    if (xTaskCreatePinnedToCore(wx_task, "wx", 12288, nullptr, 1, nullptr, 0) != pdPASS) { g_wxJob = WXJ_IDLE; g_wx_next = millis() + WX_RETRY_MS; }
   }
   if (g_wx.ok && millis() - g_wx.at > WX_EVERY_MS + 2 * WX_RETRY_MS) g_wx.ok = false;  // stale -> Offline
 }
