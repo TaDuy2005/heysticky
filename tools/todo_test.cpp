@@ -37,6 +37,8 @@ int main() {
   Task t = todo_parse("  - [X] Ship it  @due(2026-11-17 09:00)\r");
   assert(t.task && t.done && t.text == "Ship it" && t.due == "2026-11-17 09:00");
   assert(todo_parse("- [ ] bad date @due(2026-1-7)").text == "bad date @due(2026-1-7)");
+  assert(http_date("Thu, 20 Nov 2026 09:05:07 GMT") == 1795165507LL);
+  assert(http_date("Thu, 01 Jan 1970 00:00:00 GMT") == 0 && http_date("garbage") == 0 && http_date("Thu, 20 Foo 2026 09:05:07 GMT") == 0);
   // created date: either order with @due, round trip writes due first
   t = todo_parse("- [ ] Pay rent @due(2026-12-01) @created(2026-11-20 09:05)");
   assert(t.text == "Pay rent" && t.due == "2026-12-01" && t.created == "2026-11-20 09:05");
