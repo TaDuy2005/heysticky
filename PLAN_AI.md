@@ -88,7 +88,7 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 - [x] AI-08 Phone page 06g Integrations → 06h AI (Figma, EN + VI): Speech-to-text and AI sections (Base URL, Model, API key each), Note instructions (type or upload .txt, 2,000 characters, saved to `/ai/note-instructions.txt`); Integrations row + keys footer on 06; `/api/ai` GET / POST. Keys come back only as a hint (`sk-or-••••`); an empty key field keeps the saved key. Notion, Home Assistant, Remote access stay hidden (Phase 3). Device-tested 2026-11-18 (key saved from the phone, shown masked). Replaced the same day by the 06h list + 06h1 / 06h2 pages (Add → Cancel / Save with a connection test → saved line with edit / delete, 06h3 pop-ups, 06h4 delete) with no Save button: `/api/ai_test`, `/api/ai_del`, `/api/ai_opts`. Checked in a browser against a mock API (EN, VI); not yet on the device
 - [x] AI-09 Device test (06h test / edit / delete passed on the device 2026-11-19): 20 clips on 2026-11-19 (8 EN, 8 VI, 4 mixed; 4 at 60–70 cm), results in §3; speech-to-text default → Voxtral Small; `mic_save_last()` and the take files removed
 - [x] AI-10 Docs: PLAN §2, §4 (06h–06h4), §5, §6 (Phase 2 requirements REQ-20..25), §8, §9, §10, §12; README Features, Controls, AI setup (OpenRouter key, the 06h flow, cost, privacy), microSD layout. Done 2026-11-18
-- [ ] AI-11 Release v1.1.0: `FW_VERSION`, `tools/release.sh v1.1.0`, GitHub Release, OTA test from v1.0.2
+- [x] AI-11 Release v1.1.0: `FW_VERSION`, `tools/release.sh v1.1.0`, GitHub Release, OTA test from v1.0.2
 - [ ] AI-12 Seeed registry: refresh the prepared entry to v1.1.0, add the device photo, `npm test` + `npm run validate`, then wait for confirmation before fork / PR / form
 
 ## 7. Open
