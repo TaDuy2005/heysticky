@@ -241,6 +241,7 @@ HeySticky/
     screens.h       all screens
     store.h         SD files + Preferences
     ota.h           Software Update: GitHub release check, HTTPUpdate install, rollback mark
+    phone.h         phone page To-do / Notes API (/api/todo, todo_set, todo_del, notes, note, note_set, note_del, counts)
     power.h         Sleep after (light sleep, minute clock wake, 30-min sync) and shutdown (UP + DOWN, battery empty)
     lang.h          English / Vietnamese: g_vi + TR(en, vi)
     userfont.h      user fonts from /fonts/<Name>/ on the card (04c)
