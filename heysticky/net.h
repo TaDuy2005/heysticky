@@ -241,13 +241,26 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 .two button{flex:1;height:50px;border:2px solid #000;border-radius:10px;background:#fff;font-size:17px;font-weight:700}.two .k{background:#000;color:#fff}
 .al .ic{display:flex;justify-content:center;margin:20px 0 -10px}.spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.up .sv{font-weight:600}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
+.r .ico{flex:none}.ckb{flex:none;width:26px;height:26px;border:2px solid #000;border-radius:5px;background:#fff;color:#fff;padding:0;display:flex;align-items:center;justify-content:center}.ckb.on{background:#000}
+.r .t{flex:1;min-width:0}.r .t b{display:block;font-weight:600;overflow-wrap:anywhere}.r .t b.dn{font-weight:400;text-decoration:line-through}.r .t small{display:block;font-size:13px;margin-top:2px}.r .t .pr{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid #000}.dt:first-child{border-top:0}.dt .t{flex:1;cursor:pointer}.dt .t b{display:block;font-weight:600}.dt .t small{display:block;font-size:13px;margin-top:2px}
+.cal{padding:4px 14px 14px}.cal .mh{display:flex;align-items:center;gap:4px;margin-bottom:4px}.cal .mh b{flex:1}.cal .mh button{width:36px;height:36px;border:0;background:none;font-size:24px;padding:0}
+.cal .gd{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.cal .wd{font-size:12px;color:#888;padding:6px 0}
+.cal .gd button{height:38px;border:0;border-radius:19px;background:none;font-size:15px;padding:0}.cal .gd .td{box-shadow:inset 0 0 0 1.5px #000}.cal .gd .sel{background:#000;color:#fff;font-weight:700}
+.wh{position:relative;display:flex;justify-content:center;gap:4px;padding:0 14px 14px}.wh .band{position:absolute;left:14px;right:14px;top:72px;height:36px;background:#e6e6e6;border-radius:8px}
+.wh .col{position:relative;width:76px;height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}.wh .col::-webkit-scrollbar{display:none}.wh .col i{display:block;height:72px}
+.wh .col div{height:36px;line-height:36px;text-align:center;scroll-snap-align:center;font-size:20px;cursor:pointer}.wh .co{position:relative;line-height:180px;font-weight:700;font-size:20px}
+.nv h2{font-size:22px;margin:0 0 4px}.nv .cd{font-size:13px;text-align:right;margin:0 0 12px}.nv .bd{white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5;margin:0 0 8px}
+.emp{text-align:center;padding:40px 0}.emp b{display:block;font-size:18px;margin-bottom:8px}.emp p{font-size:14px;margin:0}.cr{font-size:13px;margin:12px 0 0}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
 <div class="c" id="v-setup"><div class="g">
-<button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
-<button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
-<button class="r" id="rf"><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
-<button class="r" id="ri"><b class="n" id="li">Integrations</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
+<button class="r" id="rp"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
+<button class="r" id="rw"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
+<button class="r" id="rf"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
+<button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
+<button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
+<button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -260,6 +273,11 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-ai" hidden></div>
 <div class="c" id="v-stt" hidden></div>
 <div class="c" id="v-nai" hidden></div>
+<div class="c" id="v-todo" hidden></div>
+<div class="c" id="v-task" hidden></div>
+<div class="c" id="v-notes" hidden></div>
+<div class="c" id="v-note" hidden></div>
+<div class="c" id="v-noteed" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -272,7 +290,7 @@ const check=()=>H(svg(18,'<path d="M4.5 12.5l5 5L19.5 7"/>'));
 const ENC=['None','WEP','WPA','WPA2','WPA/WPA2','WPA2 Enterprise','WPA3','WPA2/WPA3'];
 const lvl=r=>r>=-60?3:r>=-75?2:1;
 const L=(e,v)=>S.lang==='vi'?v:e;  // English / Tiếng Việt, like TR() on the Sticky
-let S={saved:[],scan:[]},view='setup',det='',pending=false,lat='',lon='';
+let S={saved:[],scan:[]},view='setup',det='',pending=false,lat='',lon='',C={todo:-1,notes:-1},dirty=()=>false;
 const api=(p,b)=>fetch(p,b?{method:'POST',body:new URLSearchParams(b)}:{});
 const seen=s=>S.scan.find(n=>n.ssid===s);
 
@@ -282,16 +300,19 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
   else if(S.join.state==='fail')alertBox(L('Couldn\'t join “','Không kết nối được “')+S.join.ssid+'”')}
  render()}
 
-function go(v,d){view=v;det=d||'';
+function go(v,d){view=v;det=d||'';dirty=()=>false;
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
 // Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
-const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai'};
+const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes'};
 function nav(v,d){history.pushState(null,'');go(v,d)}
-addEventListener('popstate',()=>{close();go(UP[view]||'setup')});
+// A form with unsaved changes asks first (06p2 / 06r2): the back step is undone until Discard.
+addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
+ close();if(view==='noteed'&&det!=='new')go('note',det);else go(UP[view]||'setup')});
 $('back').onclick=()=>history.back();
-$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
@@ -303,11 +324,13 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
+ const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
@@ -531,7 +554,101 @@ async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLo
  v.append(E('div',{className:'tg'},E('div',{},E('label',{htmlFor:'a-plain',textContent:L('Plain text','Văn bản gốc')}),
    E('p',{className:'sd',textContent:L('Save your exact words as the note. The AI only picks to-do or note.','Lưu đúng lời bạn nói thành ghi chú. AI chỉ chọn việc cần làm hay ghi chú.')})),plain),
   E('div',{className:'tg'},E('label',{htmlFor:'a-instr',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),useN),nbox)}
-load();setInterval(load,1500);
+// ---------- To-do (06o / 06p) and Notes (06q / 06r) ----------
+async function counts(){try{C=await(await api('/api/counts')).json()}catch(e){}render()}
+let TD={tasks:[],now:''},N=null,ST=0;
+const p2=n=>String(n).padStart(2,'0'),dmy=c=>c?c.slice(8,10)+'/'+c.slice(5,7)+'/'+c.slice(2,4):'';
+const ico=b=>H('<svg class="ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+b+'</svg>');
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'],MS=MON.map(m=>m.slice(0,3));
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DV=['CN','T2','T3','T4','T5','T6','T7'];
+const fmtDate=s=>{const[y,m,d]=s.split('-').map(Number),w=new Date(Date.UTC(y,m-1,d)).getUTCDay();return L(DAYS[w]+' '+d+' '+MS[m-1]+' '+y,DV[w]+' '+p2(d)+'/'+p2(m)+'/'+y)};
+const fmtTime=t=>{const h=Math.floor(t/60);return((h+11)%12+1)+':'+p2(t%60)+' '+(h>=12?L('PM','CH'):L('AM','SA'))};
+const VOICE=()=>L('Add one here, or hold ● on the Sticky to add one by voice.','Thêm ở đây, hoặc giữ ● trên Sticky để thêm bằng giọng nói.');
+const empty=(t,h)=>E('div',{className:'emp'},E('b',{textContent:t}),E('p',{textContent:h}));
+const sw=on=>E('input',{type:'checkbox',className:'sw',checked:on});
+async function getJ(p){try{const r=await api(p);if(r.status===503)throw 503;if(!r.ok)throw 0;return await r.json()}
+ catch(e){alertBox(e===503?L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.'):L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return null}}
+async function post(p,b){let r;try{r=await api(p,b)}catch(e){r={status:0}}ST=r.status;if(r.ok)return r;
+ alertBox(ST===503?L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.'):ST===409||ST===404?L('Changed on the Sticky','Đã thay đổi trên Sticky'):ST===413?L('The note is too long','Ghi chú quá dài'):ST?L('Couldn\'t save','Không lưu được'):L('Couldn\'t reach the Sticky','Không kết nối được Sticky'),
+  ST===409||ST===404?L('Go back to see the list as it is now.','Quay lại để xem danh sách hiện tại.'):'');return null}
+
+async function todoView(){const v=$('v-todo'),d=await getJ('/api/todo');if(!d)return;TD=d;
+ const add=E('button',{className:'btn k',style:'margin:0 0 22px',textContent:L('+  Add task','+  Thêm việc')});add.onclick=()=>nav('task','new');
+ if(!d.tasks.length){v.replaceChildren(add,empty(L('No tasks yet','Chưa có việc nào'),VOICE()));return}
+ const rows=d.tasks.map(t=>{const cb=E('button',{className:'ckb'+(t.done?' on':''),ariaLabel:L('Done','Xong')});if(t.done)cb.append(check());
+  cb.onclick=async e=>{e.stopPropagation();await post('/api/todo_set',{i:t.i,was:t.was,text:t.text,due:t.due,done:t.done?0:1});todoView()};
+  const tx=E('span',{className:'t'},E('b',{className:t.done?'dn':'',textContent:t.text}));if(t.label)tx.append(E('small',{textContent:t.label}));
+  const r=E('div',{className:'r',role:'button',tabIndex:0},cb,tx,E('span',{className:'ch',textContent:'›'}));r.onclick=()=>nav('task',String(t.i));return r});
+ v.replaceChildren(add,E('div',{className:'g'},...rows),E('p',{className:'foot',textContent:L('Tap a box to tick. Tap a task to edit it.','Chạm ô để đánh dấu xong. Chạm một việc để sửa.')}))}
+
+// 06p: Date and Time each have a switch; on, a month calendar / an hour : min : AM-PM wheel opens (tap the name to show / hide it).
+// Same deadline rules as the Sticky: Date only = a date-only deadline, Time only = today at that time.
+function taskView(){const v=$('v-task'),nw=det==='new',src=nw?null:TD.tasks.find(t=>String(t.i)===det);
+ if(!nw&&!src){v.replaceChildren();return}
+ const today=TD.now?TD.now.slice(0,10):new Date().toISOString().slice(0,10),due=src?src.due:'';
+ const T={text:src?src.text:'',date:due.slice(0,10),time:due.length===16?+due.slice(11,13)*60+ +due.slice(14):-1,dOpen:!nw&&!!due&&due.length<16,tOpen:false};
+ [T.cy,T.cm]=(T.date||today).split('-').map(Number);
+ const o0=JSON.stringify([T.text,T.date,T.time]);dirty=()=>JSON.stringify([T.text.trim(),T.date,T.time])!==o0;
+ const ta=E('textarea',{id:'t-text',value:T.text,placeholder:L('Task','Việc'),maxLength:300,style:'height:84px;font-size:16px'});
+ ta.oninput=()=>{ta.value=ta.value.replace(/\n/g,' ');T.text=ta.value};
+ const card=E('div',{className:'g',style:'margin:14px 0 0'});let tSub;
+ const head=(icon,name,sub,on,flip,open)=>{const s=sw(on),t=E('span',{className:'t'},E('b',{textContent:name}));if(on)t.append(sub);
+  s.onchange=()=>flip(s.checked);t.onclick=()=>{if(on)open()};return E('div',{className:'dt'},ico(icon),t,s)};
+ const calendar=()=>{const y=T.cy,m=T.cm,lead=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7,n=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const pv=E('button',{type:'button',textContent:'‹'}),nx=E('button',{type:'button',textContent:'›'});
+  pv.onclick=()=>{if(--T.cm<1){T.cm=12;T.cy--}draw()};nx.onclick=()=>{if(++T.cm>12){T.cm=1;T.cy++}draw()};
+  const g=E('div',{className:'gd'},...L(['Mo','Tu','We','Th','Fr','Sa','Su'],['T2','T3','T4','T5','T6','T7','CN']).map(w=>E('span',{className:'wd',textContent:w})));
+  for(let i=0;i<lead;i++)g.append(E('span'));
+  for(let d=1;d<=n;d++){const s=y+'-'+p2(m)+'-'+p2(d),b=E('button',{type:'button',textContent:d,className:(s===T.date?'sel':'')+(s===today?' td':'')});b.onclick=()=>{T.date=s;draw()};g.append(b)}
+  return E('div',{className:'cal'},E('div',{className:'mh'},E('b',{textContent:L(MON[m-1]+' '+y,'Tháng '+m+' '+y)}),pv,nx),g)};
+ const wheel=()=>{const h=Math.floor(T.time/60);let hi=h%12,mm=T.time%60,ap=h>=12?1:0;
+  const upd=()=>{T.time=(hi+ap*12)*60+mm;tSub.textContent=fmtTime(T.time)};
+  const col=(vals,idx,on)=>{const c=E('div',{className:'col'},E('i'),...vals.map((t,k)=>{const d=E('div',{textContent:t});d.onclick=()=>c.scrollTo({top:k*36,behavior:'smooth'});return d}),E('i'));
+   const mark=k=>[...c.children].forEach((d,j)=>{d.style.color=j-1===k?'#000':'#999';d.style.fontWeight=j-1===k?'700':''});mark(idx);
+   c.dataset.i=idx;let tm;c.onscroll=()=>{clearTimeout(tm);tm=setTimeout(()=>{const k=Math.round(c.scrollTop/36);mark(k);on(k);upd()},120)};return c};
+  return E('div',{className:'wh'},E('div',{className:'band'}),col(['12','1','2','3','4','5','6','7','8','9','10','11'],hi,k=>hi=k),E('span',{className:'co',textContent:':'}),
+   col([...Array(60)].map((_,k)=>p2(k)),mm,k=>mm=k),col([L('AM','SA'),L('PM','CH')],ap,k=>ap=k))};
+ function draw(){tSub=E('small',{textContent:T.time>=0?fmtTime(T.time):''});
+  const dr=head('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',L('Date','Ngày'),E('small',{textContent:T.date?fmtDate(T.date):''}),!!T.date,
+   on=>{T.date=on?T.date||today:'';T.dOpen=on;if(on)[T.cy,T.cm]=T.date.split('-').map(Number);draw()},()=>{T.dOpen=!T.dOpen;draw()});
+  const tr=head('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',L('Time','Giờ'),tSub,T.time>=0,
+   on=>{T.time=on?(T.time>=0?T.time:9*60):-1;T.tOpen=on;draw()},()=>{T.tOpen=!T.tOpen;draw()});
+  card.replaceChildren(dr,...(T.date&&T.dOpen?[calendar()]:[]),tr,...(T.time>=0&&T.tOpen?[wheel()]:[]));
+  setTimeout(()=>{for(const c of card.querySelectorAll('.col'))c.scrollTop=c.dataset.i*36},0)}
+ draw();
+ const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')});
+ save.onclick=async()=>{const text=T.text.trim();if(!text)return alertBox(L('Type the task first','Hãy nhập việc trước'));
+  const due=T.date||T.time>=0?(T.date||today)+(T.time>=0?' '+p2(Math.floor(T.time/60))+':'+p2(T.time%60):''):'';
+  if(await post('/api/todo_set',{i:nw?-1:src.i,was:nw?'':src.was,text,due,done:src&&src.done?1:0})){dirty=()=>false;history.back()}else if(ST===409)dirty=()=>false};
+ const btns=E('div',{className:'two'});
+ if(!nw){const del=E('button',{type:'button',textContent:L('Delete','Xoá')});btns.append(del);
+  del.onclick=()=>alertBox(L('Delete task?','Xoá việc này?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/todo_del',{i:src.i,was:src.was})){dirty=()=>false;history.back()}})}
+ btns.append(save);
+ v.replaceChildren(E('label',{htmlFor:'t-text',textContent:L('Task','Việc')}),ta,card,...(src&&src.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+dmy(src.created)})]:[]),btns)}
+
+async function notesView(){const v=$('v-notes'),d=await getJ('/api/notes');if(!d)return;
+ const add=E('button',{className:'btn k',style:'margin:0 0 22px',textContent:L('+  Add note','+  Thêm ghi chú')});add.onclick=()=>nav('noteed','new');
+ if(!d.notes.length){v.replaceChildren(add,empty(L('No notes yet','Chưa có ghi chú'),VOICE()));return}
+ v.replaceChildren(add,E('div',{className:'g'},...d.notes.map(n=>{const r=E('div',{className:'r',role:'button',tabIndex:0},E('span',{className:'t'},E('b',{textContent:n.title||L('Untitled','Không tiêu đề')}),E('small',{className:'pr',textContent:n.preview})),E('span',{className:'ch',textContent:'›'}));
+  r.onclick=()=>nav('note',String(n.num));return r})))}
+
+async function noteView(){const v=$('v-note');v.replaceChildren();const n=await getJ('/api/note?num='+det);if(!n)return;N=n;
+ const ed=E('button',{type:'button',className:'k',textContent:L('Edit','Sửa')}),del=E('button',{type:'button',textContent:L('Delete','Xoá')});ed.onclick=()=>nav('noteed',det);
+ del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num}))history.back()});
+ v.replaceChildren(E('div',{className:'nv'},E('h2',{textContent:n.title||L('Untitled','Không tiêu đề')}),E('p',{className:'cd',textContent:dmy(n.created)}),E('p',{className:'bd',textContent:n.body})),E('div',{className:'two'},ed,del))}
+
+async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildren();
+ let n={num:0,title:'',body:'',created:''};if(!nw){n=N&&String(N.num)===det?N:await getJ('/api/note?num='+det);if(!n)return}
+ const ti=E('input',{id:'n-title',value:n.title,placeholder:L('Title','Tiêu đề'),maxLength:120}),bo=E('textarea',{id:'n-body',value:n.body,placeholder:L('Start typing…','Bắt đầu gõ…'),maxLength:3900,style:'height:260px;font-size:16px'});
+ const o0=n.title+'\0'+n.body;dirty=()=>ti.value+'\0'+bo.value!==o0;
+ const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')}),btns=E('div',{className:'two'});
+ save.onclick=async()=>{if(!ti.value.trim()&&!bo.value.trim())return alertBox(L('Type a title or some text first','Hãy nhập tiêu đề hoặc nội dung trước'));
+  if(await post('/api/note_set',{num:n.num,title:ti.value,body:bo.value})){dirty=()=>false;N=null;history.back()}};
+ if(!nw){const del=E('button',{type:'button',textContent:L('Delete','Xoá')});btns.append(del);
+  del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
+ btns.append(save);
+ v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+dmy(n.created)})]:[]),btns)}
+load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 
 // The page and its API answer only on the hotspot's own address, never on the home network.

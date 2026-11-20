@@ -7,6 +7,7 @@ Seeed_GFX display(Seeed_Product::reTerminal_Sticky);
 
 #include "screens.h"
 #include "power.h"
+#include "phone.h"
 
 extern "C" bool verifyRollbackLater() { return true; }  // a new OTA image confirms itself at the end of setup()
 
@@ -27,7 +28,9 @@ void setup() {
   display.refresh();
   todo_load();  // after display.begin(): the card shares the panel's SPI bus
   font_apply(cfg_get("font"));  // user font from the card; built-in if it is missing
-  show(net_begin() ? SCR_HOME : SCR_WEBSETUP);  // Wi-Fi joins in the background; no saved network -> hotspot + 04j
+  const bool joined = net_begin();
+  phone_begin();  // To-do / Notes on the phone page
+  show(joined ? SCR_HOME : SCR_WEBSETUP);  // Wi-Fi joins in the background; no saved network -> hotspot + 04j
   ota_mark_good();  // display, touch and SD came up: keep this image (no rollback)
 }
 
@@ -37,6 +40,7 @@ void loop() {
   net_loop();
   if (ota_loop() && g_screen == SCR_UPDATE) g_redraw = true;
   screens_loop();
+  phone_loop();
   power_loop();
   delay(5);
 }
