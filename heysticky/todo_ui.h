@@ -7,7 +7,7 @@
 
 inline String now_key() {  // "YYYY-MM-DD HH:MM", "" before NTP
   tm t;
-  if (!getLocalTime(&t, 0)) return "";
+  if (!local_now(t)) return "";
   char b[17];
   strftime(b, sizeof b, "%Y-%m-%d %H:%M", &t);
   return b;
@@ -25,22 +25,26 @@ inline std::vector<RowHit> g_rows;  // rows on the panel now: taps are matched t
 inline int g_todoPage = 0, g_todoPages = 1, g_addBtnY = 712;
 constexpr int ROWS_TOP = 112, ROWS_BOTTOM = 664;
 
-inline int row_h(const Task &t) { return t.due.length() && !t.done ? 93 : 61; }
+// Figma TodoRow: the title wraps to 2 lines, then "…"; the due line under it.
+inline const Font &row_font(const Task &t) { return t.done ? F_R25 : F_B25; }
+inline std::vector<String> row_lines(const Task &t) { return ui_lines(row_font(t), t.text, 346, 2); }
+inline int row_h(const Task &t) { return 61 + (t.due.length() && !t.done ? 32 : 0) + (row_lines(t).size() > 1 ? 33 : 0); }
 
 inline void todo_row(const Task &t, int y, int h, const String &now) {
-  const bool two = h > 61;
-  const int cb = y + (two ? 28 : 12);
+  const int cb = y + (h - 36) / 2;
   if (t.done) {
     display.fillRoundRect(40, cb, 36, 36, 4, INK);
     ui_icon(ICON_CHECK26, 45, cb + 5, PAPER);
   } else {
     ui_card(40, cb, 36, 36, 4, 3);
   }
-  const Font &f = t.done ? F_R25 : F_B25;
-  const int ty = y + (two ? 12 : 14);
-  const int tw = ui_text(f, ui_fit(f, t.text, 346), 94, ty, 33);
-  if (t.done) display.fillRect(94, ty + 16, tw, 2, INK);  // strikethrough
-  if (two) ui_text(F_B25, todo_label(t, now), 94, y + 47, 33);
+  const std::vector<String> ls = row_lines(t);
+  const int ty = y + (h > 61 ? 12 : 14);
+  for (int i = 0; i < int(ls.size()); i++) {
+    const int tw = ui_text(row_font(t), ls[i], 94, ty + 33 * i, 33);
+    if (t.done) display.fillRect(94, ty + 33 * i + 16, tw, 2, INK);  // strikethrough
+  }
+  if (t.due.length() && !t.done) ui_text(F_B25, todo_label(t, now), 94, ty + 33 * max<int>(ls.size(), 1) + 2, 33);
   display.fillRect(40, y + h - 1, 400, 1, INK);
 }
 
@@ -150,11 +154,23 @@ inline void toggle_row(int y, const String &label, bool on) {
   ui_toggle(372, y + 17, on);
 }
 
+// Typing: one line, the tail in view. Keyboard closed (02b / 02e): the whole task, wrapped; the rows below move down.
+inline int g_fieldH = FIELD_H;
+constexpr int FIELD_LINES = 9;  // 9 lines still leave the Time row above the buttons
+inline int field_dy() { return g_fieldH - FIELD_H; }
+
 inline void editor_field() {
-  ui_card(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, 10, 3);
   const bool hint = !g_ed.text.length() && !(g_ed.kbOpen && g_ed.touched);  // Italic "Task" until tapped
-  const String shown = hint ? String(TR("Task", "Việc")) : ui_fit_tail(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6);  // the tail stays in view
-  const int tw = shown.length() ? ui_text(hint ? F_I25 : F_B26, shown, 59, 153, 34) : 0;
+  constexpr int TW = FIELD_W - 2 * 19 - 6;
+  std::vector<String> ls;
+  if (hint) ls.push_back(TR("Task", "Việc"));
+  else if (g_ed.kbOpen) ls.push_back(ui_fit_tail(F_B26, g_ed.text, TW));
+  else ls = ui_lines(F_B26, g_ed.text, TW, FIELD_LINES);
+  if (ls.empty()) ls.push_back("");
+  g_fieldH = FIELD_H + 34 * (int(ls.size()) - 1);
+  ui_card(FIELD_X, FIELD_Y, FIELD_W, g_fieldH, 10, 3);
+  int tw = 0;
+  for (int i = 0; i < int(ls.size()); i++) tw = ls[i].length() ? ui_text(hint ? F_I25 : F_B26, ls[i], 59, 153 + 34 * i, 34) : 0;
   if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
 }
 
@@ -163,9 +179,9 @@ inline void draw_task_editor() {
   ui_status_bar(ui_battery_pct());
   ui_topbar(g_ed.idx < 0 ? TR("New task", "Việc mới") : TR("Edit task", "Sửa việc"), TR("Cancel", "Huỷ"));
   editor_field();
-  ui_text(F_B25, TR("DEADLINE (OPTIONAL)", "HẠN CHÓT (TUỲ CHỌN)"), 40, 218, 33);
-  link_row(ROW_DATE_Y, TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
-  link_row(ROW_TIME_Y, TR("Time", "Giờ"), g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : TR("Off", "Tắt"));
+  ui_text(F_B25, TR("DEADLINE (OPTIONAL)", "HẠN CHÓT (TUỲ CHỌN)"), 40, 218 + field_dy(), 33);
+  link_row(ROW_DATE_Y + field_dy(), TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
+  link_row(ROW_TIME_Y + field_dy(), TR("Time", "Giờ"), g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : TR("Off", "Tắt"));
   if (g_ed.kbOpen) {
     g_ed.kb.shift = cap_next(g_ed.text);
     g_ed.kb.draw();
@@ -301,14 +317,24 @@ inline void draw_delete(const char *question, const char *action = nullptr) {  /
   ui_button(247, 705, 193, 79, true, &ICON_X24, TR("Cancel", "Huỷ"));
 }
 
-// ---------- No microSD card ----------
-// ponytail: no Figma frame yet (PLAN.md §10 open question); plain layout in the house style.
+// ---------- No microSD card (Figma 02k To-do / 03j Notes) ----------
 inline bool g_nosdNotes = false;  // which app sent us here: Retry returns to it
 inline void draw_nosd() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_nosdNotes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), TR("Back", "Quay lại"));
-  ui_text(F_X30, TR("No microSD card", "Không có thẻ SD"), W / 2, 318, 40, AL_CENTER);
-  ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 374, 400, 35, 3, AL_CENTER);
-  ui_button(40, 712, 400, 72, true, nullptr, TR("Retry", "Thử lại"));
+  ui_topbar(g_nosdNotes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), "");
+  ui_icon(ICON_SD64, 208, 301);
+  ui_text(F_X30, TR("No microSD card", "Không có thẻ SD"), W / 2, 381, 40, AL_CENTER);
+  ui_wrap(F_R25, TR("Insert a FAT32 card, then tap Retry.", "Lắp thẻ FAT32, rồi chạm Thử lại."), 40, 437, 400, 33, 2, AL_CENTER);
+  ui_button(40, 712, 400, 72, true, &ICON_RETRY30, TR("Retry", "Thử lại"), 10);
+}
+
+// Figma 02l / 03k: shown at once while a card that is in but not mounted yet is read (the spin icon's grey track drops out on 1-bit).
+inline void draw_sd_loading(bool notes) {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar(notes ? TR("Notes", "Ghi chú") : TR("To-do", "Việc cần làm"), "");
+  ui_icon(ICON_SPIN64, 208, 342);
+  ui_text(F_X30, TR("Loading…", "Đang tải…"), W / 2, 422, 40, AL_CENTER);
+  ui_partial(0, 0, W, H);
 }

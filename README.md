@@ -11,9 +11,12 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 - **To-do:** add, tick, edit (long-tap), delete with confirmation, optional deadline (date and/or time).
   Stored as plain Markdown in `/todo.md` on the microSD card.
 - **Notes:** create, view, edit, delete. One Markdown file per note in `/notes/`.
+- **AI voice:** hold the top button and talk. Speech-to-text, then an AI turns it into to-dos (with deadlines,
+  "tomorrow at 9") or a note written your way. English and Vietnamese. Needs an API key (see AI setup).
 - **On-screen keyboard** with phone-like auto-capitals and double-space full stop.
 - **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
-  `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically).
+  `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically; a Wi-Fi switch on that page
+  keeps the Sticky offline).
 - **Settings:** Sound (on/off, volume Low / Medium / High), Language (English / Tiếng Việt), User Font, Software Update, Configuration
   (city, timezone, °C/°F), Sleep after, Web setup, About (SN, MAC, version, SD card).
 - **Power:** sleeps after 1–10 min idle (Home with a moon, clock still updates every minute, weather every
@@ -29,6 +32,7 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 | Back / forward | DOWN / UP, or swipe right / left |
 | Tick a to-do | Tap it |
 | Edit a to-do | Long-tap it |
+| Talk to AI | Hold the top button while you speak (up to 60 s), then let go |
 | Wake from sleep | Press the top button |
 | Turn off | Hold UP + DOWN together for 3 s |
 | Turn on | Hold the top button for 2 s (a short tap does nothing) |
@@ -43,17 +47,53 @@ a phone setup page, English and Vietnamese, user fonts, sleep with a live clock,
 Wi-Fi passwords and settings are kept in the Sticky's flash only. They are never in the source or the `.bin`,
 and the setup page is served only on the Sticky's own password-protected hotspot.
 
+## AI setup
+
+The Sticky does no speech recognition itself: your recording goes to a speech-to-text service and the text to a
+chat AI. Any OpenAI-compatible service works. The default is one [OpenRouter](https://openrouter.ai) key for both.
+
+1. Sign in at [openrouter.ai](https://openrouter.ai), add a few dollars of credit, then create a key under **Keys**
+   (it starts with `sk-or-`).
+2. On the Sticky turn on **Web setup** and open `192.168.4.1` on your phone (First setup).
+3. **Integrations › AI › Speech-to-text › + Add model provider.** The Base URL and model are filled in
+   (`https://openrouter.ai/api/v1`, `mistralai/voxtral-small-transcribe-3-0`); paste your key and tap **Save**.
+   The Sticky sends a short test (half a second of silence) and saves the provider only if it answers.
+4. **AI for notes & to-dos › + Add model provider.** Leave Base URL and API key empty to use the same
+   OpenRouter key; leave Model empty for `deepseek/deepseek-v4.1-flash-1017`. Under **Advanced ›**, **Mode** (Balanced,
+   Fastest or Cheapest) tells OpenRouter how to pick the host; turn on **Provider** to name hosts yourself instead.
+   Tap **Save** (tested with a one-word chat).
+5. Optional, on the same page: **Note instructions** (how notes should be written: an outline, a template or
+   rules; typed or uploaded as .txt, up to 2,000 characters) or **Plain text** (save your exact words).
+
+Use the pencil to change a provider and the bin to delete it (its key is removed from the Sticky). To stop a key
+working everywhere, also delete it on openrouter.ai.
+
+**Cost:** about $0.80–0.95 a month at 20 memos a day of 15 s each (Voxtral Small ≈ $0.60, DeepSeek V4.1 Flash ≈ $0.18–0.36),
+plus OpenRouter's fee when you buy credit (5.5 %, at least $0.80). Prices checked 2026-11-19.
+
+**Privacy:** each recording is sent over HTTPS to the speech-to-text service you set; with OpenRouter it is passed
+on to the model's provider, and the Sticky asks OpenRouter for zero-data-retention providers only (models without
+one are refused when you tap Save). The transcript, your note instructions, the date, time and language go to the chat
+service. Nothing else leaves the Sticky. Keys stay in the Sticky's flash: the phone page only ever shows their first
+few characters, and they are never in the source or the `.bin`.
+
 ## microSD layout
 
 Plain text, readable on any computer:
 
 ```
-/todo.md                  - [ ] Call the dentist @due(2026-11-17 09:00)
-                          - [x] Buy milk
-/notes/012.md             # Title
-                          Body text …
-/fonts/<Name>/<slot>.vlw  user font, one file per size/style, added from the phone page (Fonts)
+microSD
+├── todo.md                    every to-do, one per line: - [ ] Call the dentist @due(2026-11-17 09:00)
+├── notes/
+│   └── 012.md                 one note per file: "# Title", then the body
+├── fonts/
+│   └── <Name>/
+│       └── R20.vlw … I25.vlw  user font, one file per size/style, added from the phone page (Font book)
+└── ai/
+    └── note-instructions.txt  how the AI writes notes, set on the phone page (Integrations › AI)
 ```
+
+On the Sticky, **Settings › About › SD card › Files** opens the same folders.
 
 ## Install
 
@@ -92,6 +132,12 @@ update can never change later. Host tests for the data formats:
 for t in notes todo settings wifi; do c++ -std=c++17 -I heysticky tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
 
+The AI test also needs ArduinoJson (installed by the build profile):
+
+```bash
+c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/ai_test.cpp -o /tmp/ai_test && /tmp/ai_test
+```
+
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
 `python3 tools/make_icons.py` (PNGs in `tools/icons/`). `PLAN.md` is the full design and behaviour spec.
 
@@ -107,8 +153,8 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | | |
 |---|---|
 | Hardware | reTerminal Sticky (ESP32-S3R8, 8 MB PSRAM, 32 MB flash, 3.97" e-paper, GT911 touch) |
-| Firmware | HeySticky v1.0.0, built with ESP32 Arduino core 3.3.12 |
-| Date | 2026-11-17 |
+| Firmware | HeySticky v1.0.0 – v1.1.0, built with ESP32 Arduino core 3.3.12 |
+| Date | 2026-11-17 (v1.0.0), 2026-11-20 (v1.1.0) |
 
 | Test | Result |
 |---|---|
@@ -120,6 +166,9 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | Sleep after 2 min idle, clock updates each minute, top button wakes | Pass (on USB) |
 | UP + DOWN shutdown; 2 s top-button hold turns on, a tap does not (USB and battery) | Pass |
 | Software Update from GitHub Releases (v1.0.0 → v1.0.1 over Wi-Fi, marked good, settings and SD kept) | Pass |
+| v1.1.0: hold the top button to talk → to-dos or a note (20 clips, English / Vietnamese / mixed, 18 right) | Pass |
+| v1.1.0: phone page AI setup (06h1 / 06h2): test, save, edit, delete | Pass |
+| v1.1.0: Web setup turns off after 5 min without the phone; an open editor sleeps on its own screen | Pass |
 
 ## Credits and licences
 

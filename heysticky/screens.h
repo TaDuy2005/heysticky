@@ -7,9 +7,11 @@
 #include "todo_ui.h"
 #include "notes_ui.h"
 #include "settings_ui.h"
+#include "ai_ui.h"
+#include "ai.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD,
+                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
@@ -27,7 +29,7 @@ inline String fmt_date(const tm &t) {
 
 inline String now_clock(String *date = nullptr) {
   tm t;
-  if (!getLocalTime(&t, 0)) { if (date) *date = ""; return "--:--"; }
+  if (!local_now(t)) { if (date) *date = ""; return "--:--"; }
   char hm[6];
   strftime(hm, sizeof hm, "%H:%M", &t);
   if (date) *date = fmt_date(t);
@@ -123,17 +125,21 @@ inline void home_tick() {
   if (clock == g_shown.clock && date == g_shown.date && g_wx.at == g_shown.wxAt &&
       bool(digitalRead(PIN_USB_PRESENT)) == g_shown.plugged) return;  // checked often, acts once a minute (or on plug/unplug)
 
+  // Asleep: partial updates don't count toward the ghost-clearing full refresh; one full refresh on the hour instead.
+  const bool hourly = g_asleep && clock != g_shown.clock && clock.endsWith(":00");
+  const int every = g_asleep ? INT_MAX : FULL_EVERY;
+  auto part = [&](int x, int y, int w, int h) { if (!hourly) ui_partial(x, y, w, h, every); };
   if (clock != g_shown.clock || date != g_shown.date) {
     g_shown.clock = clock; g_shown.date = date;
     home_clock(date, clock);
-    ui_partial(40, 104, 400, 176);
+    part(40, 104, 400, 176);
     const int n = today_count();  // a task's day can arrive at midnight
-    if (n != g_shown.today) { home_today(g_shown.today = n); ui_partial(40, 561, 400, 72); }
+    if (n != g_shown.today) { home_today(g_shown.today = n); part(40, 561, 400, 72); }
   }
   if (g_wx.at != g_shown.wxAt) {
     g_shown.wxAt = g_wx.at;
     home_weather();
-    ui_partial(40, 288, 400, 143);
+    part(40, 288, 400, 143);
   }
   String temp, hum;
   if (g_asleep && !clock.endsWith("0")) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
@@ -141,23 +147,24 @@ inline void home_tick() {
   if (temp != g_shown.indoor || hum != g_shown.humidity) {
     g_shown.indoor = temp; g_shown.humidity = hum;
     home_indoor(temp, hum);
-    ui_partial(40, 445, 400, 102);
+    part(40, 445, 400, 102);
   }
   const int pct = ui_battery_pct();
   const bool wifi = !g_asleep && WiFi.status() == WL_CONNECTED;  // asleep: the moon stays, Wi-Fi comes and goes
   if (pct != g_shown.battery || wifi != g_shown.wifi || g_plugged != g_shown.plugged) {
     g_shown.battery = pct; g_shown.wifi = wifi; g_shown.plugged = g_plugged;
     ui_status_bar(pct);
-    ui_partial(0, 0, W, 40);
+    part(0, 0, W, 40);
   }
+  if (hourly) ui_full();
 }
 
 // ---------- Apps (01a) ----------
-struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool v3; };
+struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool later; };  // later: Phase 3, not built yet
 inline const Tile TILES[] = {
   {40, 126, &ICON_APP_TODO, "To-do", "Việc cần làm", false},   {250, 126, &ICON_APP_NOTE, "Notes", "Ghi chú", false},
-  {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home · V3", "Nhà · V3", true},
-  {40, 486, &ICON_APP_BOOK, "Reader · V3", "Đọc · V3", true},
+  {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home", "Nhà", true},
+  {40, 486, &ICON_APP_BOOK, "Reader", "Đọc", true},
 };
 
 inline void draw_apps() {
@@ -165,8 +172,14 @@ inline void draw_apps() {
   ui_status_bar(ui_battery_pct());
   ui_text(F_X32, TR("Apps", "Ứng dụng"), 40, 64, 42);
   for (const Tile &t : TILES) {
-    if (t.v3) ui_card_dashed(t.x, t.y, 190, 160, 14, 3);
-    else ui_card(t.x, t.y, 190, 160, 14, 3);
+    if (t.later) {  // dashed, with "Phase 3" under the name (the name and phase don't fit on one line)
+      ui_card_dashed(t.x, t.y, 190, 160, 14, 3);
+      ui_icon(*t.icon, t.x + 65, t.y + 16);
+      ui_text(F_B25, TR(t.label, t.vi), t.x + 95, t.y + 84, 33, AL_CENTER);
+      ui_text(F_R20, TR("Phase 3", "Giai đoạn 3"), t.x + 95, t.y + 117, 27, AL_CENTER);
+      continue;
+    }
+    ui_card(t.x, t.y, 190, 160, 14, 3);
     ui_icon(*t.icon, t.x + 65, t.y + 26);
     ui_text(F_B25, TR(t.label, t.vi), t.x + 95, t.y + 101, 33, AL_CENTER);
   }
@@ -218,6 +231,11 @@ inline void draw_screen() {
     case SCR_USERFONT: draw_userfont(); break;
     case SCR_SLEEP: draw_sleep(); break;
     case SCR_SOUND: draw_sound(); break;
+    case SCR_LISTEN: draw_listen(); break;
+    case SCR_WORKING: draw_working(); break;
+    case SCR_REVIEW: draw_review(); break;
+    case SCR_DONE: draw_done(); break;
+    case SCR_FAILED: draw_failed(); break;
   }
 }
 
@@ -232,6 +250,7 @@ inline void nosd(bool notes) { g_nosdNotes = notes; show(SCR_NOSD); }
 
 inline void open_todo() {
   g_todoPage = 0;
+  if (!g_sdOk && sd_inserted()) draw_sd_loading(false);
   if (g_sdOk || todo_retry()) show(SCR_TODO);
   else nosd(false);
 }
@@ -241,6 +260,7 @@ inline void todo_commit(Screen next) { if (todo_save()) show(next); else nosd(fa
 // ---------- Notes ----------
 inline void open_notes() {  // the list is read fresh each time: the card may have been edited on a computer
   g_notesPage = 0;
+  if (!g_sdOk && sd_inserted()) draw_sd_loading(true);
   if (notes_scan() || notes_retry()) show(SCR_NOTES);
   else nosd(true);
 }
@@ -328,6 +348,13 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
 }
 
 inline void open_sdcard() { sd_files_scan(); show(SCR_SDCARD); }  // mounts a card put in since boot
+inline void files_open() { hw_beep(); g_filesPage = 0; sd_dir_scan(); show(SCR_FILES); }  // 04k at g_dir, page 1
+inline void files_tap(int y) {  // a folder row opens it; files do nothing
+  const int r = srow_at(y, IROW_H, FILES_ROWS), i = g_filesPage * FILES_ROWS + r;
+  if (r < 0 || i >= int(g_files.size()) || g_files[i].items < 0) return;
+  g_dir = (g_dir == "/" ? "" : g_dir) + "/" + g_files[i].name;
+  files_open();
+}
 
 inline void key_down(const KbKey &k) {
   if (g_screen == SCR_NOTEED) note_key(k);
@@ -382,12 +409,12 @@ inline void todo_tap(int x, int y) {
 
 inline void editor_tap(int x, int y) {
   if (top_right(x, y)) { hw_beep(); show(SCR_TODO); return; }
-  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, FIELD_H)) {  // tap field -> keyboard back, placeholder gone
+  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, g_fieldH)) {  // tap field -> keyboard back, placeholder gone
     if (!g_ed.kbOpen || !g_ed.touched) g_ed.kbOpen = g_ed.touched = g_redraw = true;
     return;
   }
-  if (in(x, y, 40, ROW_DATE_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
-  else if (in(x, y, 40, ROW_TIME_Y, 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
+  if (in(x, y, 40, ROW_DATE_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
+  else if (in(x, y, 40, ROW_TIME_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
   else if (!g_ed.kbOpen && y >= 717 && y < 784) {
     if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(); show(SCR_DELTASK); }
     else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
@@ -538,8 +565,10 @@ inline void note_updown(int dir) { hw_beep(); if (g_ne.kbOpen) kb_hide(g_ne.kbOp
 inline void page_back() {
   if (settings_screen(g_screen)) {
     if (g_screen == SCR_FILES && g_filesPage > 0) turn(g_filesPage, -1);
+    else if (g_screen == SCR_FILES && g_dir != "/") { g_dir = sd_parent(g_dir); g_filesPage = 0; sd_dir_scan(); go(SCR_FILES); }  // up one folder
     else go(settings_parent());
   } else if (g_screen == SCR_APPS) go(SCR_HOME);
+  else if (g_screen == SCR_NOSD) go(SCR_APPS);  // no "Back" on 02k / 03j: swipe right or DOWN
   else if (g_screen == SCR_NOTES) {
     if (g_notesPage > 0) turn(g_notesPage, -1);
     else go(SCR_APPS);
@@ -574,6 +603,161 @@ inline bool unsaved() {
   t.trim();
   return t.length();
 }
+// ---------- AI voice (PLAN_AI.md): hold top = 05 Listening -> 05a Working -> 05c Done / 05b Review / 05d Failed ----------
+inline void go_home();
+inline Screen g_listenBack = SCR_HOME;          // where the AI screens return to (editors keep their state)
+inline size_t g_lastWav = 0;                    // the take, kept for Try again on 05d
+
+inline bool ai_screen(Screen s) { return s >= SCR_LISTEN && s <= SCR_FAILED; }
+
+inline void listen_start() {
+  if (g_screen == SCR_WORKING || !mic_start()) { hw_beep(BEEP_MS, 1200); return; }  // the job still reads the last take
+  if (!ai_screen(g_screen)) g_listenBack = g_screen;
+  show(SCR_LISTEN);  // recording already runs in the mic task during this full refresh
+}
+
+inline void ai_fail(AiFail f, int code) {
+  g_failKind = f;
+  g_failCode = code;
+  Serial.printf("[ai] failed: %d (HTTP %d)\n", f, code);
+  hw_beep(BEEP_MS, 1200);
+  show(SCR_FAILED);
+}
+
+inline void ai_begin() {  // 05a opens with Heard you ticked; the calls run in their task
+  const AiFail f = ai_start(g_lastWav);
+  if (f) return ai_fail(f, 0);
+  g_aiStep = 1;
+  show(SCR_WORKING);
+}
+
+inline void working_steps(int step) {
+  g_aiStep = step;
+  draw_working_steps();
+  ui_partial(40, WORK_Y, 400, WORK_H, INT_MAX);
+}
+
+// The transcript as is (05b Note, 06h Plain text): titled with its first words; characters the fonts can't draw are dropped.
+inline Note plain_note(String text) {
+  text = ui_drawable(F_R25, text);
+  text.trim();
+  Note n;
+  n.title = one_line(clip_chars(text, 30), TITLE_MAX);
+  n.body = utf8_cut(text, NOTE_BYTES - 3 - n.title.length());
+  return n;
+}
+
+// Saves on the main loop (the card shares the panel's SPI bus), ticks Saving on 05a, then 05c.
+inline void ai_save(const AiResult &r) {
+  g_doneItems.clear();
+  g_doneNote = r.kind == AI_NOTE;
+  if (r.kind == AI_TODO) {
+    for (const Task &t : r.todos) { g_tasks.push_back(t); g_doneItems.push_back(t.text); }
+    if (!todo_save()) return nosd(false);
+  } else {
+    notes_scan();  // the next note number comes from the list, which is only read when Notes opens
+    const Note keep = g_note;  // the note being viewed, if any: Done goes back to it
+    g_note = r.note;
+    g_note.num = 0;
+    const bool ok = note_save();
+    g_doneItems.push_back(g_note.title.length() ? g_note.title : note_preview(g_note.body));
+    g_note = keep;
+    if (!ok) return nosd(true);
+  }
+  if (g_screen == SCR_WORKING) working_steps(3);
+  hw_beep();
+  show(SCR_DONE);
+}
+
+// Runs instead of the normal loop on 05a: the dots move until the calls finish; taps and buttons are dropped.
+inline void working_loop() {
+  static uint32_t last = 0;
+  static int frame = 0;
+  g_lastInput = millis();
+  TouchEv e;
+  while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {}
+  hw_buttons_poll();
+  if (!g_job.done) {
+    if (millis() - last >= 300) {
+      last = millis();
+      draw_working_dots(++frame);
+      ui_partial(DOTS_X, DOTS_Y, DOTS_W, DOTS_H, INT_MAX);
+    }
+    return;
+  }
+  if (g_job.fail) return ai_fail(g_job.fail, g_job.code);
+  g_aiText = g_job.text;
+  g_aiSecs = mic_seconds();
+  if (g_job.r.kind == AI_NOTE && g_job.cfg.plain) {  // 06h Plain text: your words, minus what the fonts can't draw
+    g_job.r.note = plain_note(g_aiText);
+    if (g_job.r.note.body.isEmpty()) return ai_fail(AF_EMPTY, 0);
+  }
+  if (g_job.r.kind == AI_UNSURE) { hw_beep(); show(SCR_REVIEW); return; }
+  working_steps(2);  // Sorting it out ticked, Saving in progress
+  ai_save(g_job.r);
+}
+
+// 05b: save the transcript as it is (no AI) as one to-do or a note, or go back to record again.
+inline void review_tap(int x, int y) {
+  AiResult r;
+  if (in(x, y, 40, 619, 193, 72)) {
+    Task t;
+    t.text = one_line(g_aiText, AI_TASK_MAX);
+    r.kind = AI_TODO;
+    r.todos.push_back(t);
+  } else if (in(x, y, 247, 619, 193, 72)) {
+    r.kind = AI_NOTE;
+    r.note = plain_note(g_aiText);
+    if (r.note.body.isEmpty()) return ai_fail(AF_EMPTY, 0);
+  } else if (in(x, y, 40, 705, 400, 79)) { hw_beep(); show(g_listenBack); return; }  // then hold the top button again
+  else return;
+  hw_beep();
+  ai_save(r);
+}
+
+inline void ai_home() {  // Home from an AI screen, as if from the screen the take started on (Discard asks first)
+  g_screen = g_listenBack;
+  if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) show(g_screen);
+  else go_home();
+}
+
+// 05c: Go to To-do / Notes opens the list it went into; Done goes back.
+inline void done_tap(int x, int y) {
+  if (in(x, y, 40, 705, 193, 79)) {
+    hw_beep();
+    if (g_doneNote) open_notes();
+    else open_todo();
+  } else if (in(x, y, 247, 705, 193, 79)) { hw_beep(); show(g_listenBack); }
+}
+
+// 05d: Try again resends the same take when the network or the service failed; otherwise it goes back to record again.
+inline void failed_tap(int x, int y) {
+  if (in(x, y, 40, 705, 193, 79)) {
+    hw_beep();
+    if (g_lastWav && (g_failKind == AF_NONET || g_failKind == AF_STT || g_failKind == AF_AI || g_failKind == AF_REPLY)) ai_begin();
+    else show(g_listenBack);
+  } else if (in(x, y, 247, 705, 193, 79)) { hw_beep(); ai_home(); }
+}
+
+// Runs instead of the normal loop while listening: touches and other buttons are ignored.
+inline void listen_loop() {
+  static uint32_t last = 0;
+  static int step = 0;
+  g_lastInput = millis();
+  TouchEv e;
+  while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {}
+  if (digitalRead(PIN_BTN_TOP) != g_btn[0].idle && !mic_full()) {
+    if (millis() - last >= WAVE_EVERY_MS) {
+      last = millis();
+      draw_wave(wave_level(), ++step);
+      ui_partial(WAVE_X, WAVE_Y, WAVE_W, WAVE_H, INT_MAX);  // no ghost-clearing full refresh mid-take; show() does one
+    }
+    return;
+  }
+  g_lastWav = mic_stop();  // released (the button poll ignores this release: it was reported as long)
+  ai_begin();
+}
+
 inline void go_home() {
   if (g_screen == SCR_HOME || g_screen == SCR_DISCARD) return;  // on the warning, only its buttons act
   if (unsaved()) { g_discardBack = g_screen; show(SCR_DISCARD); }
@@ -594,7 +778,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     note_scroll(dy < 0 ? 1 : -1);  // drag the text up = see later lines, like a phone
     return;
   }
-  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE ||
+  if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE || g_screen == SCR_NOSD ||
                 settings_screen(g_screen))) {
     if (dx < 0) page_fwd();
     else page_back();
@@ -605,9 +789,9 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_SETTINGS: settings_tap(x0, y0); return;
     case SCR_CONFIG: if (srow_at(y0, SROW_H, 4) == 3) { hw_beep(); show(SCR_TEMP); } return;  // City: set on the phone setup page
     case SCR_TEMP: temp_tap(y0); return;
-    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW) { hw_beep(); open_sdcard(); } return;
-    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { hw_beep(); g_filesPage = 0; show(SCR_FILES); } return;
-    case SCR_FILES: return;
+    case SCR_ABOUT: if (srow_at(y0, IROW_H, 6) == ABOUT_SD_ROW && sd_inserted()) { hw_beep(); open_sdcard(); } return;
+    case SCR_SDCARD: if (g_sdOk && srow_at(y0, IROW_H, 5) == SD_FILES_ROW) { g_dir = "/"; files_open(); } return;
+    case SCR_FILES: files_tap(y0); return;
     case SCR_UPDATE: update_tap(x0, y0); return;
     case SCR_LANGFONT: langfont_tap(y0); return;
     case SCR_SYSLANG: syslang_tap(y0); return;
@@ -636,14 +820,17 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(SCR_TASK); }
       return;
     case SCR_NOSD:
-      if (top_right(x0, y0)) { hw_beep(); show(SCR_APPS); }
-      else if (in(x0, y0, 40, 712, 400, 72)) {
+      if (in(x0, y0, 40, 712, 400, 72)) {
         hw_beep();
+        if (sd_inserted()) draw_sd_loading(g_nosdNotes);
         if (g_nosdNotes ? notes_retry() : todo_retry()) show(g_nosdNotes ? SCR_NOTES : SCR_TODO);
         else show(SCR_NOSD);
       }
       return;
     case SCR_NOTES: notes_tap(x0, y0); return;
+    case SCR_REVIEW: review_tap(x0, y0); return;
+    case SCR_DONE: done_tap(x0, y0); return;
+    case SCR_FAILED: failed_tap(x0, y0); return;
     case SCR_NOTE: note_view_tap(x0, y0); return;
     case SCR_NOTEED: note_editor_tap(x0, y0); return;
     case SCR_DELNOTE:
@@ -700,13 +887,36 @@ inline void screens_input() {
     if (b == BTN_TOP) go_home();
     else if (b == BTN_DOWN) page_back();
     else if (b == BTN_UP) page_fwd();
-    // BTN_TOP_LONG: hold to talk to the AI (V2); the long beep is all it does in V1
+    else if (b == BTN_TOP_LONG) listen_start();
   }
 }
 
+// Card in / out (detect switch, held 300 ms so a half-pushed card doesn't flicker): mount or drop it,
+// and redraw the screens that show it (REQ-16 live status). A pin read per loop: no measurable power.
+inline void sd_watch() {
+  static bool shown = sd_inserted();
+  static int8_t pending = -1;
+  static uint32_t at = 0;
+  const bool in = sd_inserted();
+  if (in == shown) { pending = -1; return; }
+  if (pending != in) { pending = in; at = millis(); return; }
+  if (millis() - at < 300) return;
+  shown = in;
+  pending = -1;
+  Serial.printf("[sd] card %s\n", in ? "in" : "out");
+  if (!in) { SD.end(); g_sdOk = false; }
+  else if (g_screen == SCR_SDCARD) sd_files_scan();  // mounts, and 04i shows the file count
+  else sd_mount();
+  if (g_screen == SCR_ABOUT || g_screen == SCR_SDCARD) g_redraw = true;
+  else if (g_screen == SCR_FILES && !in) show(SCR_SDCARD);
+}
+
 inline void screens_loop() {
+  if (g_screen == SCR_LISTEN) { listen_loop(); return; }
+  if (g_screen == SCR_WORKING) { working_loop(); return; }
   screens_input();
-  if (g_fontDirty) { g_fontDirty = false; show(g_screen); }  // the font in use changed from the phone page
+  sd_watch();
+  if (g_pageDirty) { g_pageDirty = false; show(g_screen); }  // the font or Wi-Fi switch changed from the phone page
   if (g_redraw) {
     g_redraw = false;
     draw_screen();
