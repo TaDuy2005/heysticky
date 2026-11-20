@@ -213,17 +213,17 @@ inline void draw_sdcard() {
 
 // ---------- 04k SD Files: one folder at a time (folders ›, then files with size) ----------
 constexpr int FILES_ROWS = 9;
-inline int g_filesPage = 0;
-inline int files_pages() { return max(1, (int(g_files.size()) + FILES_ROWS - 1) / FILES_ROWS); }
+inline int g_filesTop = 0;  // first row shown; the list scrolls FILES_ROWS - 1 rows at a time
+inline int files_max() { return max(0, int(g_files.size()) - FILES_ROWS); }
 
 inline void draw_files() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_topbar(g_dir == "/" ? TR("SD Files", "Tệp trên thẻ SD") : sd_name(g_dir), String(g_files.size()));
   if (g_files.empty()) { ui_text(F_R25, TR("No files", "Không có tệp"), W / 2, 318, 33, AL_CENTER); return; }
-  g_filesPage = constrain(g_filesPage, 0, files_pages() - 1);
+  g_filesTop = constrain(g_filesTop, 0, files_max());
   for (int r = 0; r < FILES_ROWS; r++) {
-    const int i = g_filesPage * FILES_ROWS + r;
+    const int i = g_filesTop + r;
     if (i >= int(g_files.size())) break;
     const SdFile &f = g_files[i];
     const bool dir = f.items >= 0;
@@ -231,7 +231,7 @@ inline void draw_files() {
     const String name = ui_fit(F_B25, dir ? f.name + "/" : f.name, 400 - ui_width(F_R25, val) - (dir ? 34 : 0) - 12);
     info_row(SROW_TOP + r * IROW_H, IROW_H, F_B25, name, val, dir);
   }
-  if (files_pages() > 1) ui_page_counter(String(g_filesPage + 1) + "/" + files_pages());
+  if (files_max()) ui_scrollbar(SROW_TOP + 12, FILES_ROWS * IROW_H - 24, g_filesTop, FILES_ROWS, g_files.size());
 }
 
 // ---------- 04j Web setup ----------

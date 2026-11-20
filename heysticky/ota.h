@@ -34,16 +34,17 @@ inline void ota_check() {
   Serial.printf("[ota] latest %s (running v%s): %s\n", g_otaTag.c_str(), FW_VERSION, newer ? "update" : "up to date");
 }
 
-// "Last checked today 09:30" / "Last checked 12/11 09:30"; "" if never (or before the clock was set).
+// "Last checked today 9:30 AM" / "Last checked 12/11 9:30 AM"; "" if never (or before the clock was set).
 inline String ota_checked_text() {
   const time_t at = cfg_get("ota_last").toInt(), now = time(nullptr);
   if (at < 1700000000) return "";
   struct tm t, n;
   localtime_r(&at, &t);
   localtime_r(&now, &n);
-  char s[24];
-  strftime(s, sizeof s, t.tm_yday == n.tm_yday && t.tm_year == n.tm_year ? TR("today %H:%M", "hôm nay %H:%M") : "%d/%m %H:%M", &t);
-  return String(TR("Last checked ", "Kiểm tra lần cuối ")) + s;
+  char d[8];
+  strftime(d, sizeof d, "%d/%m", &t);
+  const bool today = t.tm_yday == n.tm_yday && t.tm_year == n.tm_year;
+  return String(TR("Last checked ", "Kiểm tra lần cuối ")) + (today ? TR("today", "hôm nay") : d) + " " + hm12(t.tm_hour * 60 + t.tm_min);
 }
 
 // Downloads and installs g_otaUrl; restarts on success. shown() redraws the screen at each 10% step.

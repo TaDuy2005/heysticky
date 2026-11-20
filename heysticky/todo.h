@@ -3,6 +3,7 @@
 // Dates are local-time strings "YYYY-MM-DD HH:MM" (or "YYYY-MM-DD"): they sort as text.
 #pragma once
 #include <stdio.h>
+#include <string.h>
 #include <vector>
 #include <algorithm>
 #include "lang.h"
@@ -10,7 +11,7 @@
 struct Task {
   bool task = true;   // false: a line that is not a task (heading, blank, ...), written back unchanged
   bool done = false;
-  String text, due, raw;
+  String text, due, created, raw;  // created: "YYYY-MM-DD HH:MM" stamped when the task is made ("" = older task)
 };
 
 // ---------- dates (Howard Hinnant's civil-from-days, no time zones involved) ----------
@@ -46,6 +47,16 @@ inline const char *const DAY3_VI[] = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
 inline const char *day3(int w) { return TR(DAY3[w], DAY3_VI[w]); }
 inline const char *const MON3[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
+// HTTP Date header, "Thu, 20 Nov 2026 09:05:07 GMT" -> seconds since 1970 UTC; 0 if it doesn't parse.
+inline long long http_date(const char *s) {
+  char mon[4] = "";
+  int d, y, h, mi, se;
+  if (sscanf(s, "%*3s, %d %3s %d %d:%d:%d", &d, mon, &y, &h, &mi, &se) != 6) return 0;
+  for (int m = 0; m < 12; m++)
+    if (!strcmp(mon, MON3[m])) return day_num(y, m + 1, d) * 86400LL + h * 3600 + mi * 60 + se;
+  return 0;
+}
+
 // ---------- /todo.md lines ----------
 inline bool valid_due(const String &d) {  // "YYYY-MM-DD" or "YYYY-MM-DD HH:MM"
   if (d.length() != 10 && d.length() != 16) return false;
@@ -67,10 +78,17 @@ inline Task todo_parse(const String &line) {
   }
   t.done = s[3] != ' ';
   s = s.substring(6);
-  const int at = s.lastIndexOf("@due(");
-  if (at >= 0 && s.endsWith(")")) {
-    const String d = s.substring(at + 5, s.length() - 1);
-    if (valid_due(d)) { t.due = d; s = s.substring(0, at); }
+  for (int k = 0; k < 2; k++) {  // trailing @created(...) and @due(...), either order
+    s.trim();
+    if (!s.endsWith(")")) break;
+    const int c = s.lastIndexOf("@created("), d = s.lastIndexOf("@due(");
+    const bool isC = c > d;
+    const int at = isC ? c : d;
+    if (at < 0) break;
+    const String v = s.substring(at + (isC ? 9 : 5), s.length() - 1);
+    if (!valid_due(v) || (isC ? t.created : t.due).length()) break;
+    (isC ? t.created : t.due) = v;
+    s = s.substring(0, at);
   }
   s.trim();
   t.text = s;
@@ -82,6 +100,7 @@ inline String todo_format(const Task &t) {
   String s = t.done ? "- [x] " : "- [ ] ";
   s += t.text;
   if (t.due.length()) s += " @due(" + t.due + ")";
+  if (t.created.length()) s += " @created(" + t.created + ")";
   return s;
 }
 
@@ -112,9 +131,17 @@ inline int todo_due_today(const std::vector<Task> &ts, const String &now) {  // 
   return n;
 }
 
-inline String short_hm(const String &due) {  // "2026-11-17 09:00" -> "9:00"; "" for a date-only due
+// Every time shown is 12-hour with AM/PM, in both languages (user choice, 2026-11-20). Files keep 24-hour.
+inline String hm12(int mins) {  // 0..1439 -> "9:05 AM", "12:00 PM"
+  const int h = mins / 60 % 24;
+  char b[9];
+  snprintf(b, sizeof b, "%d:%02d %s", (h + 11) % 12 + 1, mins % 60, h < 12 ? "AM" : "PM");
+  return b;
+}
+
+inline String short_hm(const String &due) {  // "2026-11-17 19:00" -> "7:00 PM"; "" for a date-only due
   if (due.length() != 16) return "";
-  return due[11] == '0' ? due.substring(12) : due.substring(11);
+  return hm12(due.substring(11, 13).toInt() * 60 + due.substring(14).toInt());
 }
 
 inline String day_month(long n) {  // "24/11", both languages
@@ -136,17 +163,17 @@ inline String todo_label(const Task &t, const String &now) {
   return String(day3(weekday(day))) + " " + day_month(day) + sp + hm;
 }
 
-// ---------- 02h Time entry: HH and MM fields typed on a number pad ----------
-struct TimeEntry { String f[2]; int active = 0; bool fresh = true; };  // fresh: next digit replaces the field
+// ---------- 02h Time entry: hour (1-12) and minute fields typed on a number pad, plus AM | PM ----------
+struct TimeEntry { String f[2]; int active = 0; bool fresh = true; bool pm = false; };  // f[0] = 1..12; fresh: next digit replaces the field
 
 // Typing fills the hour, then the minute. A first digit that cannot start a valid value is
 // taken as "0d" (9 -> 09). Returns false when the digit would make an invalid time.
 inline bool time_digit(TimeEntry &te, char c) {
   String &f = te.f[te.active];
   if (te.fresh || f.length() >= 2) { f = ""; te.fresh = false; }
-  if (!f.length() && c - '0' > (te.active ? 5 : 2)) f = "0";
+  if (!f.length() && c - '0' > (te.active ? 5 : 1)) f = "0";
   f += c;
-  if (f.toInt() > (te.active ? 59 : 23)) { f = f.substring(0, f.length() - 1); return false; }
+  if (f.toInt() > (te.active ? 59 : 12) || (!te.active && f == "00")) { f = f.substring(0, f.length() - 1); return false; }
   if (f.length() == 2 && te.active == 0) { te.active = 1; te.fresh = true; }
   return true;
 }

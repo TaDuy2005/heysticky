@@ -2,7 +2,6 @@
 // Coordinates from the Figma frames.
 #pragma once
 #include "ui.h"
-#include "kbd.h"
 #include "net.h"
 #include "todo_ui.h"
 #include "notes_ui.h"
@@ -11,7 +10,7 @@
 #include "ai.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_NOTEED, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
+                       SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
@@ -30,10 +29,8 @@ inline String fmt_date(const tm &t) {
 inline String now_clock(String *date = nullptr) {
   tm t;
   if (!local_now(t)) { if (date) *date = ""; return "--:--"; }
-  char hm[6];
-  strftime(hm, sizeof hm, "%H:%M", &t);
   if (date) *date = fmt_date(t);
-  return hm;
+  return hm12(t.tm_hour * 60 + t.tm_min);  // "9:41 AM"
 }
 
 inline const Icon &wx_icon(WxIcon i) {
@@ -60,7 +57,12 @@ inline void read_indoor(String &temp, String &hum) {
 inline void home_clock(const String &date, const String &clock) {
   display.fillRect(40, 104, 400, 176, PAPER);
   ui_text(F_R30, date, W / 2, 104, 40, AL_CENTER);
-  ui_text(F_X120, clock, W / 2, 144, 126, AL_CENTER);
+  const int sp = clock.indexOf(' ');  // "9:41 AM": big digits, Bold AM / PM beside them, the pair centred (Figma 01)
+  if (sp < 0) { ui_text(F_X120, clock, W / 2, 144, 126, AL_CENTER); return; }  // "--:--" before the clock is set
+  const String hm = clock.substring(0, sp), ap = clock.substring(sp + 1);
+  const int wd = ui_width(F_X120, hm), x = W / 2 - (wd + 10 + ui_width(F_B35, ap)) / 2;
+  ui_text(F_X120, hm, x, 144, 126);
+  ui_text(F_B35, ap, x + wd + 10, 210, 46);
 }
 
 inline void home_weather() {
@@ -126,7 +128,8 @@ inline void home_tick() {
       bool(digitalRead(PIN_USB_PRESENT)) == g_shown.plugged) return;  // checked often, acts once a minute (or on plug/unplug)
 
   // Asleep: partial updates don't count toward the ghost-clearing full refresh; one full refresh on the hour instead.
-  const bool hourly = g_asleep && clock != g_shown.clock && clock.endsWith(":00");
+  const int sp = clock.indexOf(' ');  // "9:41 AM"; "--:--" has none
+  const bool hourly = g_asleep && clock != g_shown.clock && sp > 0 && clock.substring(sp - 3, sp) == ":00";
   const int every = g_asleep ? INT_MAX : FULL_EVERY;
   auto part = [&](int x, int y, int w, int h) { if (!hourly) ui_partial(x, y, w, h, every); };
   if (clock != g_shown.clock || date != g_shown.date) {
@@ -142,7 +145,7 @@ inline void home_tick() {
     part(40, 288, 400, 143);
   }
   String temp, hum;
-  if (g_asleep && !clock.endsWith("0")) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
+  if (g_asleep && !(sp > 0 && clock[sp - 1] == '0')) temp = g_shown.indoor, hum = g_shown.humidity;  // asleep: every 10 min (one refresh less a minute)
   else read_indoor(temp, hum);
   if (temp != g_shown.indoor || hum != g_shown.humidity) {
     g_shown.indoor = temp; g_shown.humidity = hum;
@@ -193,15 +196,9 @@ inline int apps_hit(int x, int y) {
 }
 
 // ---------- navigation ----------
-inline Screen g_discardBack = SCR_TASK;  // 02i/03h Cancel returns here
+inline Screen g_discardBack = SCR_TASK;  // 02j Cancel returns here
 inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Sleep after counts from here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
-
-inline const char *discard_question() {
-  const bool note = g_discardBack == SCR_NOTEED;
-  if (note ? g_ne.n.num != 0 : g_ed.idx >= 0) return TR("Discard changes?", "Bỏ thay đổi?");
-  return note ? TR("Discard note?", "Bỏ ghi chú?") : TR("Discard task?", "Bỏ việc này?");
-}
 
 inline void draw_screen() {
   switch (g_screen) {
@@ -216,9 +213,8 @@ inline void draw_screen() {
     case SCR_NOSD: draw_nosd(); break;
     case SCR_NOTES: draw_notes(); break;
     case SCR_NOTE: draw_note_view(); break;
-    case SCR_NOTEED: draw_note_editor(); break;
     case SCR_DELNOTE: draw_delete(TR("Delete note?", "Xoá ghi chú?")); break;
-    case SCR_DISCARD: draw_delete(discard_question(), TR("Discard", "Bỏ")); break;
+    case SCR_DISCARD: draw_delete(TR("Discard changes?", "Bỏ thay đổi?"), TR("Discard", "Bỏ")); break;
     case SCR_SETTINGS: draw_settings(); break;
     case SCR_CONFIG: draw_config(); break;
     case SCR_TEMP: draw_temp(); break;
@@ -266,72 +262,28 @@ inline void open_notes() {  // the list is read fresh each time: the card may ha
 }
 
 inline void open_note(int num) {
-  g_viewPage = 0;
+  g_viewTop = 0;
   if (note_read(num)) show(SCR_NOTE);
   else nosd(true);
 }
 
-inline void open_note_editor(bool isNew) {
-  g_ne = NoteEdit();
-  if (!isNew) { g_ne.n = g_note; g_ne.kbOpen = g_ne.follow = false; }  // body shown from its start
-  show(SCR_NOTEED);
-}
-
-inline void note_editor_save() {
-  Note n = g_ne.n;
-  n.title.trim();
-  String body = n.body;
-  body.trim();
-  hw_beep();
-  if (!n.num && !n.title.length() && !body.length()) { show(SCR_NOTES); return; }  // nothing typed: nothing saved
-  g_note = n;
-  if (!note_save()) { nosd(true); return; }
-  if (n.num) { g_viewPage = 0; show(SCR_NOTE); }
-  else { g_notesPage = 0; show(SCR_NOTES); }
-}
-
-inline void open_editor(int idx) {  // idx -1 = new task
+inline void open_editor(int idx) {  // 02e for task idx (long press on its row)
   g_ed = TaskEdit();
   g_ed.idx = idx;
-  if (idx >= 0) { g_ed.text = g_tasks[idx].text; g_ed.kbOpen = false; }
-  g_ed.dl = g_ed.dl0 = dl_from(idx >= 0 ? g_tasks[idx].due : String(""));
+  g_ed.text = g_tasks[idx].text;
+  g_ed.created = g_tasks[idx].created;
+  g_ed.dl = g_ed.dl0 = dl_from(g_tasks[idx].due);
+  g_ed.dlOpen = g_tasks[idx].due.length() > 0;  // a deadline shows at once; none: the drop-down starts closed
   show(SCR_TASK);
 }
 
-inline void editor_save() {
-  String s = g_ed.text;
-  s.trim();
+inline void editor_done() {  // Done: keeps a changed deadline, back to the list
   String due;
-  if (!s.length() || !dl_due(g_ed.dl, due)) { hw_beep(120, 1200); return; }  // no text / Time-only before NTP
+  if (!dl_due(g_ed.dl, due)) { hw_beep(120, 1200); return; }  // Time only, before the clock is set
   hw_beep();
-  if (g_ed.idx < 0) {
-    Task t;
-    t.text = s;
-    t.due = due;
-    g_tasks.push_back(t);
-  } else {
-    g_tasks[g_ed.idx].text = s;
-    g_tasks[g_ed.idx].due = due;
-  }
+  if (dl_same(g_ed.dl, g_ed.dl0)) { show(SCR_TODO); return; }
+  g_tasks[g_ed.idx].due = due;
   todo_commit(SCR_TODO);
-}
-
-// ---------- typing ----------
-constexpr uint32_t KEY_BATCH_MS = 30;  // keys queued during a refresh are applied together anyway
-inline void kb_hide(bool &open, bool &dirty) { open = dirty = false; g_redraw = true; }  // one partial refresh
-
-inline void editor_key(const KbKey &k) {  // silent: a beep per key cannot keep pace with ~1 refresh/s
-  const KbResult r = kb_apply(g_ed.kb, g_ed.text, 120, k);
-  if (r == KB_DONE) kb_hide(g_ed.kbOpen, g_ed.dirty);  // §4: Done only hides the keyboard
-  else if (r == KB_TEXT) { g_ed.touched = g_ed.dirty = true; g_ed.dirtyAt = millis(); }
-}
-
-inline void note_key(const KbKey &k) {
-  String &s = g_ne.field ? g_ne.n.body : g_ne.n.title;
-  const unsigned cap = g_ne.field ? NOTE_BYTES - 3 - g_ne.n.title.length() : TITLE_MAX;
-  const KbResult r = kb_apply(g_ne.kb, s, cap, k);
-  if (r == KB_DONE) kb_hide(g_ne.kbOpen, g_ne.dirty);
-  else if (r == KB_TEXT) { g_ne.touched[g_ne.field] = g_ne.follow = g_ne.dirty = true; g_ne.dirtyAt = millis(); }
 }
 
 // ---------- Settings (04) ----------
@@ -348,31 +300,12 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
 }
 
 inline void open_sdcard() { sd_files_scan(); show(SCR_SDCARD); }  // mounts a card put in since boot
-inline void files_open() { hw_beep(); g_filesPage = 0; sd_dir_scan(); show(SCR_FILES); }  // 04k at g_dir, page 1
+inline void files_open() { hw_beep(); g_filesTop = 0; sd_dir_scan(); show(SCR_FILES); }  // 04k at g_dir, from the top
 inline void files_tap(int y) {  // a folder row opens it; files do nothing
-  const int r = srow_at(y, IROW_H, FILES_ROWS), i = g_filesPage * FILES_ROWS + r;
+  const int r = srow_at(y, IROW_H, FILES_ROWS), i = g_filesTop + r;
   if (r < 0 || i >= int(g_files.size()) || g_files[i].items < 0) return;
   g_dir = (g_dir == "/" ? "" : g_dir) + "/" + g_files[i].name;
   files_open();
-}
-
-inline void key_down(const KbKey &k) {
-  if (g_screen == SCR_NOTEED) note_key(k);
-  else editor_key(k);
-}
-
-inline void note_flush() {
-  if (!g_ne.dirty || millis() - g_ne.dirtyAt < KEY_BATCH_MS) return;
-  g_ne.dirty = false;
-  note_fields();
-  ui_partial(0, 112, W, (g_ne.kbOpen ? KB_TOP : NB_BOTTOM + 1) - 112, KBD_FULL_EVERY);
-}
-
-inline void editor_flush() {  // one partial refresh per burst of keys
-  if (!g_ed.dirty || millis() - g_ed.dirtyAt < KEY_BATCH_MS) return;
-  g_ed.dirty = false;
-  editor_field();
-  ui_partial(FIELD_X, FIELD_Y, FIELD_W, FIELD_H, KBD_FULL_EVERY);
 }
 
 inline void temp_tap(int y) {
@@ -397,8 +330,7 @@ inline void sleep_tap(int y) {
 inline bool in(int x, int y, int x0, int y0, int w, int h) { return x >= x0 && x < x0 + w && y >= y0 && y < y0 + h; }
 inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  // Cancel / Clear / Back
 
-inline void todo_tap(int x, int y) {
-  if (in(x, y, 40, g_addBtnY, 400, 72)) { hw_beep(); open_editor(-1); return; }
+inline void todo_tap(int x, int y) {  // tap = tick; hold = 02e (screens_input)
   const int idx = todo_row_at(y);
   if (idx < 0 || x < 40 || x >= 440) return;
   hw_beep();
@@ -408,20 +340,14 @@ inline void todo_tap(int x, int y) {
 }
 
 inline void editor_tap(int x, int y) {
-  if (top_right(x, y)) { hw_beep(); show(SCR_TODO); return; }
-  if (in(x, y, FIELD_X, FIELD_Y, FIELD_W, g_fieldH)) {  // tap field -> keyboard back, placeholder gone
-    if (!g_ed.kbOpen || !g_ed.touched) g_ed.kbOpen = g_ed.touched = g_redraw = true;
-    return;
-  }
-  if (in(x, y, 40, ROW_DATE_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
-  else if (in(x, y, 40, ROW_TIME_Y + field_dy(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
-  else if (!g_ed.kbOpen && y >= 717 && y < 784) {
-    if (g_ed.idx >= 0 && in(x, y, 40, 717, 194, 67)) { hw_beep(); show(SCR_DELTASK); }
-    else if (g_ed.idx < 0 ? in(x, y, 40, 717, 400, 67) : in(x, y, 246, 717, 194, 67)) editor_save();
-  }
+  if (top_right(x, y)) { hw_beep(); show(SCR_TODO); return; }  // Cancel: nothing saved
+  if (in(x, y, 40, row0(), 400, ROW_H)) { hw_beep(); g_ed.dlOpen = !g_ed.dlOpen; g_redraw = true; return; }
+  if (g_ed.dlOpen && in(x, y, 40, date_y(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; show(SCR_DATE); }
+  else if (g_ed.dlOpen && in(x, y, 40, time_y(), 400, ROW_H)) { hw_beep(); g_dlUndo = g_ed.dl; time_begin(); show(SCR_TIME); }
+  else if (in(x, y, 40, 717, 194, 67)) { hw_beep(); show(SCR_DELTASK); }
+  else if (in(x, y, 246, 717, 194, 67)) editor_done();
 }
 
-inline Screen g_delBack = SCR_NOTE;  // 03f Cancel returns to the view or the editor
 
 inline void settings_tap(int x, int y) {
   if (x < 40 || x >= 440) return;
@@ -501,30 +427,12 @@ inline void update_tap(int x, int y) {  // Check / Install / Try again; both blo
 }
 
 inline void notes_tap(int x, int y) {
-  if (in(x, y, 40, g_newBtnY, 400, 72)) { hw_beep(); open_note_editor(true); return; }
   const int num = notes_row_at(y);
   if (num && x >= 40 && x < 440) { hw_beep(); open_note(num); }
 }
 
 inline void note_view_tap(int x, int y) {
-  if (in(x, y, 40, g_viewBtnY, 192, 64)) { hw_beep(); open_note_editor(false); }
-  else if (in(x, y, 248, g_viewBtnY, 192, 64)) { hw_beep(); g_delBack = SCR_NOTE; show(SCR_DELNOTE); }
-}
-
-inline void note_editor_tap(int x, int y) {
-  if (top_right(x, y)) { hw_beep(); show(g_ne.n.num ? SCR_NOTE : SCR_NOTES); return; }  // Cancel: g_note untouched
-  const int field = in(x, y, 40, NT_Y, 400, NT_H) ? 0 : in(x, y, 40, NB_Y, 400, g_nbBottom - NB_Y) ? 1 : -1;
-  if (field >= 0) {  // tap a field: type into it
-    if (field != g_ne.field || !g_ne.kbOpen || !g_ne.touched[field]) {
-      g_ne.field = field;
-      g_ne.touched[field] = g_ne.kbOpen = g_redraw = true;
-      if (field == 1) g_ne.follow = true;  // the cursor is at the end: show it
-    }
-    return;
-  }
-  if (g_ne.kbOpen || y < 717 || y >= 784) return;
-  if (g_ne.n.num && in(x, y, 40, 717, 194, 67)) { hw_beep(); g_delBack = SCR_NOTEED; show(SCR_DELNOTE); }
-  else if (g_ne.n.num ? in(x, y, 246, 717, 194, 67) : in(x, y, 40, 717, 400, 67)) note_editor_save();
+  if (in(x, y, 40, 720, 400, 64)) { hw_beep(); show(SCR_DELNOTE); }
 }
 
 // 02c / 02h: the toggle row flips; Cancel restores what the editor had; Done keeps the change.
@@ -546,6 +454,8 @@ inline void time_tap(int x, int y) {
   if (!g_ed.dl.timeOn) { if (in(x, y, 40, 711, 400, 73)) { hw_beep(); show(SCR_TASK); } return; }
   for (int i = 0; i < 2; i++)
     if (in(x, y, TF_X[i], TF_Y, TF_W, TF_H)) { g_te.active = i; g_te.fresh = true; g_timeDirty = true; }
+  for (int i = 0; i < 2; i++)
+    if (in(x, y, AP_X[i], AP_Y, AP_W, AP_H) && g_te.pm != bool(i)) { hw_beep(); g_te.pm = i; g_timeDirty = true; }
 }
 
 inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
@@ -555,53 +465,39 @@ inline void keypad_key(int k) {  // on touch DOWN, like the letter keyboard
   g_timeDirty = true;
 }
 
-// ---------- page moves + Home (PLAN.md §3) ----------
-// DOWN = back = swipe left-to-right; UP = forward = swipe right-to-left. Only screens with pages move.
-// Note editor: UP/DOWN hide the keyboard; with it hidden they scroll the body.
-// Every page or screen change beeps (swipe or UP / DOWN alike); nothing to move = silent.
+// ---------- page moves + Home (PLAN.md §3, v1.2) ----------
+// Back = swipe left-to-right, or DOWN where DOWN doesn't scroll. To-do / Notes lists: swipe up / down turns the page,
+// looping 1-2-3-1 (UP does nothing there). 03c Note view and 04k SD Files scroll a screenful minus one line:
+// swipe up or DOWN = later, swipe down or UP = earlier. Every move beeps; nothing to move = silent.
 inline void go(Screen s) { hw_beep(); show(s); }
-inline void turn(int &page, int d) { hw_beep(); page += d; g_redraw = true; }
-inline void note_updown(int dir) { hw_beep(); if (g_ne.kbOpen) kb_hide(g_ne.kbOpen, g_ne.dirty); else note_scroll(dir); }
-inline void page_back() {
-  if (settings_screen(g_screen)) {
-    if (g_screen == SCR_FILES && g_filesPage > 0) turn(g_filesPage, -1);
-    else if (g_screen == SCR_FILES && g_dir != "/") { g_dir = sd_parent(g_dir); g_filesPage = 0; sd_dir_scan(); go(SCR_FILES); }  // up one folder
-    else go(settings_parent());
-  } else if (g_screen == SCR_APPS) go(SCR_HOME);
-  else if (g_screen == SCR_NOSD) go(SCR_APPS);  // no "Back" on 02k / 03j: swipe right or DOWN
-  else if (g_screen == SCR_NOTES) {
-    if (g_notesPage > 0) turn(g_notesPage, -1);
-    else go(SCR_APPS);
-  } else if (g_screen == SCR_NOTE) {
-    if (g_viewPage > 0) turn(g_viewPage, -1);
-    else go(SCR_NOTES);
-  } else if (g_screen == SCR_NOTEED) note_updown(-1);
-  else if (g_screen == SCR_TODO) {
-    if (g_todoPage > 0) turn(g_todoPage, -1);
-    else go(SCR_APPS);
-  }
+inline void loop_page(int &page, int pages, int d) { if (pages < 2) return; hw_beep(); page = (page + d + pages) % pages; g_redraw = true; }
+inline void scroll_by(int &top, int max, int step, int d) {
+  const int t = constrain(top + d * step, 0, max);
+  if (t == top) return;
+  hw_beep();
+  top = t;
+  g_redraw = true;
 }
-inline void page_fwd() {
-  if (g_screen == SCR_HOME) go(SCR_APPS);
-  else if (g_screen == SCR_TODO && g_todoPage + 1 < g_todoPages) turn(g_todoPage, 1);
-  else if (g_screen == SCR_NOTES && g_notesPage + 1 < notes_pages()) turn(g_notesPage, 1);
-  else if (g_screen == SCR_NOTE && g_viewPage + 1 < g_viewPages) turn(g_viewPage, 1);
-  else if (g_screen == SCR_NOTEED) note_updown(1);
-  else if (g_screen == SCR_FILES && g_filesPage + 1 < files_pages()) turn(g_filesPage, 1);
+inline bool scrolls(int d) {  // d = +1 next / later, -1 previous / earlier; false = this screen doesn't scroll
+  if (g_screen == SCR_TODO) loop_page(g_todoPage, g_todoPages, d);
+  else if (g_screen == SCR_NOTES) loop_page(g_notesPage, notes_pages(), d);
+  else if (g_screen == SCR_NOTE) scroll_by(g_viewTop, g_viewMax, g_viewStep, d);
+  else if (g_screen == SCR_FILES) scroll_by(g_filesTop, files_max(), FILES_ROWS - 1, d);
+  else return false;
+  return true;
 }
-// Home asks first (02i / 03h) instead of losing work: a new task / note with text typed in it,
-// or an edit that changed something.
+inline void back() {
+  if (g_screen == SCR_FILES && g_dir != "/") { g_dir = sd_parent(g_dir); g_filesTop = 0; sd_dir_scan(); go(SCR_FILES); }  // up one folder
+  else if (settings_screen(g_screen)) go(settings_parent());
+  else if (g_screen == SCR_APPS || g_screen == SCR_NOSD || g_screen == SCR_TODO || g_screen == SCR_NOTES) go(g_screen == SCR_APPS ? SCR_HOME : SCR_APPS);
+  else if (g_screen == SCR_NOTE) go(SCR_NOTES);
+}
+inline bool scroll_screen() { return g_screen == SCR_NOTE || g_screen == SCR_FILES; }
+inline void button_down() { if (scroll_screen()) scrolls(1); else back(); }
+inline void button_up() { if (scroll_screen()) scrolls(-1); else if (g_screen == SCR_HOME) go(SCR_APPS); }
+// Home asks first (02j) instead of losing a changed deadline.
 inline bool unsaved() {
-  String t;
-  if (g_screen == SCR_NOTEED) {
-    if (g_ne.n.num) return g_ne.n.title != g_note.title || g_ne.n.body != g_note.body;
-    t = g_ne.n.title + g_ne.n.body;
-  } else if (g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME) {
-    if (g_ed.idx >= 0) return g_ed.text != g_tasks[g_ed.idx].text || !dl_same(g_ed.dl, g_ed.dl0);
-    t = g_ed.text;
-  } else return false;
-  t.trim();
-  return t.length();
+  return (g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME) && !dl_same(g_ed.dl, g_ed.dl0);
 }
 // ---------- AI voice (PLAN_AI.md): hold top = 05 Listening -> 05a Working -> 05c Done / 05b Review / 05d Failed ----------
 inline void go_home();
@@ -652,13 +548,15 @@ inline void ai_save(const AiResult &r) {
   g_doneItems.clear();
   g_doneNote = r.kind == AI_NOTE;
   if (r.kind == AI_TODO) {
-    for (const Task &t : r.todos) { g_tasks.push_back(t); g_doneItems.push_back(t.text); }
+    const String now = now_key();  // "" before the clock is set: no created date
+    for (Task t : r.todos) { t.created = now; g_tasks.push_back(t); g_doneItems.push_back(t.text); }
     if (!todo_save()) return nosd(false);
   } else {
     notes_scan();  // the next note number comes from the list, which is only read when Notes opens
     const Note keep = g_note;  // the note being viewed, if any: Done goes back to it
     g_note = r.note;
     g_note.num = 0;
+    g_note.created = now_key();
     const bool ok = note_save();
     g_doneItems.push_back(g_note.title.length() ? g_note.title : note_preview(g_note.body));
     g_note = keep;
@@ -774,14 +672,11 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const bool swipe = abs(dx) > 80 && abs(dx) > abs(y1 - y0);
   if (y0 >= EDGE_Y && y0 - y1 >= EDGE_SWIPE) { hw_beep(); go_home(); return; }  // swipe up from the bottom edge
   const int dy = y1 - y0;
-  if (g_screen == SCR_NOTEED && in(x0, y0, 40, NB_Y, 400, g_nbBottom - NB_Y) && abs(dy) > 60 && abs(dy) > abs(dx)) {
-    note_scroll(dy < 0 ? 1 : -1);  // drag the text up = see later lines, like a phone
-    return;
-  }
+  if (abs(dy) > 80 && abs(dy) > abs(dx) && scrolls(dy < 0 ? 1 : -1)) return;  // drag up = later / next page, like a phone
   if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE || g_screen == SCR_NOSD ||
                 settings_screen(g_screen))) {
-    if (dx < 0) page_fwd();
-    else page_back();
+    if (dx > 0) back();
+    else if (g_screen == SCR_HOME) go(SCR_APPS);
     return;
   }
   switch (g_screen) {
@@ -832,16 +727,15 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_DONE: done_tap(x0, y0); return;
     case SCR_FAILED: failed_tap(x0, y0); return;
     case SCR_NOTE: note_view_tap(x0, y0); return;
-    case SCR_NOTEED: note_editor_tap(x0, y0); return;
     case SCR_DELNOTE:
       if (in(x0, y0, 40, 705, 193, 79)) {
         hw_beep();
         if (note_delete(g_note.num)) { g_notesPage = 0; show(SCR_NOTES); }
         else nosd(true);
-      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(g_delBack); }
+      } else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(SCR_NOTE); }
       return;
     case SCR_DISCARD:
-      if (in(x0, y0, 40, 705, 193, 79)) { hw_beep(); show(SCR_HOME); }  // Discard: the typed text is dropped
+      if (in(x0, y0, 40, 705, 193, 79)) { hw_beep(); show(SCR_HOME); }  // Discard: the changed deadline is dropped
       else if (in(x0, y0, 247, 705, 193, 79)) { hw_beep(); show(g_discardBack); }  // Cancel: back as it was
       return;
   }
@@ -851,42 +745,34 @@ constexpr uint32_t ROW_HOLD_MS = 500;    // to-do row: hold = edit
 
 inline void screens_input() {
   static int16_t x0, y0;
-  static uint32_t t0 = 0, lastRepeat = 0;
-  static KbKey held;
-  static bool holding = false, pressing = false, consumed = false;  // consumed: DOWN already acted
+  static uint32_t t0 = 0;
+  static bool pressing = false, consumed = false;  // consumed: DOWN already acted
   TouchEv e;
   while (xQueueReceive(g_touchQ, &e, 0) == pdTRUE) {  // drain everything queued during the last refresh
     g_lastInput = millis();
     if (e.down) {
-      x0 = e.x; y0 = e.y; t0 = millis(); holding = false; pressing = true; consumed = false;
+      x0 = e.x; y0 = e.y; t0 = millis(); pressing = true; consumed = false;
       int k;
       if (e.y >= EDGE_Y) {}  // may be the Home gesture: no key acts down here
-      else if ((g_screen == SCR_TASK && g_ed.kbOpen && g_ed.kb.hit(e.x, e.y, held)) ||
-               (g_screen == SCR_NOTEED && g_ne.kbOpen && g_ne.kb.hit(e.x, e.y, held))) { holding = consumed = true; key_down(held); }
       else if (g_screen == SCR_TIME && g_ed.dl.timeOn && (k = keypad_hit(e.x, e.y)) >= 0) { consumed = true; keypad_key(k); }
     } else {
-      holding = pressing = false;
+      pressing = false;
       if (!consumed) on_touch_up(x0, y0, e.x, e.y);
     }
   }
   // Long press on a to-do row opens Edit task while the finger is still down.
-  if (pressing && !consumed && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS) {
+  if (pressing && !consumed && g_touchHeld && g_screen == SCR_TODO && millis() - t0 >= ROW_HOLD_MS &&
+      abs(g_touchX - x0) < 30 && abs(g_touchY - y0) < 30) {  // a slow swipe turns the page instead
     consumed = true;
     const int idx = todo_row_at(y0);
     if (idx >= 0) { hw_beep(); open_editor(idx); }
   }
-  // Backspace auto-repeat: after 500 ms, every 150 ms, while the finger stays down.
-  if (holding && g_touchHeld && held.kind == K_BKSP && millis() - t0 > 500 && millis() - lastRepeat > 150) {
-    lastRepeat = millis();
-    key_down(held);
-  }
-
   if (HwButton b = hw_buttons_poll()) {
     g_lastInput = millis();
-    if (b == BTN_TOP || b == BTN_TOP_LONG) hw_beep(b == BTN_TOP_LONG ? 120 : BEEP_MS);  // UP / DOWN beep in page_back / page_fwd
+    if (b == BTN_TOP || b == BTN_TOP_LONG) hw_beep(b == BTN_TOP_LONG ? 120 : BEEP_MS);  // UP / DOWN beep where they act
     if (b == BTN_TOP) go_home();
-    else if (b == BTN_DOWN) page_back();
-    else if (b == BTN_UP) page_fwd();
+    else if (b == BTN_DOWN) button_down();
+    else if (b == BTN_UP) button_up();
     else if (b == BTN_TOP_LONG) listen_start();
   }
 }
@@ -923,11 +809,9 @@ inline void screens_loop() {
     ui_partial(0, 0, W, H);
   }
   if (g_screen == SCR_HOME) home_tick();
-  else if (g_screen == SCR_TASK) editor_flush();
-  else if (g_screen == SCR_NOTEED) note_flush();
   else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one
     g_timeDirty = false;
     time_fields();
-    ui_partial(40, TF_Y, 400, TF_H, KBD_FULL_EVERY);
+    ui_partial(40, TF_Y, 400, AP_Y + AP_H - TF_Y, KBD_FULL_EVERY);
   }
 }
