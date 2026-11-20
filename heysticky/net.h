@@ -9,6 +9,7 @@
 #include <NetworkClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <esp_sntp.h>
 #include "store.h"
 #include "wifi_list.h"
 #include "src/webfont.h"
@@ -38,6 +39,8 @@ inline String g_jrSsid;
 inline JoinResult g_jr = JR_NONE;
 inline volatile uint8_t g_discReason = 0;  // set by the Wi-Fi event task
 inline uint32_t g_wx_next = 0;   // millis() of the next weather fetch
+inline volatile bool g_ntpOk = false;  // an NTP reply came since boot (then HTTP Date headers are not needed)
+inline volatile time_t g_netTime = 0;  // UTC just taken from the network, waiting for net_loop() to store it in the RTC
 inline long g_utc_off = LONG_MIN;  // seconds, from Open-Meteo; the last one is kept in flash (utc_off)
 
 inline bool http_json(const String &url, JsonDocument &doc);
@@ -847,6 +850,7 @@ inline bool net_begin() {
   const String off = cfg_get("utc_off");  // last known offset: right clock before the first weather reply
   if (off.length()) g_utc_off = off.toInt();
   configTime(off.toInt(), 0, "pool.ntp.org", "time.google.com");
+  sntp_set_time_sync_notification_cb([](timeval *tv) { g_ntpOk = true; g_netTime = tv->tv_sec; });
   g_web.on("/", HTTP_GET, [] {
     if (!ap_only()) return;
     g_web.sendHeader("Cache-Control", "no-store");  // a new firmware's page shows on the next reload
@@ -885,7 +889,13 @@ inline bool http_json(const String &url, JsonDocument &doc) {
   HTTPClient http;
   http.setTimeout(8000);
   if (!http.begin(tls, url)) return false;
+  const char *keys[] = {"Date"};
+  http.collectHeaders(keys, 1);
   const int code = http.GET();
+  if (code > 0 && !g_ntpOk) {  // networks that block NTP (public Wi-Fi) still pass HTTPS: take the time from the reply
+    const long long t = http_date(http.header("Date").c_str());
+    if (t > 1700000000LL) { timeval tv = {time_t(t), 0}; settimeofday(&tv, nullptr); g_netTime = t; }
+  }
   const bool ok = code == 200 && !deserializeJson(doc, http.getString());
   if (!ok) Serial.printf("[http] %d %s\n", code, url.c_str());
   http.end();
@@ -941,7 +951,7 @@ inline WxInfo wx_info(int code) {
 
 struct Weather { bool ok = false; float temp = 0, hi = 0, lo = 0; int code = 0; uint32_t at = 0; };
 inline Weather g_wx;               // ok=false -> show "Offline"
-constexpr uint32_t WX_EVERY_MS = 30UL * 60 * 1000, WX_RETRY_MS = 60UL * 1000;
+constexpr uint32_t WX_EVERY_MS = 60UL * 60 * 1000, WX_RETRY_MS = 60UL * 1000;
 
 inline bool net_weather(Weather &w) {
   if (WiFi.status() != WL_CONNECTED || !net_geocode()) return false;
@@ -953,7 +963,7 @@ inline bool net_weather(Weather &w) {
   w = {true, d["current"]["temperature_2m"].as<float>(), d["daily"]["temperature_2m_max"][0].as<float>(),
           d["daily"]["temperature_2m_min"][0].as<float>(), d["current"]["weather_code"].as<int>(), millis()};
   const long off = d["utc_offset_seconds"].as<long>();
-  if (off != g_utc_off) {  // follows DST within 30 min; kept for the next boot
+  if (off != g_utc_off) {  // follows DST within the hour; kept for the next boot
     g_utc_off = off;
     cfg_set("utc_off", String(off));
     configTime(off, 0, "pool.ntp.org", "time.google.com");
@@ -993,7 +1003,16 @@ inline void wifi_set_on(bool on) {
   Serial.printf("[net] Wi-Fi %s\n", on ? "on" : "off");
 }
 
+// The RTC keeps network time through power-off and corrects light sleep's drift. Main loop only (Wire1).
+inline void net_store_time() {
+  if (!g_netTime) return;
+  const time_t t = g_netTime;
+  g_netTime = 0;
+  Serial.printf("[rtc] %s\n", hw_rtc_write(t) ? "stored network time" : "write failed");
+}
+
 inline void net_loop() {
+  net_store_time();
   net_sta_step();
   if (g_webOn) { g_dns.processNextRequest(); g_web.handleClient(); }
   if (g_wxJob == WXJ_OK || g_wxJob == WXJ_FAIL) {

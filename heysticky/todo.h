@@ -3,6 +3,7 @@
 // Dates are local-time strings "YYYY-MM-DD HH:MM" (or "YYYY-MM-DD"): they sort as text.
 #pragma once
 #include <stdio.h>
+#include <string.h>
 #include <vector>
 #include <algorithm>
 #include "lang.h"
@@ -45,6 +46,16 @@ inline const char *const MONTHS[] = {"January", "February", "March", "April", "M
 inline const char *const DAY3_VI[] = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
 inline const char *day3(int w) { return TR(DAY3[w], DAY3_VI[w]); }
 inline const char *const MON3[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+// HTTP Date header, "Thu, 20 Nov 2026 09:05:07 GMT" -> seconds since 1970 UTC; 0 if it doesn't parse.
+inline long long http_date(const char *s) {
+  char mon[4] = "";
+  int d, y, h, mi, se;
+  if (sscanf(s, "%*3s, %d %3s %d %d:%d:%d", &d, mon, &y, &h, &mi, &se) != 6) return 0;
+  for (int m = 0; m < 12; m++)
+    if (!strcmp(mon, MON3[m])) return day_num(y, m + 1, d) * 86400LL + h * 3600 + mi * 60 + se;
+  return 0;
+}
 
 // ---------- /todo.md lines ----------
 inline bool valid_due(const String &d) {  // "YYYY-MM-DD" or "YYYY-MM-DD HH:MM"
