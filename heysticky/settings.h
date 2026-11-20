@@ -5,8 +5,9 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <strings.h>
 
-constexpr const char *FW_VERSION = "1.0.2";
+constexpr const char *FW_VERSION = "1.1.0";
 
 // GitHub release tag ("v1.2.0" or "1.2.0") newer than the running version? A tag that isn't x.y.z never is.
 inline bool ver_newer(const char *tag, const char *cur) {
@@ -69,4 +70,17 @@ inline String size_text(unsigned long long b) {
   const size_t n = strlen(s);
   if (n > 2 && s[n - 1] == '0' && s[n - 2] == '.') s[n - 2] = 0;  // "32.0" -> "32"
   return String(s) + " " + U[u];
+}
+
+// 04k SD Files folder paths: "/fonts/NotoSans" -> parent "/fonts", name "NotoSans"; "/fonts" -> "/".
+inline String sd_parent(const String &dir) {
+  const char *s = dir.c_str(), *p = strrchr(s, '/');
+  if (!p || p == s) return String("/");
+  char b[256];
+  snprintf(b, sizeof b, "%.*s", int(p - s), s);
+  return String(b);
+}
+inline String sd_name(const String &dir) { const char *p = strrchr(dir.c_str(), '/'); return String(p ? p + 1 : dir.c_str()); }
+inline bool sd_before(bool aDir, const char *a, bool bDir, const char *b) {  // folders first, then A-Z ignoring case
+  return aDir != bDir ? aDir : strcasecmp(a, b) < 0;
 }

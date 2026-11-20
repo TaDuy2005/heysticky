@@ -3,3 +3,4 @@ backup/
 release/
 build/
 libs/
+.env

@@ -11,12 +11,17 @@
 constexpr uint32_t SYNC_EVERY_MS = 30UL * 60 * 1000, SYNC_TIMEOUT_MS = 40000;
 inline String g_sleepReport;  // last sleep's battery use, repeated in the minute log (read it after plugging USB back in)
 
+constexpr uint32_t WEB_IDLE_MS = 5UL * 60 * 1000;  // Web setup turns off after this long with no phone page request and no touch
+
 inline bool may_sleep() {
   if (!g_sleepMin || g_webOn || g_ota == OTA_CHECKING || g_ota == OTA_INSTALLING) return false;
-  switch (g_screen) {  // an editor is open: typed work would be lost
-    case SCR_TASK: case SCR_DATE: case SCR_TIME: case SCR_NOTEED: case SCR_DISCARD: return false;
-    default: return millis() - g_lastInput >= g_sleepMin * 60000UL;
-  }
+  if (g_screen == SCR_LISTEN || g_screen == SCR_WORKING) return false;  // they end by themselves
+  return millis() - g_lastInput >= g_sleepMin * 60000UL;
+}
+
+// Editors sleep on their own screen (no Home, no moon): light sleep keeps the typing, the top button comes back to it.
+inline bool editor_screen() {
+  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_NOTEED || g_screen == SCR_DISCARD;
 }
 
 inline void touch_power(bool on) {
@@ -36,7 +41,7 @@ inline bool top_pressed() { return digitalRead(PIN_BTN_TOP) != g_btn[0].idle; }
 
 // Wi-Fi on long enough for weather and one NTP reply (the sleep clock drifts), then off again.
 inline void sleep_sync() {
-  if (!g_wifi.count) return;
+  if (!g_wifiOn || !g_wifi.count) return;
   const uint32_t t0 = millis(), wxAt = g_wx.at;
   WiFi.mode(WIFI_STA);
   g_retryAt = 0;
@@ -134,8 +139,9 @@ inline void power_sleep() {
   hw_battery_read(b0);
   const uint32_t t0 = millis();
   Serial.printf("[sleep] in after %d min idle\n", g_sleepMin);
+  const bool stay = editor_screen();
   g_asleep = true;
-  show(SCR_HOME);  // 01b / 01d
+  if (!stay) show(SCR_HOME);  // 01b / 01d
   touch_power(false);
   wifi_off();
   setCpuFrequencyMhz(80);
@@ -145,8 +151,8 @@ inline void power_sleep() {
   esp_sleep_enable_gpio_wakeup();
   uint32_t syncAt = g_wx.at && millis() - g_wx.at < SYNC_EVERY_MS ? g_wx.at + SYNC_EVERY_MS : millis();
   while (!top_pressed()) {
-    if (int32_t(millis() - syncAt) >= 0) { sleep_sync(); syncAt = millis() + SYNC_EVERY_MS; }
-    home_tick();  // clock each minute; weather, battery and indoor when they changed
+    if (!stay && int32_t(millis() - syncAt) >= 0) { sleep_sync(); syncAt = millis() + SYNC_EVERY_MS; }
+    if (!stay) home_tick();  // clock each minute; weather, battery and indoor when they changed; an editor only checks the battery
     if (top_pressed()) break;
     if (battery_empty()) power_off(true);
     Serial.printf("[sleep] tick %s\n", g_shown.clock.c_str());
@@ -171,7 +177,7 @@ inline void power_sleep() {
   touch_power(true);
   g_asleep = false;
   g_lastInput = millis();
-  show(SCR_HOME);
+  if (!stay) show(SCR_HOME);
 }
 
 inline void power_loop() {
@@ -181,5 +187,10 @@ inline void power_loop() {
   else if (!both) both = millis() | 1;
   else if (millis() - both >= OFF_HOLD_MS) power_off(false);
   if (millis() - batAt >= 60000 && g_ota != OTA_INSTALLING) { batAt = millis(); if (battery_empty()) power_off(true); }
+  if (g_webOn && millis() - g_webSeen >= WEB_IDLE_MS && millis() - g_lastInput >= WEB_IDLE_MS) {  // phone gone: hotspot off
+    Serial.println("[net] no phone for 5 min");
+    net_hotspot(false);
+    if (g_screen == SCR_WEBSETUP) g_redraw = true;
+  }
   if (may_sleep()) power_sleep();
 }

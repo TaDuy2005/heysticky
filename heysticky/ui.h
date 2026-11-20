@@ -7,6 +7,7 @@
 #include "src/icons.h"
 #include "hw.h"
 #include "lang.h"
+#include "wrap.h"
 
 extern Seeed_GFX display;
 constexpr int W = 480, H = 800;
@@ -33,6 +34,28 @@ inline int ui_text(const Font &f, String s, int x, int y, int h, Align a = AL_LE
   display.setTextColor(fg, bg);
   display.setTextDatum(a == AL_LEFT ? TL_DATUM : a == AL_CENTER ? TC_DATUM : TR_DATUM);
   return display.drawString(s, x, y + (h - (f.asc + f.desc)) / 2);
+}
+
+// s without the characters font f has no glyph for (other scripts, emoji); spaces and line breaks stay.
+inline String ui_drawable(const Font &f, const String &s) {
+  ui_use(f);
+  String out;
+  uint8_t *b = (uint8_t *)s.c_str();
+  const uint16_t n = s.length();
+  for (uint16_t i = 0, a = 0; i < n; a = i) {
+    uint16_t cp = display.decodeUTF8(b, &i, n - i), g;
+    if (cp == ' ' || cp == '\n' || cp == '\r' || cp == '\t' || (cp != 0xFFFD && display.smoothFont().getUnicodeIndex(cp, &g)))
+      out += s.substring(a, i);
+  }
+  return out;
+}
+
+// Local time; false until NTP has set the clock. Not getLocalTime(&t, 0): it skips the read when the
+// millisecond ticks between its two millis() calls, so the clock flickered to "--:--".
+inline bool local_now(tm &t) {
+  const time_t now = time(nullptr);
+  localtime_r(&now, &t);
+  return t.tm_year > 2016 - 1900;
 }
 
 inline void ui_icon(const Icon &i, int x, int y, uint16_t c = INK) { display.drawBitmap(x, y, i.bits, i.w, i.h, c); }
@@ -118,19 +141,14 @@ inline String ui_fit_tail(const Font &f, String s, int maxW) {  // cut the start
 }
 
 // Word-wrapped text, one line per lineH; x is the left edge (or the box's left edge when centred).
-inline void ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT) {
-  const int ax = a == AL_CENTER ? x + w / 2 : x;
-  String line;
-  int n = 0, i = 0;
-  while (i <= int(s.length()) && n < maxLines) {
-    int j = s.indexOf(' ', i);
-    if (j < 0) j = s.length();
-    const String word = s.substring(i, j), next = line.length() ? line + " " + word : word;
-    if (line.length() && ui_width(f, next) > w) { ui_text(f, line, ax, y + lineH * n++, lineH, a); line = word; }
-    else line = next;
-    i = j + 1;
-  }
-  if (line.length() && n < maxLines) ui_text(f, line, ax, y + lineH * n, lineH, a);
+// Word-wraps s into lines of width w; returns how many lines it takes (draw = false only counts them).
+inline std::vector<String> ui_lines(const Font &f, const String &s, int w, int maxLines) {
+  return wrap_lines(s, w, maxLines, [&](const String &t) { return ui_width(f, t); });
+}
+inline int ui_wrap(const Font &f, const String &s, int x, int y, int w, int lineH, int maxLines, Align a = AL_LEFT, bool draw = true) {
+  const std::vector<String> ls = ui_lines(f, s, w, maxLines);
+  for (int i = 0; draw && i < int(ls.size()); i++) ui_text(f, ls[i], a == AL_CENTER ? x + w / 2 : x, y + lineH * i, lineH, a);
+  return ls.size();
 }
 
 // Figma Toggle (68x38): On = black pill, white knob right; Off = outline, black knob left.
@@ -155,7 +173,12 @@ constexpr int FULL_EVERY = 30;  // calibration knob: partial refreshes between g
 inline int g_partials = 0;
 
 inline void ui_full() { display.update(); g_partials = 0; }
+// The panel diffs its whole "previous image" RAM against the new one, but a partial refresh only rewrites
+// its own window there; after a full refresh the rest still holds the screen before it, so every small
+// partial re-drove that old change (ghosts of 05 on 05a, of Home on 05). The first partial after a full
+// refresh therefore covers the whole screen: only changed pixels move, and the RAM is in step again.
 inline void ui_partial(int x, int y, int w, int h, int fullEvery = FULL_EVERY) {
+  if (g_partials == 0) x = y = 0, w = W, h = H;
   if (++g_partials >= fullEvery) { ui_full(); return; }
   const uint32_t t = millis();
   display.updatePartial(x, y, w, h);

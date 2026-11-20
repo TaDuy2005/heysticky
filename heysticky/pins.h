@@ -8,6 +8,9 @@ constexpr int PIN_BTN_DOWN = 6;
 
 constexpr int PIN_BUZZER = 48;
 
+// PDM microphone (PLAN_AI.md §2): clock, data, power enable (HIGH = on)
+constexpr int PIN_MIC_CLK = 19, PIN_MIC_DATA = 20, PIN_MIC_PWR = 38;
+
 // Touch (GT911) on Wire
 constexpr int PIN_TP_SCL = 2, PIN_TP_SDA = 3, PIN_TP_INT = 21, PIN_TP_RST = 41, PIN_TP_EN = 42;
 

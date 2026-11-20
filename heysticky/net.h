@@ -11,6 +11,7 @@
 #include <time.h>
 #include "store.h"
 #include "wifi_list.h"
+#include "src/webfont.h"
 #include "lang.h"
 #include "userfont.h"
 
@@ -30,6 +31,7 @@ enum JoinResult : uint8_t { JR_NONE, JR_BUSY, JR_OK, JR_BADPASS, JR_FAIL };
 inline NetState g_ns = NS_IDLE;
 inline uint32_t g_nsAt = 0, g_retryAt = 0;
 inline bool g_scanOnly = false, g_wasOn = false;
+inline bool g_wifiOn = true;  // 06b Wi-Fi switch (flash "wifi_on" = "0" when off): off = never join a network
 inline WifiNet g_try;            // network being joined
 inline bool g_tryTest = false;   // asked from the phone page: report the result there
 inline String g_jrSsid;
@@ -105,7 +107,7 @@ inline void net_sta_step() {
     case NS_IDLE:
       if (on) { g_wasOn = true; return; }
       if (g_wasOn) { g_wasOn = false; g_retryAt = millis(); Serial.println("[net] Wi-Fi lost"); }
-      if (g_webOn || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
+      if (!g_wifiOn || g_webOn || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
       WiFi.scanNetworks(true);
       g_scanOnly = false;
       g_ns = NS_SCAN;
@@ -116,7 +118,7 @@ inline void net_sta_step() {
       if (n == WIFI_SCAN_RUNNING && millis() - g_nsAt < SCAN_TIMEOUT_MS) return;
       store_scan(n);
       g_ns = NS_IDLE;
-      if (g_scanOnly || on) return;
+      if (g_scanOnly || on || !g_wifiOn) return;
       if (!join_best_cached()) g_retryAt = millis() + WIFI_RETRY_MS;
       return;
     }
@@ -150,8 +152,11 @@ inline void net_sta_step() {
 }
 
 // ---------- hotspot (04j) ----------
+inline uint32_t g_webSeen = 0;  // millis() of the last request from the phone page (it asks for /api/status every 1.5 s)
+
 inline void net_hotspot(bool on) {
   if (on == g_webOn) return;
+  g_webSeen = millis();
   if (on) {
     for (uint32_t t0 = millis(); g_ns == NS_SCAN && millis() - t0 < SCAN_TIMEOUT_MS; delay(50)) net_sta_step();
     // The page's network list. Scanning while softAP() starts crashed the Wi-Fi driver on core 3.3.12,
@@ -176,13 +181,14 @@ inline void net_hotspot(bool on) {
 }
 
 // ---------- phone setup page (Figma 06–06f, 06l). One page; data through /api. ----------
-// System sans-serif (no web font: the hotspot has no internet). Integrations (06g–06k) stay hidden until V2.
+// JetBrains Mono, served by the Sticky itself (/font/r.woff, /font/b.woff from src/webfont.h): the hotspot has no internet. Integrations (06g–06k) stay hidden until Phase 2.
 inline const char PAGE[] PROGMEM = R"HTML(<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>HeySticky setup</title><style>
-*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
-main{max-width:390px;margin:0 auto;min-height:100vh}
+@font-face{font-family:JBM;src:url(/font/r.woff) format("woff");font-weight:400}@font-face{font-family:JBM;src:url(/font/b.woff) format("woff");font-weight:600 800}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:16px/1.25 JBM,ui-monospace,monospace}
+main{min-height:100vh}
 header{background:#000;color:#fff;height:90px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-h1{font-size:26px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header p{font-size:14px;margin:2px 0 0}
+header>div{flex:1;min-width:0}h1{font-size:26px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header p{font-size:14px;margin:2px 0 0}
 button{font:inherit;color:#000;cursor:pointer}
 .back{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid #fff;background:none;color:#fff;font-size:24px;line-height:1;padding:0 2px 3px 0}
 .c{padding:20px}[hidden]{display:none!important}
@@ -200,7 +206,7 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .btn{display:block;width:100%;height:54px;font-size:18px;font-weight:700;border:2px solid #000;border-radius:8px;background:#fff}
 .btn.k{color:#fff;background:#000;margin-top:22px}
 .dim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:5}
-.sheet{position:fixed;left:0;right:0;top:56px;bottom:0;max-width:390px;margin:0 auto;background:#fff;border-radius:28px 28px 0 0;padding:20px 24px;z-index:6;overflow:auto}
+.sheet{position:fixed;left:0;right:0;top:56px;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:20px 24px;z-index:6;overflow:auto}
 .bar{display:flex;justify-content:space-between}.rb{width:44px;height:44px;border-radius:50%;border:2px solid #000;background:#fff;font-size:20px;padding:0}.rb.k{background:#000;color:#fff}
 .big{display:flex;justify-content:center;margin:36px 0 40px}.sheet h3{font-size:22px;margin:0 0 4px}.sheet p{font-size:18px;margin:0 0 40px}
 .sheet input{height:54px;border-radius:27px;padding:0 22px;font-size:17px;margin-bottom:12px}
@@ -208,14 +214,37 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .al h3{font-size:17px;margin:20px 16px 4px}.al p{font-size:14px;margin:0 16px 18px}.al div{display:flex;border-top:2px solid #000}
 .warn{border:2px solid #000;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:600;margin:0 0 22px}
 .pv{border:1px solid #000;border-radius:8px;padding:16px;margin:0 0 22px}.pv small{display:block;font-size:12px;margin:12px 0 2px}.pv small:first-child{margin-top:0}
-.pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .x{background:none;border:0;padding:0;font-weight:600}.btn:disabled{opacity:.35}
+.pv canvas{display:block;max-width:100%;image-rendering:pixelated}.r .ib{width:32px;height:32px;margin:-6px 0}#v-fonts .n{white-space:normal}.btn:disabled{opacity:.35}
+.sh{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}.tag{border:1.5px solid #000;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:600}
+.sd{font-size:13px;line-height:1.4;margin:10px 0 0}.sec{margin-bottom:22px}.sec .sd+label{margin-top:10px}
+textarea{display:block;width:100%;height:160px;font:14px/1.35 JBM,ui-monospace,monospace;padding:12px;border:2px solid #000;border-radius:8px;resize:vertical;color:#000}::placeholder{color:#999}
+.up{display:flex;gap:10px;align-items:center;margin-top:6px}.up button{flex:none;height:44px;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;font-size:15px;font-weight:600}.up small{font-size:12px;line-height:1.4}
+.foot{font-size:13px;line-height:1.4;margin:0}
+.tg{display:flex;align-items:center;gap:12px;margin-top:10px}.tg>div,.tg>label{flex:1}.tg label{margin:0}.tg .sd{margin:4px 0 0}
+input.sw{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:51px;height:29px;padding:0;border:2px solid #000;border-radius:15px;background:#fff}
+input.sw:before{content:'';position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#000;transition:left .15s}
+input.sw:checked{background:#000}input.sw:checked:before{left:25px;background:#fff}input.sw:disabled{opacity:.35}
+.r .n small{display:block;font-size:14px;margin-top:3px;overflow:hidden;text-overflow:ellipsis}.r .n b{font-weight:600}
+.add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:18px;margin-top:14px;border:2px dashed #000;border-radius:8px;background:#fff;font-size:16px;font-weight:600}.add b{font-size:20px}
+.ps{display:flex;align-items:center;gap:8px;margin-top:14px;border:2px solid #000;border-radius:8px;padding:10px 10px 10px 14px}.ps b{flex:1;font-weight:600;overflow-wrap:anywhere}
+.ib{flex:none;width:40px;height:40px;border:2px solid #000;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.pf{margin-top:14px;border:2px solid #000;border-radius:12px;padding:16px}
+.adv summary{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;margin-top:14px;cursor:pointer;list-style:none}.adv summary::-webkit-details-marker{display:none}
+.adv summary:after{content:'›';font-size:22px;font-weight:400;line-height:1}.adv[open] summary:after{transform:rotate(90deg)}.adv .gr{opacity:.4}
+.lb{display:flex;align-items:center;gap:6px;position:relative;margin:10px 0 6px}.lb label{margin:0}.tg .lb{margin:0}
+.ii{flex:none;width:24px;height:24px;padding:0;border:0;background:none;color:#000;display:flex;align-items:center;justify-content:center}
+.pop{position:absolute;left:0;top:100%;margin-top:6px;width:260px;max-width:calc(100vw - 72px);background:#fff;border:2px solid #000;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:400;line-height:1.4;z-index:3;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px solid #000;border-radius:8px;color:#000;-webkit-appearance:none;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center}.two{display:flex;gap:12px;margin-top:14px}
+.two button{flex:1;height:50px;border:2px solid #000;border-radius:10px;background:#fff;font-size:17px;font-weight:700}.two .k{background:#000;color:#fff}
+.al .ic{display:flex;justify-content:center;margin:20px 0 -10px}.spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.up .sv{font-weight:600}
 .al button{flex:1;height:48px;background:#fff;border:0;font-size:17px}.al button+button{border-left:2px solid #000;font-weight:700}.al button:only-child{font-weight:700}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
 <div class="c" id="v-setup"><div class="g">
 <button class="r" id="rp"><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
 <button class="r" id="rw"><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
-<button class="r" id="rf"><b class="n" id="lf">Fonts</b><span id="fv"></span><span class="ch">›</span></button></div></div>
+<button class="r" id="rf"><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
+<button class="r" id="ri"><b class="n" id="li">Integrations</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -224,6 +253,10 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 <div class="c" id="v-det" hidden></div>
 <div class="c" id="v-fonts" hidden></div>
 <div class="c" id="v-addfont" hidden></div>
+<div class="c" id="v-integ" hidden></div>
+<div class="c" id="v-ai" hidden></div>
+<div class="c" id="v-stt" hidden></div>
+<div class="c" id="v-nai" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -248,30 +281,40 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
 
 function go(v,d){view=v;det=d||'';
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
- if(v==='fonts')fontsView();if(v==='addfont')addView();
+ if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
-$('back').onclick=()=>go(view==='det'?'wifi':view==='addfont'?'fonts':'setup');
-$('rp').onclick=()=>go('profile');$('rw').onclick=()=>go('wifi');$('rf').onclick=()=>go('fonts');
+// Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
+const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai'};
+function nav(v,d){history.pushState(null,'');go(v,d)}
+addEventListener('popstate',()=>{close();go(UP[view]||'setup')});
+$('back').onclick=()=>history.back();
+$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
  const nm=E(o.cur?'b':'span',{className:'n',textContent:n.ssid});r.append(ck,nm);
  if(joining)r.append(E('span',{textContent:L('Joining…','Đang kết nối…')}));
  else{if(n.enc)r.append(lock());if(n.rssi!=null)r.append(wifi(lvl(n.rssi)));
-  if(o.info){const b=E('button',{className:'i',ariaLabel:'Details'},info());b.onclick=e=>{e.stopPropagation();go('det',n.ssid)};r.append(b)}}
+  if(o.info){const b=E('button',{className:'i',ariaLabel:'Details'},info());b.onclick=e=>{e.stopPropagation();nav('det',n.ssid)};r.append(b)}}
  if(o.tap)r.onclick=o.tap;return r}
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
- $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Fonts','Phông chữ'),addfont:L('Add font','Thêm phông')}[view];
+ $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai()}[view];
+ const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
- $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Fonts','Phông chữ');
+ $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
+ $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
- $('pv').textContent=S.name||'';$('wv').textContent=cur||L('Not connected','Chưa kết nối');$('fv').textContent=S.font||L('Default','Mặc định');
+ $('pv').textContent=S.name||'';$('wv').textContent=S.wifi_on===false?L('Off','Tắt'):cur||L('Not connected','Chưa kết nối');
  if(view==='wifi'){const w=$('v-wifi');w.replaceChildren();
   const net=s=>Object.assign({ssid:s},seen(s)||{});
+  const on=S.wifi_on!==false,sw=E('input',{type:'checkbox',className:'sw',id:'w-on',checked:on});  // 06b switch, saved as it flips
+  sw.onchange=async()=>{S.wifi_on=sw.checked;render();try{if(!(await api('/api/wifi_on',{on:sw.checked?1:0})).ok)throw 0}catch(e){alertBox(L('Couldn\'t save','Không lưu được'),'')}load()};
+  w.append(E('div',{className:'g'},E('div',{className:'r'},E('label',{htmlFor:'w-on',className:'n',style:'margin:0;font-size:16px',textContent:'Wi-Fi'}),sw)));
+  if(!on){w.append(E('p',{className:'note'},L('The Sticky won\'t join any network. Weather, clock sync, AI and updates need Wi\u2060-\u2060Fi.','Sticky sẽ không kết nối mạng nào. Thời tiết, đồng bộ giờ, AI và cập nhật cần Wi\u2060-\u2060Fi.')));return}
   if(cur)w.append(E('div',{className:'g'},row(Object.assign(net(cur),{rssi:S.cur.rssi}),{cur:1,info:1})));
   const my=S.saved.filter(s=>s!==cur);
   if(my.length)w.append(E('h2',{textContent:L('MY NETWORKS','MẠNG CỦA TÔI')}),E('div',{className:'g'},...my.map(s=>row(net(s),{info:1,tap:()=>join(s,'')}))));
@@ -286,7 +329,7 @@ function render(){
   const g=E('div',{className:'g'},kv(L('Status','Trạng thái'),on?L('Connected','Đã kết nối'):L('Saved','Đã lưu')),kv(L('Signal','Tín hiệu'),rs==null?L('Not in range','Ngoài vùng phủ'):L(['','Weak','Good','Excellent'],['','Yếu','Tốt','Rất tốt'])[lvl(rs)]));
   if(n)g.append(kv(L('Security','Bảo mật'),ENC[n.enc]||L('Secured','Có bảo mật')));if(on)g.append(kv(L('IP address','Địa chỉ IP'),S.cur.ip));
   const f=E('button',{className:'btn',textContent:L('Forget This Network','Quên mạng này')});
-  f.onclick=()=>alertBox(L('Forget “','Quên “')+det+'”?',L('Your Sticky will stop joining it.','Sticky sẽ không tự kết nối mạng này nữa.'),L('Forget','Quên'),async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}go('wifi');load()});
+  f.onclick=()=>alertBox(L('Forget “','Quên “')+det+'”?',L('Your Sticky will stop joining it.','Sticky sẽ không tự kết nối mạng này nữa.'),L('Forget','Quên'),async()=>{try{await api('/api/forget',{ssid:det})}catch(e){}history.back();load()});
   d.append(g,f)}}
 
 async function join(ssid,pass){pending=true;S.join={ssid,state:'busy'};render();
@@ -325,17 +368,17 @@ c.oninput=()=>{lat=lon='';clearTimeout(t);const q=c.value.trim();
 document.addEventListener('click',e=>{if(!l.contains(e.target)&&e.target!==c)l.hidden=true});
 $('v-profile').onsubmit=async e=>{e.preventDefault();const b=$('save');
  try{const r=await api('/api/save',{name:$('name').value,city:c.value,lat,lon});if(!r.ok)throw 0;
-  b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>go('setup'),900)}
+  b.textContent=L('✓  Saved','✓  Đã lưu');await load();setTimeout(()=>history.back(),900)}
  catch(e){alertBox(L('Couldn\'t save','Không lưu được'))}};
 
-// ---------- Fonts (06m) ----------
+// ---------- Font book (06m) ----------
 let F={cur:'',list:[],sd:true};
 async function fontsView(){const v=$('v-fonts');try{F=await(await api('/api/fonts')).json()}catch(e){}
- const tag=t=>E('span',{textContent:t}),rows=[E('div',{className:'r'},E('b',{className:'n',textContent:L('Default (built-in)','Mặc định (có sẵn)')}),tag(F.cur?'':L('In use','Đang dùng')))];
- for(const n of F.list){const d=E('button',{className:'x',textContent:L('Delete','Xoá')});
+ const tag=t=>E('span',{textContent:t}),rows=[E('div',{className:'r'},E('b',{className:'n',textContent:L('JetBrains Mono (built-in)','JetBrains Mono (có sẵn)')}),tag(F.cur?'':L('In use','Đang dùng')))];
+ for(const n of F.list){const d=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
   d.onclick=()=>alertBox(L('Delete “','Xoá “')+n+'”?',L('It is removed from the SD card.','Phông sẽ bị xoá khỏi thẻ SD.'),L('Delete','Xoá'),async()=>{try{await api('/api/font_del',{name:n})}catch(e){}fontsView();load()});
   rows.push(E('div',{className:'r'},E('b',{className:'n',textContent:n}),n===F.cur?tag(L('In use','Đang dùng')):'',d))}
- const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>go('addfont');
+ const add=E('button',{className:'btn k',textContent:L('+  Add font','+  Thêm phông'),disabled:!F.sd||F.list.length>=8});add.onclick=()=>nav('addfont');
  v.replaceChildren(E('div',{className:'g'},...rows),add,E('p',{className:'note',style:'margin-top:12px',textContent:!F.sd?L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.'):
   L('Pick the font on the Sticky: Settings › Language & Font › User Font.','Chọn phông trên Sticky: Cài đặt › Ngôn ngữ & Phông › Phông chữ.')}))}
 
@@ -393,11 +436,98 @@ function addView(){FF={};const v=$('v-addfont'),nm=E('input',{id:'fname',maxLeng
   try{for(let i=0;i<SLOTS.length;i++){const[slot,k,px]=SLOTS[i];msg.textContent=L('Uploading ','Đang tải lên ')+(i+1)+'/'+SLOTS.length+'…';
     const fd=new FormData();fd.append('f',new Blob([vlw(fam(k),px)]),slot+'.vlw');
     const r=await fetch('/api/font?name='+encodeURIComponent(name)+'&slot='+slot,{method:'POST',body:fd});if(!r.ok)throw 0}
-   msg.textContent='';alertBox(L('“'+name+'” is on the Sticky','Đã lưu “'+name+'” vào Sticky'),L('Pick it in Settings › Language & Font › User Font.','Chọn trong Cài đặt › Ngôn ngữ & Phông › Phông chữ.'));go('fonts')}
+   msg.textContent='';alertBox(L('“'+name+'” is on the Sticky','Đã lưu “'+name+'” vào Sticky'),L('Pick it in Settings › Language & Font › User Font.','Chọn trong Cài đặt › Ngôn ngữ & Phông › Phông chữ.'));history.back()}
   catch(e){msg.textContent='';upb.disabled=false;alertBox(L('Couldn\'t upload the font','Không tải lên được phông'))}};
  v.replaceChildren(E('label',{htmlFor:'fname',textContent:L('Font name','Tên phông')}),nm,E('h2',{style:'margin-top:22px',textContent:L('Font files','Tệp phông')}),E('div',{className:'g'},...rows),warn,
   E('h2',{textContent:L('Preview — as on the Sticky','Xem trước — như trên Sticky')}),pv,
   E('p',{className:'note',style:'margin:0',textContent:L('Numbers on Home and the clock keep the built-in font.','Số trên Trang chủ và đồng hồ vẫn dùng phông có sẵn.')}),upb,msg)}
+// ---------- Integrations (06g) + AI (06h). Notion, Home Assistant and Remote access come in Phase 3. ----------
+function integView(){const r=E('button',{className:'r'},E('b',{className:'n',textContent:'AI'}),E('span',{className:'ch',textContent:'›'}));
+ r.onclick=()=>nav('ai');$('v-integ').replaceChildren(E('div',{className:'g'},r))}
+let A={};
+async function aiLoad(){try{A=await(await api('/api/ai')).json();return true}catch(e){alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));return false}}
+const SVC={stt:()=>L('Speech-to-text','Giọng nói thành chữ'),nai:()=>L('AI for notes & to-dos','AI cho ghi chú & việc cần làm')};
+async function aiView(){const v=$('v-ai');v.replaceChildren();if(!await aiLoad())return;
+ const r=(id,set,m)=>{const b=E('button',{className:'r'},E('span',{className:'n'},E('b',{textContent:SVC[id]()}),E('small',{textContent:set?m.split('/').pop():L('Not set','Chưa cài đặt')})),E('span',{className:'ch',textContent:'›'}));
+  b.onclick=()=>nav(id);return b};
+ v.append(E('div',{className:'g'},r('stt',A.stt_set,A.stt_model),r('nai',A.ai_set,A.ai_model)))}
+// 06h3: a pop-up with an icon; no ok = no button (Testing…), ok = an OK button that runs it (or just closes)
+function popBox(ic,title,text,ok){const a=E('div',{className:'al'},E('span',{className:'ic'},ic),E('h3',{textContent:title}),E('p',{textContent:text}));
+ if(ok!==undefined)a.append(E('div',{},E('button',{textContent:'OK',onclick:()=>{close();if(ok)ok()}})));
+ $('ov').replaceChildren(E('div',{className:'dim'}),a)}
+const host=u=>{try{return new URL(u).host}catch(e){return u}};
+const failText=(R,u)=>R.why==='stt'?L('Add speech-to-text first, or fill in the Base URL and API key.','Hãy thêm giọng nói thành chữ trước, hoặc điền URL gốc và khoá API.')
+ :R.why==='wifi'?L('The Sticky isn\'t on Wi-Fi. Join a network first.','Sticky chưa kết nối Wi-Fi. Hãy kết nối một mạng trước.')
+ :R.code===-9?L('Couldn\'t reach the Sticky.','Không kết nối được Sticky.')
+ :R.code<0?L('Couldn\'t reach ','Không kết nối được tới ')+host(u)+'.'
+ :R.code===401||R.code===403?L('Wrong API key. Check it and try again.','Sai khoá API. Hãy kiểm tra rồi thử lại.')
+ :R.code===400||R.code===404||R.code===422?L('Check the Base URL and model.','Hãy kiểm tra URL gốc và mô hình.')+(R.msg?' ('+R.msg+')':'')
+ :L('The service answered ','Dịch vụ trả lời ')+R.code+(R.msg?': '+R.msg:'.');
+// A field label; tip = an (i) that opens a small pop-up on top (any tap elsewhere closes it)
+const lab=(id,t,tip)=>{const l=E('label',{htmlFor:id,textContent:t});if(!tip)return l;
+ const p=E('div',{className:'pop',hidden:true,textContent:tip}),b=E('button',{type:'button',className:'ii',ariaLabel:'Info'},H(svg(18,'<circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".4"/>')));
+ b.onclick=()=>p.hidden=!p.hidden;return E('div',{className:'lb'},l,b,p)};
+document.addEventListener('click',e=>{for(const p of document.querySelectorAll('.pop'))if(!p.parentNode.contains(e.target))p.hidden=true});
+// 06h1 / 06h2: dashed "Add model provider" -> form (Cancel / Save = test, then save) -> saved line with edit / delete
+async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLoad())return;
+ const stt=id==='stt',svc=stt?'stt':'ai',p=svc+'_',slot=E('div');
+ v.append(E('div',{className:'sec'},E('span',{className:'tag',textContent:L('OPENAI-COMPATIBLE','TƯƠNG THÍCH OPENAI')}),
+  E('p',{className:'sd',textContent:stt?L('Turns your voice into text. Any service with an OpenAI-style /audio/transcriptions endpoint.','Chuyển giọng nói thành chữ. Dùng được mọi dịch vụ có endpoint /audio/transcriptions kiểu OpenAI.')
+   :L('Writes notes using your instructions and splits to-dos. Works with OpenRouter or any OpenAI-style /chat/completions API.','Viết ghi chú theo hướng dẫn của bạn và tách việc cần làm. Dùng được với OpenRouter hoặc mọi API /chat/completions kiểu OpenAI.')}),slot));
+ const show=()=>{if(!A[p+'set']){const b=E('button',{className:'add'},E('b',{textContent:'+'}),L('Add model provider','Thêm nhà cung cấp mô hình'));b.onclick=form;slot.replaceChildren(b);return}
+  const ed=E('button',{className:'ib',ariaLabel:L('Edit','Sửa')},H(svg(20,'<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>')));
+  const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
+  ed.onclick=form;
+  del.onclick=()=>alertBox(stt?L('Delete speech-to-text?','Xoá giọng nói thành chữ?'):L('Delete AI for notes & to-dos?','Xoá AI cho ghi chú & việc cần làm?'),
+   L('The API key will be removed from the Sticky.','Khoá API sẽ bị xoá khỏi Sticky.'),L('Delete','Xoá'),async()=>{try{await api('/api/ai_del',{svc})}catch(e){}if(await aiLoad())show()});
+  slot.replaceChildren(E('div',{className:'ps'},E('b',{textContent:A[p+'model']}),ed,del))};
+ function form(){const inp={},f=(k,t,val,ph,pw,tip)=>{inp[k]=E('input',{id:'a-'+k,value:val||'',placeholder:ph||'',type:pw?'password':'text',autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:k==='order'?100:200});
+   return[lab('a-'+k,t,tip),inp[k]]};
+  const save=E('button',{type:'button',className:'k',textContent:L('Save','Lưu')});
+  // OpenRouter only (hidden for other APIs), Figma 06h1 / 06h2: Advanced › = 06h2 Mode, then Provider (on = hosts tried first, Mode greyed)
+  const psw=E('input',{type:'checkbox',className:'sw',id:'a-psw',checked:!!A[p+'order']}),route=E('details',{className:'adv',open:!!A[p+'order']},E('summary',{textContent:L('Advanced','Nâng cao')}));
+  let mode=E('div');
+  if(!stt){inp.sort=E('select',{id:'a-sort'},...[['',L('Balanced (price + speed)','Cân bằng (giá + tốc độ)')],['throughput',L('Fastest (Nitro)','Nhanh nhất (Nitro)')],
+    ['price',L('Cheapest (Floor)','Rẻ nhất (Floor)')]].map(([v,t])=>E('option',{value:v,textContent:t})));inp.sort.value=A.ai_sort||'';
+   mode=E('div',{},lab('a-sort',L('Mode','Chế độ'),L('OpenRouter picks the host for you.','OpenRouter tự chọn nơi chạy mô hình.')),inp.sort);route.append(mode)}
+  inp.order=E('input',{id:'a-order',value:A[p+'order']||'',placeholder:L('Any (e.g. groq, deepinfra)','Bất kỳ (vd. groq, deepinfra)'),autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:100});
+  route.append(E('div',{className:'tg'},E('div',{},lab('a-psw',L('Provider','Nhà cung cấp'),L('Auto-fallback to other provider if it is down','Tự chuyển sang nhà cung cấp khác nếu nó lỗi'))),psw),inp.order);
+  const sync=()=>{inp.order.hidden=!psw.checked;mode.classList.toggle('gr',psw.checked);if(inp.sort)inp.sort.disabled=psw.checked};psw.onchange=sync;sync();
+  // 06h1 / 06h2 placeholders, Figma 06h: 06h2 left empty still uses speech-to-text's URL / key and the default model
+  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],'https://gateway.example/v1'),
+   ...f('model',L('Model','Mô hình'),stt||A.ai_set?A[p+'model']:'',L('Model ID','ID mô hình')),
+   ...f('key',L('API key','Khoá API'),'',A[p+'key']||L('Enter your API key','Nhập khoá API'),1),route,
+   E('div',{className:'two'},E('button',{type:'button',textContent:L('Cancel','Huỷ'),onclick:show}),save)));
+  const orx=()=>route.hidden=!/openrouter\.ai/.test(inp.url.value.trim()||A.stt_url||'');inp.url.oninput=orx;orx();
+  save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();if(!psw.checked)b.order='';
+   if(stt&&(!b.url||!b.model))return alertBox(L('Fill in the Base URL and model','Hãy điền URL gốc và mô hình'));
+   if(stt&&!b.key&&!A.stt_set)return alertBox(L('Paste your API key','Dán khoá API'));
+   const u=b.url||A.stt_url,sp=H(svg(36,'<circle cx="12" cy="12" r="9" opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/>'));sp.classList.add('spin');
+   popBox(sp,L('Testing connection…','Đang kiểm tra kết nối…'),L('Sending a short test to ','Đang gửi một yêu cầu thử tới ')+host(u)+'.');
+   let R;try{const r=await api('/api/ai_test',b);if(!r.ok)throw 0;R=await r.json()}catch(e){R={code:-9}}
+   if(R.code===200){await aiLoad();popBox(H(svg(36,'<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff"/>')),
+    L('Connected','Đã kết nối'),(b.model||A.ai_def)+L(' is ready to use.',' đã sẵn sàng.'),show)}
+   else popBox(H(svg(36,'<circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/>')),L('Couldn\'t connect','Không kết nối được'),failText(R,u),null)}}
+ show();if(stt)return;
+ // 06h2 only: Plain text + Note instructions, saved as they change (toggles at once, the text when the box loses focus)
+ const ta=E('textarea',{id:'a-notes',value:A.notes||'',maxLength:2000,placeholder:'# Title\n## Key points\n- …\n## Action items\n- [ ] …\n'+L('Keep it short. Write in English.','Viết ngắn gọn. Viết bằng tiếng Việt.')});
+ const file=E('input',{type:'file',accept:'.txt,text/plain',hidden:true}),upb=E('button',{type:'button'},H(svg(18,'<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 15v4h14v-4"/>')),' '+L('Upload .txt','Tải lên .txt'));
+ upb.style.display='flex';upb.style.alignItems='center';upb.style.gap='8px';upb.onclick=()=>file.click();
+ const sw=(i,on)=>E('input',{type:'checkbox',className:'sw',id:i,checked:!!on}),plain=sw('a-plain',A.plain),useN=sw('a-instr',A.instr),ok=E('small',{className:'sv'});
+ const nbox=E('div',{},E('p',{className:'sd',style:'margin:6px 0',textContent:L('Tell the AI how to write your notes: an outline, a template, or rules.','Cho AI biết cách viết ghi chú: dàn ý, mẫu hoặc quy tắc.')}),ta,
+  E('div',{className:'up'},upb,E('small',{textContent:L('Replaces the text above · max 2,000 characters','Thay cho nội dung trên · tối đa 2.000 ký tự')}),ok),file);
+ const opts=async n=>{const b={plain:plain.checked?1:0,instr:useN.checked?1:0};if(n)b.notes=ta.value;
+  try{const r=await api('/api/ai_opts',b);if(r.status===503)throw L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.');if(!r.ok)throw '';
+   if(n){ok.textContent=L('Saved','Đã lưu');setTimeout(()=>ok.textContent='',2000)}}
+  catch(e){alertBox(L('Couldn\'t save','Không lưu được'),typeof e==='string'?e:'')}};
+ file.onchange=async()=>{const f=file.files[0];if(!f)return;let t=await f.text();file.value='';
+  if([...t].length>2000){t=[...t].slice(0,2000).join('');alertBox(L('The file is longer than 2,000 characters','Tệp dài hơn 2.000 ký tự'),L('Only the first 2,000 were kept.','Chỉ giữ 2.000 ký tự đầu.'))}ta.value=t;opts(1)};
+ const sync=()=>{useN.disabled=plain.checked;nbox.hidden=plain.checked||!useN.checked};
+ plain.onchange=useN.onchange=()=>{sync();opts()};ta.onchange=()=>opts(1);sync();
+ if(!A.sd){ta.disabled=upb.disabled=true;ta.placeholder=L('Put a microSD card in the Sticky first.','Hãy lắp thẻ microSD vào Sticky trước.')}
+ v.append(E('div',{className:'tg'},E('div',{},E('label',{htmlFor:'a-plain',textContent:L('Plain text','Văn bản gốc')}),
+   E('p',{className:'sd',textContent:L('Save your exact words as the note. The AI only picks to-do or note.','Lưu đúng lời bạn nói thành ghi chú. AI chỉ chọn việc cần làm hay ghi chú.')})),plain),
+  E('div',{className:'tg'},E('label',{htmlFor:'a-instr',textContent:L('Note instructions','Hướng dẫn viết ghi chú')}),useN),nbox)}
 load();setInterval(load,1500);
 </script></body></html>)HTML";
 
@@ -406,6 +536,11 @@ inline bool ap_only() {
   if (g_web.client().localIP() == WiFi.softAPIP()) return true;
   g_web.send(404, "text/plain", "Not found");
   return false;
+}
+inline void font_send(const uint8_t *d, size_t n) {  // the page's web font; same bytes until the firmware changes
+  if (!ap_only()) return;
+  g_web.sendHeader("Cache-Control", "max-age=86400");
+  g_web.send_P(200, "font/woff", (PGM_P)d, n);
 }
 
 inline void send_json(const JsonDocument &d, int code = 200) {
@@ -424,6 +559,7 @@ inline bool text_ok(const String &s, size_t maxLen) {
 
 inline void api_status() {
   if (!ap_only()) return;
+  g_webSeen = millis();
   JsonDocument d;
   d["name"] = cfg_get("name");
   d["city"] = cfg_get("city");
@@ -443,6 +579,7 @@ inline void api_status() {
     n["enc"] = g_nets[i].enc;
   }
   d["scanning"] = g_ns == NS_SCAN;
+  d["wifi_on"] = g_wifiOn;
   d["lang"] = g_vi ? "vi" : "en";
   d["font"] = cfg_get("font");
   if (g_jr != JR_NONE) {
@@ -461,6 +598,7 @@ inline void api_join() {
   String ssid = g_web.arg("ssid"), pass = g_web.arg("pass");
   if (ssid.isEmpty() || !text_ok(ssid, 32) || !text_ok(pass, 63)) return api_reply(400, "Invalid input");
   if (g_ns == NS_SCAN) return api_reply(409, "Busy");
+  if (!g_wifiOn) return api_reply(409, "Wi-Fi is off");
   const int k = wl_find(g_wifi, ssid);
   if (pass.isEmpty() && k >= 0) pass = g_wifi.n[k].pass;
   g_jrSsid = ssid;
@@ -558,7 +696,7 @@ inline void api_font_done() {
   if (!ap_only()) return;
   if (g_upOk && cfg_get("font") == g_web.arg("name") && g_web.arg("slot") == FONT_SLOTS[FONT_SLOTS_N - 1].file) {
     font_apply(g_web.arg("name"));  // the font in use was replaced: take the new files after the last slot
-    g_fontDirty = true;
+    g_pageDirty = true;
   }
   api_reply(g_upOk ? 200 : 400, g_upOk ? "OK" : "Bad font file");
   g_upOk = false;
@@ -592,6 +730,109 @@ inline void api_city() {
   send_json(out);
 }
 
+// ---------- AI (06h): speech-to-text + AI for notes & to-dos, both OpenAI-compatible (PLAN_AI.md) ----------
+// Defaults: one OpenRouter key for both. An empty AI URL / key means "same as speech-to-text".
+constexpr const char *AI_URL_DEF = "https://openrouter.ai/api/v1";
+constexpr const char *STT_MODEL_DEF = "mistralai/voxtral-small-transcribe-3-0";
+constexpr const char *AI_MODEL_DEF = "deepseek/deepseek-v4.1-flash-1017";  // has zero-retention hosts on OpenRouter
+constexpr const char *NOTE_INSTR_PATH = "/ai/note-instructions.txt";
+constexpr size_t NOTE_INSTR_MAX = 2000;  // characters
+
+// Keys never go back to the browser: only their first few characters, to show which one is saved.
+inline String key_hint(const char *k) {
+  const String s = cfg_get(k);
+  return s.length() ? s.substring(0, min<unsigned>(6, s.length() / 3)) + "••••" : "";
+}
+inline size_t utf8_len(const String &s) {
+  size_t n = 0;
+  for (const char c : s) n += (uint8_t(c) & 0xC0) != 0x80;
+  return n;
+}
+inline bool url_ok(const String &u) { return u.isEmpty() || ((u.startsWith("https://") || u.startsWith("http://")) && text_ok(u, 200) && u.indexOf(' ') < 0); }
+inline bool hosts_ok(const String &s) {  // 06h Provider: host names, e.g. "groq, deepinfra"
+  if (s.length() > 100) return false;
+  for (const char c : s)
+    if (!isalnum(uint8_t(c)) && !strchr("-_./, ", c)) return false;
+  return true;
+}
+inline bool notes_ok(const String &s) {  // multi-line text: line breaks and tabs allowed, other control characters not
+  if (utf8_len(s) > NOTE_INSTR_MAX) return false;
+  for (const char c : s)
+    if ((uint8_t(c) < 0x20 && c != '\n' && c != '\r' && c != '\t') || c == 0x7f) return false;
+  return true;
+}
+
+inline void api_ai_get() {
+  if (!ap_only()) return;
+  JsonDocument d;
+  d["stt_url"] = cfg_get("stt_url", AI_URL_DEF);
+  d["stt_model"] = cfg_get("stt_model", STT_MODEL_DEF);
+  d["stt_key"] = key_hint("stt_key");
+  d["ai_url"] = cfg_get("ai_url");
+  d["ai_model"] = cfg_get("ai_model", AI_MODEL_DEF);
+  d["ai_key"] = key_hint("ai_key");
+  d["ai_def"] = AI_MODEL_DEF;  // 06h2 Model left empty
+  d["stt_order"] = cfg_get("stt_order");
+  d["ai_order"] = cfg_get("ai_order");
+  d["ai_sort"] = cfg_get("ai_sort");
+  d["stt_set"] = cfg_get("stt_key").length() > 0;  // a passed test saves the key; 06h4 deletes it
+  d["ai_set"] = cfg_get("ai_model").length() > 0;  // the AI may borrow the key, so its model marks it saved
+  d["plain"] = cfg_get("ai_plain") == "1";
+  d["instr"] = cfg_get("ai_instr", "1") == "1";
+  d["sd"] = g_sdOk;
+  if (g_sdOk) {
+    File f = SD.open(NOTE_INSTR_PATH);
+    if (f) { d["notes"] = read_upto(f, NOTE_INSTR_MAX * 4); f.close(); }
+  }
+  send_json(d);
+}
+
+// 06h2 toggles save as they flip; note instructions (only when sent) go to the card, written as .tmp then renamed.
+inline void api_ai_opts() {
+  if (!ap_only()) return;
+  if (g_web.hasArg("notes")) {
+    const String notes = g_web.arg("notes");
+    if (!notes_ok(notes)) return api_reply(400, "Invalid input");
+    File cur = g_sdOk ? SD.open(NOTE_INSTR_PATH) : File();
+    const bool same = cur ? read_upto(cur, NOTE_INSTR_MAX * 4) == notes : notes.isEmpty();
+    if (cur) cur.close();
+    if (!same) {
+      if (!g_sdOk) return api_reply(503, "No SD card");
+      if (!SD.exists("/ai")) SD.mkdir("/ai");
+      SD.remove(NOTE_INSTR_PATH);
+      if (notes.length()) {
+        const char *tmp = "/ai/note-instructions.tmp";
+        File f = SD.open(tmp, FILE_WRITE);
+        const bool ok = f && f.print(notes) == notes.length();
+        if (f) f.close();
+        if (!ok || !SD.rename(tmp, NOTE_INSTR_PATH)) return api_reply(500, "SD write failed");
+      }
+    }
+  }
+  cfg_set("ai_plain", g_web.arg("plain") == "1" ? "1" : "0");
+  cfg_set("ai_instr", g_web.arg("instr") == "0" ? "0" : "1");
+  api_reply(200, "OK");
+}
+
+// 06h4: forget one service's URL, model, key and provider choice.
+inline void api_ai_del() {
+  if (!ap_only()) return;
+  const String p = g_web.arg("svc") == "stt" ? "stt_" : "ai_";
+  for (const char *k : {"url", "model", "key", "order", "auto", "sort"}) cfg_del((p + k).c_str());  // "auto": the old 06h2 switch
+  api_reply(200, "OK");
+}
+
+inline void wifi_set_on(bool on);
+inline void api_wifi_on() {  // 06b switch, saved as it flips
+  if (!ap_only()) return;
+  const String v = g_web.arg("on");
+  if (v != "0" && v != "1") return api_reply(400, "Invalid input");
+  wifi_set_on(v == "1");
+  api_reply(200, "OK");
+}
+
+inline void api_ai_test();  // 06h1/06h2 Save, in ai.h (it needs ai_post)
+
 // Returns true when a network is saved; false = first setup, the hotspot is already on.
 inline bool net_begin() {
   WiFi.persistent(false);  // our own store.h holds the networks
@@ -602,19 +843,31 @@ inline bool net_begin() {
     if (r != WIFI_REASON_ASSOC_LEAVE) g_discReason = r;  // not our own disconnect()
   }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   wifi_load();
+  g_wifiOn = cfg_get("wifi_on", "1") != "0";
   const String off = cfg_get("utc_off");  // last known offset: right clock before the first weather reply
   if (off.length()) g_utc_off = off.toInt();
   configTime(off.toInt(), 0, "pool.ntp.org", "time.google.com");
-  g_web.on("/", HTTP_GET, [] { if (ap_only()) g_web.send_P(200, "text/html; charset=utf-8", PAGE); });
+  g_web.on("/", HTTP_GET, [] {
+    if (!ap_only()) return;
+    g_web.sendHeader("Cache-Control", "no-store");  // a new firmware's page shows on the next reload
+    g_web.send_P(200, "text/html; charset=utf-8", PAGE);
+  });
+  g_web.on("/font/r.woff", HTTP_GET, [] { font_send(WEBFONT_R, sizeof WEBFONT_R); });
+  g_web.on("/font/b.woff", HTTP_GET, [] { font_send(WEBFONT_B, sizeof WEBFONT_B); });
   g_web.on("/api/status", HTTP_GET, api_status);
   g_web.on("/api/city", HTTP_GET, api_city);
   g_web.on("/api/join", HTTP_POST, api_join);
   g_web.on("/api/forget", HTTP_POST, api_forget);
   g_web.on("/api/save", HTTP_POST, api_save);
   g_web.on("/api/scan", HTTP_POST, api_scan);
+  g_web.on("/api/wifi_on", HTTP_POST, api_wifi_on);
   g_web.on("/api/fonts", HTTP_GET, api_fonts);
   g_web.on("/api/font", HTTP_POST, api_font_done, api_font_part);
   g_web.on("/api/font_del", HTTP_POST, api_font_del);
+  g_web.on("/api/ai", HTTP_GET, api_ai_get);
+  g_web.on("/api/ai_opts", HTTP_POST, api_ai_opts);
+  g_web.on("/api/ai_del", HTTP_POST, api_ai_del);
+  g_web.on("/api/ai_test", HTTP_POST, api_ai_test);
   g_web.onNotFound([] {  // captive portal: any other address -> the page
     if (!ap_only()) return;
     g_web.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/");
@@ -707,6 +960,23 @@ inline bool net_weather() {
   }
   Serial.printf("[wx] %.1f (%.0f/%.0f) code=%d %s  utc%+ld\n", g_wx.temp, g_wx.hi, g_wx.lo, g_wx.code, wx_info(g_wx.code).label, off);
   return true;
+}
+
+// Off: leave the network now (the hotspot, if on, stays up) and show weather as Offline. On: join the strongest saved one.
+inline void wifi_set_on(bool on) {
+  if (on == g_wifiOn) return;
+  g_wifiOn = on;
+  cfg_set("wifi_on", on ? "1" : "0");
+  g_jr = JR_NONE;
+  if (on) { g_retryAt = 0; if (g_ns == NS_IDLE) join_best_cached(); }
+  else {
+    WiFi.disconnect();
+    if (g_ns == NS_JOIN) g_ns = NS_IDLE;  // a running scan finishes on its own and joins nothing
+    g_wasOn = false;
+    g_wx.ok = false;
+  }
+  g_pageDirty = true;  // status bar Wi-Fi icon and weather card now, not at the next minute
+  Serial.printf("[net] Wi-Fi %s\n", on ? "on" : "off");
 }
 
 inline void net_loop() {

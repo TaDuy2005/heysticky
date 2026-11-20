@@ -179,7 +179,8 @@ inline String about_sn() {
 }
 
 inline String sd_free_text() {
-  if (!g_sdOk) return sd_inserted() ? TR("Not mounted", "Chưa gắn") : TR("No card", "Không có thẻ");
+  if (!sd_inserted()) return TR("No card", "Không có thẻ");  // even if it was mounted before being pulled out
+  if (!g_sdOk) return TR("Not mounted", "Chưa gắn");
   const String x = size_text(SD.totalBytes() - SD.usedBytes());
   return TR(x + " free", "Trống " + x);
 }
@@ -192,7 +193,7 @@ inline void draw_about() {
   // ponytail: certifications are a static line until the device label's text is confirmed (PLAN §12)
   const String rows[][2] = {{TR("Name", "Tên"), "HeySticky"}, {"SN", about_sn()}, {"MAC", WiFi.macAddress()},
                             {TR("Software version", "Phiên bản"), FW_VERSION}, {TR("Certifications", "Chứng nhận"), "FCC · CE"}, {TR("SD card", "Thẻ SD"), sd_free_text()}};
-  for (int i = 0; i < 6; i++) info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, rows[i][0], rows[i][1], i == ABOUT_SD_ROW);
+  for (int i = 0; i < 6; i++) info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, rows[i][0], rows[i][1], i == ABOUT_SD_ROW && sd_inserted());  // no card: no ›, no tap
 }
 
 // ---------- 04i SD Card ----------
@@ -201,16 +202,16 @@ inline void draw_sdcard() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_topbar(TR("SD Card", "Thẻ SD"), "");
-  const String space = g_sdOk ? size_text(SD.totalBytes() - SD.usedBytes()) + " / " + size_text(SD.totalBytes()) : "—";
+  const String space = g_sdOk ? size_text(SD.usedBytes()) + " / " + size_text(SD.totalBytes()) : "—";  // used / total
   info_row(SROW_TOP, IROW_H, F_B25, TR("Inserted", "Đã lắp"), sd_inserted() ? TR("Yes", "Có") : TR("No", "Không"), false);
   info_row(SROW_TOP + IROW_H, IROW_H, F_B25, TR("Mounted", "Đã gắn"), g_sdOk ? TR("Yes", "Có") : TR("No", "Không"), false);
   info_row(SROW_TOP + 2 * IROW_H, IROW_H, F_B25, TR("Path", "Đường dẫn"), "/sd", false);
   info_row(SROW_TOP + 3 * IROW_H, IROW_H, F_B25, TR("Space", "Dung lượng"), space, false);
-  const String n = g_files.size() >= SD_FILES_MAX ? String(SD_FILES_MAX) + "+" : String(g_files.size());
+  const String n = g_fileCount >= SD_FILES_MAX ? String(SD_FILES_MAX) + "+" : String(g_fileCount);
   info_row(SROW_TOP + 4 * IROW_H, IROW_H, F_B25, TR("Files", "Tệp"), g_sdOk ? n : "—", g_sdOk);
 }
 
-// ---------- SD Files: every file on the card, by path ----------
+// ---------- 04k SD Files: one folder at a time (folders ›, then files with size) ----------
 constexpr int FILES_ROWS = 9;
 inline int g_filesPage = 0;
 inline int files_pages() { return max(1, (int(g_files.size()) + FILES_ROWS - 1) / FILES_ROWS); }
@@ -218,17 +219,17 @@ inline int files_pages() { return max(1, (int(g_files.size()) + FILES_ROWS - 1) 
 inline void draw_files() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("SD Files", "Tệp trên thẻ SD"), String(g_files.size()));
+  ui_topbar(g_dir == "/" ? TR("SD Files", "Tệp trên thẻ SD") : sd_name(g_dir), String(g_files.size()));
   if (g_files.empty()) { ui_text(F_R25, TR("No files", "Không có tệp"), W / 2, 318, 33, AL_CENTER); return; }
   g_filesPage = constrain(g_filesPage, 0, files_pages() - 1);
   for (int r = 0; r < FILES_ROWS; r++) {
     const int i = g_filesPage * FILES_ROWS + r;
     if (i >= int(g_files.size())) break;
-    const String size = size_text(g_files[i].size);
-    const int y = SROW_TOP + r * IROW_H;
-    ui_text(F_B25, ui_fit(F_B25, g_files[i].path, 400 - ui_width(F_R25, size) - 12), 40, y + 16, 33);
-    ui_text(F_R25, size, 440, y + 16, 33, AL_RIGHT);
-    display.fillRect(40, y + IROW_H - 1, 400, 1, INK);
+    const SdFile &f = g_files[i];
+    const bool dir = f.items >= 0;
+    const String val = dir ? String(f.items) : size_text(f.size);
+    const String name = ui_fit(F_B25, dir ? f.name + "/" : f.name, 400 - ui_width(F_R25, val) - (dir ? 34 : 0) - 12);
+    info_row(SROW_TOP + r * IROW_H, IROW_H, F_B25, name, val, dir);
   }
   if (files_pages() > 1) ui_page_counter(String(g_filesPage + 1) + "/" + files_pages());
 }
