@@ -48,16 +48,16 @@ int main() {
   const String now = "2026-11-17 10:30";
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Overdue · 16/11");
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 09:00)"), now) == "Overdue · 17/11 9:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 17/11 19:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17)"), now) == "Today 17/11");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 18/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Today 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17)"), now) == "Today");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Tomorrow 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "Fri 20/11 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), now) == "Thu 24/12 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-12-24 09:00)"), "") == "24/12 9:00");  // no clock yet
   g_vi = true;
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-16)"), now) == "Quá hạn · 16/11");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 17/11 19:00");
-  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 18/11 9:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-17 19:00)"), now) == "Hôm nay 19:00");
+  assert(todo_label(todo_parse("- [ ] a @due(2026-11-18 09:00)"), now) == "Ngày mai 9:00");
   assert(todo_label(todo_parse("- [ ] a @due(2026-11-20 09:00)"), now) == "T6 20/11 9:00");
   g_vi = false;
 

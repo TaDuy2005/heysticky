@@ -123,7 +123,7 @@ inline String day_month(long n) {  // "24/11", both languages
   return String(d) + "/" + m;
 }
 
-// Always the day and month (Figma 02): "Overdue · 16/11", "Today 19/11 19:00", "Tomorrow 20/11 9:00", "Mon 23/11 9:00"
+// Figma 02: "Overdue · 16/11", "Today 19:00", "Tomorrow 9:00", "Mon 23/11 9:00" (day and month except today / tomorrow)
 inline String todo_label(const Task &t, const String &now) {
   if (!t.due.length()) return "";
   const String hm = short_hm(t.due), sp = hm.length() ? " " : "";
@@ -132,8 +132,8 @@ inline String todo_label(const Task &t, const String &now) {
   const long today = ymd_num(now);
   const bool overdue = t.due.length() == 16 ? t.due < now : day < today;
   if (overdue) return String(TR("Overdue · ", "Quá hạn · ")) + day_month(day) + sp + hm;
-  const String word = day == today ? TR("Today", "Hôm nay") : day == today + 1 ? TR("Tomorrow", "Ngày mai") : day3(weekday(day));
-  return word + " " + day_month(day) + sp + hm;
+  if (day == today || day == today + 1) return String(day == today ? TR("Today", "Hôm nay") : TR("Tomorrow", "Ngày mai")) + sp + hm;
+  return String(day3(weekday(day))) + " " + day_month(day) + sp + hm;
 }
 
 // ---------- 02h Time entry: HH and MM fields typed on a number pad ----------
