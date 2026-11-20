@@ -110,6 +110,29 @@ Hold top button → record → speech-to-text → **Working** → **Done**. Only
 Notion daily sync (to-dos, notes, and voice recordings passed to the phone over Bluetooth, then deleted from the card) · Home Assistant dashboard · Reader · deadline reminder beeps (wake from sleep at due time) · Tailscale (experimental, community ESP-IDF libs only).
 - **Bluetooth (BLE) link to a phone app** (noted 2026-11-17): the ESP32-S3 has BLE 5 and can run it next to Wi-Fi. Seeed's factory firmware uses it for "Bluetooth connect" with the SenseCraft app (notes, to-dos, photos, fonts, OTA). For us: send fonts, notes and to-dos from our own app without the hotspot. The app converts TTF/OTF into the 13 `.vlw` slots (the Sticky has no TrueType renderer); about 1.1 MB per font, so roughly 20–40 s at a realistic 30–60 KB/s. iPhone needs a native app (Safari has no Web Bluetooth); Chrome on Android / desktop could reuse the phone page's converter via Web Bluetooth. Costs a few hundred KB of flash for the BLE stack.
 
+### v1.2 – v1.3 — Dashboard direction (agreed 2026-11-20)
+The e-ink screen shows data; typing moves off the Sticky. Input is voice (hold top) and the phone setup page now, a native iPhone app over BLE later (see above). Figma before UI code, EN + VI frames.
+
+**Group 1 — `feature/phone-edit`, v1.2.0**
+- **Keyboard removed.** `kbd.h`, the note editor (03a/03b/03d/03e) and the Add task / Add note buttons go. 02i / 03h / 03i go; **02j** *Discard changes?* stays (Home with unsaved Date/Time changes). Empty lists (02g / 03g): *Hold ● to add by voice, or add one on the phone page.*
+- **Task screen (tap a row):** the task text read-only (wrapped), Date ›, Time ›, **Created** (label left, `20/11/26` right, not tappable), then **Delete | Done**. Done saves and goes back to the list; the top-bar Cancel drops changes; Cancel in 02c / 02h undoes that screen. It keeps light-sleeping on its own screen, like today.
+- **03c Note view:** the title stays fixed at the top; the created date right-aligned between the title and the body; **Delete** only (no Edit).
+- **Created date:** to-do line tag `@created(YYYY-MM-DD HH:MM)`; notes get a properties block before the title (`---` / `created: YYYY-MM-DD HH:MM` / `---`, other lines in it kept). Shown as `dd/mm/yy`. Items without one show nothing.
+- **Lists 02 / 03:** swipe up = next page, swipe down = previous, looping 1-2-3-1; the `2/3` counter stays. Left-to-right swipe = Back, right-to-left does nothing. UP does nothing, DOWN = Back.
+- **03c / 04k scroll** like the 03d/03e body box did: a vertical drag moves a screenful minus one line, stops at the ends, scrollbar on the right edge, no page counter. UP = earlier lines, DOWN = later.
+- **Phone To-do / Notes pages** (hotspot only, never on home or public Wi-Fi): 06 Setup gets `To-do (n) ›` and `Notes (n) ›` below Integrations. To-do: list, tick, Add task, edit sheet (text, Date, Time), Delete. Notes: list, Add note, title + body editor, Delete. Saved as they change; the Sticky redraws a list it is showing.
+- **Clock:** the PCF8563 RTC on the sensor bus (used by the factory firmware, never by us until now) is read at boot and on every wake (skipped when its voltage-low flag is set) and written on every NTP sync. When NTP is blocked (public Wi-Fi), the `Date:` header of the weather / AI replies sets the time. Weather (awake and asleep) every **60 min**, not 30.
+
+**Group 2 — `feature/poster`, v1.3.0**
+- **Display mode** toggle on the task screen and the phone task sheet; one task at a time (turning it on for another turns the first off). Only turning it off, or deleting the task, removes the poster; ticking the task does not.
+- **Poster page:** page 1 of Home (1 poster · 2 Home · 3 Apps), no loop; status bar kept, no Done button. Home, the bottom-edge swipe, wake and sleep still land on Home (page 2).
+- **Phone:** upload a picture per task; drag / pinch the picture in the 480×800 frame, drag the text box (S / M / L / XL, white backing), due label under the text; live black-and-white **Preview**; **Push** = Display mode on + the Sticky jumps to the poster at once (after a running recording). The browser dithers the picture; it is saved on the card next to the task.
+- **Poster deep sleep:** asleep on the poster, the Sticky stays on it (moon) in deep sleep; a short top press wakes it (~1–2 s restart) to Home; an hourly timer wake (no Wi-Fi) updates the battery % and checks battery-empty. Everywhere else sleep is unchanged.
+
+**Group 3 — later:** editable Home widgets, built with the first integration widget (smart-home light, Bambu Lab print progress, stock).
+
+**Paused:** repeat tasks and other to-do extras (2026-11-20). **Later option:** hourly deep sleep on Home too (clock updated hourly), to decide after a night is measured with the RTC change.
+
 ## 6. Requirements
 
 ### Phase 1
