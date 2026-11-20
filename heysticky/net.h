@@ -490,10 +490,10 @@ async function svcView(id){const v=$('v-'+id);v.replaceChildren();if(!await aiLo
   inp.order=E('input',{id:'a-order',value:A[p+'order']||'',placeholder:L('Any (e.g. groq, deepinfra)','Bất kỳ (vd. groq, deepinfra)'),autocomplete:'off',autocapitalize:'off',spellcheck:false,maxLength:100});
   route.append(E('div',{className:'tg'},E('div',{},lab('a-psw',L('Provider','Nhà cung cấp'),L('Auto-fallback to other provider if it is down','Tự chuyển sang nhà cung cấp khác nếu nó lỗi'))),psw),inp.order);
   const sync=()=>{inp.order.hidden=!psw.checked;mode.classList.toggle('gr',psw.checked);if(inp.sort)inp.sort.disabled=psw.checked};psw.onchange=sync;sync();
-  // 06h2: empty URL / key = speech-to-text's, shown as the grey placeholder
-  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],stt?'':A.stt_url),
-   ...f('model',L('Model','Mô hình'),stt||A.ai_set?A[p+'model']:'',stt?'':A.ai_def),
-   ...f('key',L('API key','Khoá API'),'',A[p+'key']||(!stt&&A.stt_key?A.stt_key+L(' (speech-to-text)',' (giọng nói)'):L('Paste your API key','Dán khoá API')),1),route,
+  // 06h1 / 06h2 placeholders, Figma 06h: 06h2 left empty still uses speech-to-text's URL / key and the default model
+  slot.replaceChildren(E('div',{className:'pf'},...f('url',L('Base URL','URL gốc'),A[p+'url'],'https://gateway.example/v1'),
+   ...f('model',L('Model','Mô hình'),stt||A.ai_set?A[p+'model']:'',L('Model ID','ID mô hình')),
+   ...f('key',L('API key','Khoá API'),'',A[p+'key']||L('Enter your API key','Nhập khoá API'),1),route,
    E('div',{className:'two'},E('button',{type:'button',textContent:L('Cancel','Huỷ'),onclick:show}),save)));
   const orx=()=>route.hidden=!/openrouter\.ai/.test(inp.url.value.trim()||A.stt_url||'');inp.url.oninput=orx;orx();
   save.onclick=async()=>{const b={svc};for(const k in inp)b[k]=inp[k].value.trim();if(!psw.checked)b.order='';
