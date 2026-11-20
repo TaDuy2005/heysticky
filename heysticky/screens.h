@@ -652,13 +652,15 @@ inline void ai_save(const AiResult &r) {
   g_doneItems.clear();
   g_doneNote = r.kind == AI_NOTE;
   if (r.kind == AI_TODO) {
-    for (const Task &t : r.todos) { g_tasks.push_back(t); g_doneItems.push_back(t.text); }
+    const String now = now_key();  // "" before the clock is set: no created date
+    for (Task t : r.todos) { t.created = now; g_tasks.push_back(t); g_doneItems.push_back(t.text); }
     if (!todo_save()) return nosd(false);
   } else {
     notes_scan();  // the next note number comes from the list, which is only read when Notes opens
     const Note keep = g_note;  // the note being viewed, if any: Done goes back to it
     g_note = r.note;
     g_note.num = 0;
+    g_note.created = now_key();
     const bool ok = note_save();
     g_doneItems.push_back(g_note.title.length() ? g_note.title : note_preview(g_note.body));
     g_note = keep;

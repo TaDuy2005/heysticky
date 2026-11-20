@@ -43,6 +43,19 @@ int main() {
   assert(n.title == "" && n.body == "no heading\nsecond");
   assert(note_parse("# Only title").title == "Only title" && note_parse("# Only title").body == "");
 
+  // properties block: created date, other lines kept, Windows line ends, unclosed block = plain body
+  const char *withProps = "---\ncreated: 2026-11-20 09:05\ntags: idea\n---\n# ESP humidity sensor idea\nSHT40 on the bus.\n";
+  n = note_parse(withProps);
+  assert(n.created == "2026-11-20 09:05" && n.props == "tags: idea\n" && n.title == "ESP humidity sensor idea" && n.body == "SHT40 on the bus.\n");
+  assert(note_format(n) == withProps);
+  n = note_parse("---\r\ncreated: 2026-11-20 09:05\r\n---\r\n# T\r\nb");
+  assert(n.created == "2026-11-20 09:05" && n.title == "T" && n.body == "b");
+  n = note_parse("---\nnot closed\n# T\n");
+  assert(n.created == "" && n.title == "" && n.body == "---\nnot closed\n# T\n");
+  n = note_parse("# Old note\nbody");
+  n.created = "2026-11-20 09:05";
+  assert(note_format(n) == "---\ncreated: 2026-11-20 09:05\n---\n# Old note\nbody");
+
   assert(note_preview("\n  \n  Eggs, rice \nmore") == "Eggs, rice");
   assert(note_preview("") == "");
 

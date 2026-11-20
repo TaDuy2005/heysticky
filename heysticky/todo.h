@@ -10,7 +10,7 @@
 struct Task {
   bool task = true;   // false: a line that is not a task (heading, blank, ...), written back unchanged
   bool done = false;
-  String text, due, raw;
+  String text, due, created, raw;  // created: "YYYY-MM-DD HH:MM" stamped when the task is made ("" = older task)
 };
 
 // ---------- dates (Howard Hinnant's civil-from-days, no time zones involved) ----------
@@ -67,10 +67,17 @@ inline Task todo_parse(const String &line) {
   }
   t.done = s[3] != ' ';
   s = s.substring(6);
-  const int at = s.lastIndexOf("@due(");
-  if (at >= 0 && s.endsWith(")")) {
-    const String d = s.substring(at + 5, s.length() - 1);
-    if (valid_due(d)) { t.due = d; s = s.substring(0, at); }
+  for (int k = 0; k < 2; k++) {  // trailing @created(...) and @due(...), either order
+    s.trim();
+    if (!s.endsWith(")")) break;
+    const int c = s.lastIndexOf("@created("), d = s.lastIndexOf("@due(");
+    const bool isC = c > d;
+    const int at = isC ? c : d;
+    if (at < 0) break;
+    const String v = s.substring(at + (isC ? 9 : 5), s.length() - 1);
+    if (!valid_due(v) || (isC ? t.created : t.due).length()) break;
+    (isC ? t.created : t.due) = v;
+    s = s.substring(0, at);
   }
   s.trim();
   t.text = s;
@@ -82,6 +89,7 @@ inline String todo_format(const Task &t) {
   String s = t.done ? "- [x] " : "- [ ] ";
   s += t.text;
   if (t.due.length()) s += " @due(" + t.due + ")";
+  if (t.created.length()) s += " @created(" + t.created + ")";
   return s;
 }
 

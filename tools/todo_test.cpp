@@ -37,6 +37,15 @@ int main() {
   Task t = todo_parse("  - [X] Ship it  @due(2026-11-17 09:00)\r");
   assert(t.task && t.done && t.text == "Ship it" && t.due == "2026-11-17 09:00");
   assert(todo_parse("- [ ] bad date @due(2026-1-7)").text == "bad date @due(2026-1-7)");
+  // created date: either order with @due, round trip writes due first
+  t = todo_parse("- [ ] Pay rent @due(2026-12-01) @created(2026-11-20 09:05)");
+  assert(t.text == "Pay rent" && t.due == "2026-12-01" && t.created == "2026-11-20 09:05");
+  assert(todo_format(t) == "- [ ] Pay rent @due(2026-12-01) @created(2026-11-20 09:05)");
+  t = todo_parse("- [x] Call @created(2026-11-20 09:05) @due(2026-11-21 10:00)");
+  assert(t.text == "Call" && t.due == "2026-11-21 10:00" && t.created == "2026-11-20 09:05");
+  t = todo_parse("- [ ] Only made @created(2026-11-20 09:05)");
+  assert(t.text == "Only made" && t.due == "" && todo_format(t) == "- [ ] Only made @created(2026-11-20 09:05)");
+  assert(todo_parse("- [ ] mail me@due.vn").text == "mail me@due.vn");
   assert(!todo_parse("- [ ]").task);
 
   // dates
