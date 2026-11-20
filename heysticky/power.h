@@ -21,7 +21,7 @@ inline bool may_sleep() {
 
 // Editors sleep on their own screen (no Home, no moon): light sleep keeps the typing, the top button comes back to it.
 inline bool editor_screen() {
-  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_NOTEED || g_screen == SCR_DISCARD;
+  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_DISCARD;
 }
 
 inline void touch_power(bool on) {

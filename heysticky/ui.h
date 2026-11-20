@@ -151,6 +151,13 @@ inline int ui_wrap(const Font &f, const String &s, int x, int y, int w, int line
   return ls.size();
 }
 
+// Scrollbar on the right edge (Figma 03c / 04k): 1 px track, 5 px thumb sized and placed by the part in view.
+inline void ui_scrollbar(int y, int h, int top, int shown, int n) {
+  const int bh = max(24, h * shown / n);
+  display.fillRect(455, y, 1, h, INK);
+  display.fillRect(453, y + (h - bh) * top / max(1, n - shown), 5, bh, INK);
+}
+
 // Figma Toggle (68x38): On = black pill, white knob right; Off = outline, black knob left.
 inline void ui_toggle(int x, int y, bool on) {
   display.fillRoundRect(x, y, 68, 38, 19, INK);

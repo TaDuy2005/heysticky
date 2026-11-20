@@ -183,6 +183,7 @@ inline TpState hw_touch_get(int16_t &x, int16_t &y) {
 struct TouchEv { int16_t x, y; bool down; };  // down = finger landed, else lifted (x/y = last point)
 inline QueueHandle_t g_touchQ = nullptr;
 inline volatile bool g_touchHeld = false;     // finger currently on the glass
+inline volatile int16_t g_touchX = 0, g_touchY = 0;  // where it is now (a hold that moved is a swipe, not a long press)
 constexpr uint32_t TOUCH_LOST_MS = 300;       // fallback release if the chip never reports 0 points
 constexpr int TOUCH_NEW_TAP_PX = 40;          // a jump this far within one contact = a new tap (fast typing)
 inline volatile bool g_touchOff = false;      // asked by sleep (power.h): GT911 powered down
@@ -210,6 +211,7 @@ inline void touch_task(void *) {
       }
       if (!down) { down = true; push(x, y, true); }
       lx = x; ly = y; last = millis();
+      g_touchX = x; g_touchY = y;
     } else if (down && (s == TP_RELEASE || millis() - last > TOUCH_LOST_MS)) {
       down = false;
       push(lx, ly, false);

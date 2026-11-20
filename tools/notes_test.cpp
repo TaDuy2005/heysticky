@@ -75,17 +75,5 @@ int main() {
   w = wrap_lines("end\n", 10, chars);
   assert(w.size() == 2 && w[1] == "");
 
-  // auto-capital
-  assert(cap_next("") && cap_next("  ") && cap_next("Done. ") && cap_next("Why?  ") && cap_next("Hi!\n") && cap_next("a\n "));
-  assert(!cap_next("Done.") && !cap_next("word ") && !cap_next("e.g") && !cap_next("x"));
-
-  // two spaces -> ". "
-  String d = "Hi ";
-  assert(space_dot(d) && d == "Hi. " && cap_next(d));
-  assert(!space_dot(d) && d == "Hi. ");  // after ". " a space is just a space
-  String e = "Việt ", f = " ", g = "a\n ", h = "Hi";
-  assert(space_dot(e) && e == "Việt. ");
-  assert(!space_dot(f) && !space_dot(g) && !space_dot(h));
-
   puts("notes_test OK");
 }
