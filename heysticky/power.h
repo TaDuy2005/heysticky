@@ -1,6 +1,6 @@
 // TASK-11 Power. Sleep after (04l): idle -> Home with the moon (01b/01d), then light sleep.
 // Asleep: Wi-Fi and touch off, CPU at 80 MHz; a timer wakes it each minute for the clock and every
-// 30 min Wi-Fi comes on for weather + NTP. Only the top button wakes it fully, to Home.
+// hour Wi-Fi comes on for weather + NTP; each wake re-reads the RTC (light sleep's clock drifts). Only the top button wakes it fully, to Home.
 #pragma once
 #include <esp_sleep.h>
 #include <driver/gpio.h>
@@ -8,7 +8,7 @@
 #include <driver/rtc_io.h>
 #include "screens.h"
 
-constexpr uint32_t SYNC_EVERY_MS = 30UL * 60 * 1000, SYNC_TIMEOUT_MS = 40000;
+constexpr uint32_t SYNC_EVERY_MS = 60UL * 60 * 1000, SYNC_TIMEOUT_MS = 40000;
 inline String g_sleepReport;  // last sleep's battery use, repeated in the minute log (read it after plugging USB back in)
 
 constexpr uint32_t WEB_IDLE_MS = 5UL * 60 * 1000;  // Web setup turns off after this long with no phone page request and no touch
@@ -21,7 +21,7 @@ inline bool may_sleep() {
 
 // Editors sleep on their own screen (no Home, no moon): light sleep keeps the typing, the top button comes back to it.
 inline bool editor_screen() {
-  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_NOTEED || g_screen == SCR_DISCARD;
+  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_DISCARD;
 }
 
 inline void touch_power(bool on) {
@@ -47,7 +47,10 @@ inline void sleep_sync() {
   g_retryAt = 0;
   g_wx_next = 0;
   bool asked = false, synced = false;
-  while (millis() - t0 < SYNC_TIMEOUT_MS && !(g_wx.at != wxAt && synced) && !top_pressed()) {
+  // Done with the weather: its Date header has set the time when NTP is blocked; NTP gets 3 s more if it is slow.
+  uint32_t wxDone = 0;
+  while (millis() - t0 < SYNC_TIMEOUT_MS && !(wxDone && (synced || millis() - wxDone > 3000)) && !top_pressed()) {
+    if (!wxDone && g_wx.at != wxAt) wxDone = millis();
     net_loop();
     if (!asked && WiFi.status() == WL_CONNECTED && g_utc_off != LONG_MIN) {
       sntp_get_sync_status();  // clear an old "completed"
@@ -59,6 +62,7 @@ inline void sleep_sync() {
   }
   Serial.printf("[sleep] sync %s, weather %s, ntp %s, %lu ms\n", WiFi.status() == WL_CONNECTED ? "online" : "offline",
                 g_wx.at != wxAt ? "ok" : "--", synced ? "ok" : "--", millis() - t0);
+  net_store_time();
   wifi_off();
 }
 
@@ -159,6 +163,7 @@ inline void power_sleep() {
     Serial.flush();
     esp_sleep_enable_timer_wakeup(us_to_next_minute());
     esp_light_sleep_start();
+    hw_rtc_to_clock();
   }
   gpio_wakeup_disable(gpio_num_t(PIN_BTN_TOP));
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);

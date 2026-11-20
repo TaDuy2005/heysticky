@@ -1,9 +1,11 @@
-// To-do screens, Figma 02-02g: list (02/02g), task editor (02a/b/d/e), deadline picker (02c),
+// To-do screens, Figma 02-02g: list (02/02g), task screen (02e), deadline picker (02c), time (02h),
 // delete confirm (02f), plus the no-card screen. Drawing and hit areas only; screens.h navigates.
 #pragma once
 #include "ui.h"
-#include "kbd.h"
 #include "card.h"
+
+constexpr int KB_TOP = 510, KB_H = H - KB_TOP;  // 02h number pad area
+constexpr int KBD_FULL_EVERY = 20;           // 02h: a full refresh after this many digit refreshes
 
 inline String now_key() {  // "YYYY-MM-DD HH:MM", "" before NTP
   tm t;
@@ -22,8 +24,8 @@ inline String hhmm(int mins) {
 // ---------- 02 To-do list / 02g empty ----------
 struct RowHit { int16_t y, h; int idx; };
 inline std::vector<RowHit> g_rows;  // rows on the panel now: taps are matched to what the user saw
-inline int g_todoPage = 0, g_todoPages = 1, g_addBtnY = 712;
-constexpr int ROWS_TOP = 112, ROWS_BOTTOM = 664;
+inline int g_todoPage = 0, g_todoPages = 1;
+constexpr int ROWS_TOP = 112, ROWS_BOTTOM = 746;  // above the page counter (no Add button since v1.2: add by voice or on the phone)
 
 // Figma TodoRow: the title wraps to 2 lines, then "…"; the due line under it.
 inline const Font &row_font(const Task &t) { return t.done ? F_R25 : F_B25; }
@@ -57,9 +59,8 @@ inline void draw_todo() {
   if (o.empty()) {
     ui_icon(ICON_CHECK_CIRCLE64, 208, 318);
     ui_text(F_X30, TR("No tasks yet", "Chưa có việc nào"), W / 2, 398, 40, AL_CENTER);
-    ui_text(F_R25, TR("Tap Add task to make one.", "Chạm Thêm việc để tạo."), W / 2, 454, 33, AL_CENTER);
+    ui_wrap(F_R25, TR("Hold ● to add by voice, or add one on the phone page.", "Giữ ● để thêm bằng giọng nói, hoặc thêm trên trang điện thoại."), 40, 454, 400, 33, 3, AL_CENTER);
     g_todoPages = 1;
-    ui_button(40, g_addBtnY = 712, 400, 72, true, &ICON_PLUS30, TR("Add task", "Thêm việc"), 10);
     return;
   }
   std::vector<int> starts{0};  // first row of each page
@@ -78,9 +79,7 @@ inline void draw_todo() {
     g_rows.push_back({int16_t(y), int16_t(h), o[i]});
     y += h;
   }
-  const bool multi = g_todoPages > 1;
-  ui_button(40, g_addBtnY = multi ? 674 : 712, 400, 72, true, &ICON_PLUS30, TR("Add task", "Thêm việc"), 10);
-  if (multi) ui_page_counter(String(g_todoPage + 1) + "/" + g_todoPages);
+  if (g_todoPages > 1) ui_page_counter(String(g_todoPage + 1) + "/" + g_todoPages);
 }
 
 inline int todo_row_at(int y) {
@@ -88,7 +87,7 @@ inline int todo_row_at(int y) {
   return -1;
 }
 
-// ---------- 02a/02b New task, 02d/02e Edit task ----------
+// ---------- 02e Task: read-only text, DEADLINE drop-down (Date / Time), Created, Delete | Done ----------
 // Deadline = Date and Time, each on/off. Both off = none; Time only = today at that time;
 // Date only = a date-only @due.
 struct Deadline {
@@ -98,18 +97,14 @@ struct Deadline {
   int y = 2026, m = 1;  // month shown in 02c
 };
 struct TaskEdit {
-  int idx = -1;  // -1 = new task
-  String text;
-  Deadline dl, dl0;  // dl0: as opened, to tell an edit from no change
-  bool kbOpen = true, dirty = false;
-  bool touched = false;  // tapped or typed in: an empty field then shows only the cursor
-  uint32_t dirtyAt = 0;
-  Keyboard kb;
+  int idx = -1;
+  String text, created;
+  Deadline dl, dl0;     // dl0: as opened, to tell an edit from no change
+  bool dlOpen = false;  // DEADLINE drop-down shows Date and Time
 };
 inline TaskEdit g_ed;
 inline Deadline g_dlUndo;  // restored by Cancel in 02c / 02h
-constexpr int FIELD_X = 40, FIELD_Y = 132, FIELD_W = 400, FIELD_H = 76;
-constexpr int ROW_DATE_Y = 259, ROW_TIME_Y = 339, ROW_H = 72;
+constexpr int FIELD_X = 40, FIELD_Y = 132, FIELD_W = 400, FIELD_H = 76, ROW_H = 72;
 
 inline Deadline dl_from(const String &due) {
   Deadline d;
@@ -143,6 +138,11 @@ inline String dmy(long n) {  // "17/11/26"
   return b;
 }
 
+inline String stamp(const String &at) {  // Created: "2026-11-20 09:05" -> "20/11/26 9:05 AM"
+  const String hm = short_hm(at);
+  return dmy(ymd_num(at)) + (hm.length() ? " " + hm : String(""));
+}
+
 // Settings-style rows (Figma Row/...): Bold 28 label; value + chevron, or a toggle.
 inline void link_row(int y, const String &label, const String &value) {
   ui_text(F_B28, label, 40, y + 18, 37);
@@ -154,43 +154,42 @@ inline void toggle_row(int y, const String &label, bool on) {
   ui_toggle(372, y + 17, on);
 }
 
-// Typing: one line, the tail in view. Keyboard closed (02b / 02e): the whole task, wrapped; the rows below move down.
+// The task, wrapped, in its box; the rows below follow its height. 6 lines still leave room for the open drop-down.
 inline int g_fieldH = FIELD_H;
-constexpr int FIELD_LINES = 9;  // 9 lines still leave the Time row above the buttons
-inline int field_dy() { return g_fieldH - FIELD_H; }
+constexpr int FIELD_LINES = 6;
+inline int row0() { return FIELD_Y + g_fieldH + 10; }  // DEADLINE row; Date, Time, Created follow 80 px apart
+inline int date_y() { return row0() + 80; }
+inline int time_y() { return row0() + 160; }
 
-inline void editor_field() {
-  const bool hint = !g_ed.text.length() && !(g_ed.kbOpen && g_ed.touched);  // Italic "Task" until tapped
-  constexpr int TW = FIELD_W - 2 * 19 - 6;
-  std::vector<String> ls;
-  if (hint) ls.push_back(TR("Task", "Việc"));
-  else if (g_ed.kbOpen) ls.push_back(ui_fit_tail(F_B26, g_ed.text, TW));
-  else ls = ui_lines(F_B26, g_ed.text, TW, FIELD_LINES);
-  if (ls.empty()) ls.push_back("");
-  g_fieldH = FIELD_H + 34 * (int(ls.size()) - 1);
-  ui_card(FIELD_X, FIELD_Y, FIELD_W, g_fieldH, 10, 3);
-  int tw = 0;
-  for (int i = 0; i < int(ls.size()); i++) tw = ls[i].length() ? ui_text(hint ? F_I25 : F_B26, ls[i], 59, 153 + 34 * i, 34) : 0;
-  if (g_ed.kbOpen) display.fillRect(59 + tw + 2, 154, 3, 32, INK);  // cursor
+inline void chevron_down(int x, int y) {  // ICON_CHEV turned down (26 x 26 box), 3 px stroke
+  for (int t = 0; t < 3; t++) { display.drawLine(x + 6, y + 9 + t, x + 13, y + 16 + t, INK); display.drawLine(x + 13, y + 16 + t, x + 20, y + 9 + t, INK); }
 }
 
 inline void draw_task_editor() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(g_ed.idx < 0 ? TR("New task", "Việc mới") : TR("Edit task", "Sửa việc"), TR("Cancel", "Huỷ"));
-  editor_field();
-  ui_text(F_B25, TR("DEADLINE (OPTIONAL)", "HẠN CHÓT (TUỲ CHỌN)"), 40, 218 + field_dy(), 33);
-  link_row(ROW_DATE_Y + field_dy(), TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
-  link_row(ROW_TIME_Y + field_dy(), TR("Time", "Giờ"), g_ed.dl.timeOn ? hhmm(g_ed.dl.mins) : TR("Off", "Tắt"));
-  if (g_ed.kbOpen) {
-    g_ed.kb.shift = cap_next(g_ed.text);
-    g_ed.kb.draw();
-  } else if (g_ed.idx < 0) {
-    ui_button(40, 717, 400, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
-  } else {
-    ui_button(40, 717, 194, 67, false, &ICON_TRASH24, TR("Delete", "Xoá"));
-    ui_button(246, 717, 194, 67, true, &ICON_CHECK24, TR("Save", "Lưu"));
+  ui_topbar(TR("Task", "Việc"), TR("Cancel", "Huỷ"));
+  std::vector<String> ls = ui_lines(F_B26, g_ed.text, FIELD_W - 2 * 19 - 6, FIELD_LINES);
+  if (ls.empty()) ls.push_back("");
+  g_fieldH = FIELD_H + 34 * (int(ls.size()) - 1);
+  ui_card(FIELD_X, FIELD_Y, FIELD_W, g_fieldH, 10, 3);
+  for (int i = 0; i < int(ls.size()); i++) ui_text(F_B26, ls[i], 59, 153 + 34 * i, 34);
+  int y = row0();
+  ui_text(F_B25, TR("Deadline (Optional)", "Hạn chót (Tuỳ chọn)"), 40, y + 19, 33);
+  if (g_ed.dlOpen) chevron_down(414, y + 23);
+  else ui_icon(ICON_CHEV, 414, y + 23);
+  y += 80;
+  if (g_ed.dlOpen) {
+    link_row(y, TR("Date", "Ngày"), g_ed.dl.dateOn ? dmy(g_ed.dl.sel) : TR("Off", "Tắt"));
+    link_row(y + 80, TR("Time", "Giờ"), g_ed.dl.timeOn ? hm12(g_ed.dl.mins) : TR("Off", "Tắt"));
+    y += 160;
   }
+  if (g_ed.created.length()) {
+    ui_text(F_B28, TR("Created", "Ngày tạo"), 40, y + 18, 37);
+    ui_text(F_R25, stamp(g_ed.created), 440, y + 20, 33, AL_RIGHT);
+  }
+  ui_button(40, 717, 194, 67, false, &ICON_TRASH24, TR("Delete", "Xoá"));
+  ui_button(246, 717, 194, 67, true, &ICON_CHECK24, TR("Done", "Xong"));
 }
 
 // ---------- 02c Date ----------
@@ -245,15 +244,22 @@ inline bool date_day_at(int x, int y) {  // tap on a day cell -> select it
 inline TimeEntry g_te;
 constexpr int TF_Y = 224, TF_W = 140, TF_H = 100;
 inline const int TF_X[2] = {65, 276};
+constexpr int AP_Y = 356, AP_W = 194, AP_H = 67;  // AM | PM under the fields (Figma 02h)
+inline const int AP_X[2] = {40, 246};
 
 inline void time_begin() {
   g_te = TimeEntry();
-  const String t = hhmm(g_ed.dl.mins);
-  g_te.f[0] = t.substring(0, 2);
-  g_te.f[1] = t.substring(3);
+  const int h = g_ed.dl.mins / 60;
+  char b[3];
+  snprintf(b, sizeof b, "%02d", (h + 11) % 12 + 1);
+  g_te.f[0] = b;
+  g_te.f[1] = hhmm(g_ed.dl.mins).substring(3);
+  g_te.pm = h >= 12;
 }
 
-inline void time_commit() { g_ed.dl.mins = g_te.f[0].toInt() * 60 + g_te.f[1].toInt(); }  // "" counts as 0
+inline void time_commit() {  // 12 AM = 0:xx; "" counts as 0, i.e. 12
+  g_ed.dl.mins = (g_te.f[0].toInt() % 12 + (g_te.pm ? 12 : 0)) * 60 + g_te.f[1].toInt();
+}
 
 inline void time_fields() {
   display.fillRect(40, TF_Y, 400, TF_H, PAPER);
@@ -264,6 +270,8 @@ inline void time_fields() {
     ui_text(F_X64, g_te.f[i], TF_X[i] + TF_W / 2, TF_Y + 8, 84, AL_CENTER, on ? PAPER : INK, on ? INK : PAPER);
   }
   ui_text(F_X64, ":", W / 2, TF_Y + 8, 84, AL_CENTER);
+  display.fillRect(40, AP_Y, 400, AP_H, PAPER);
+  for (int i = 0; i < 2; i++) ui_button(AP_X[i], AP_Y, AP_W, AP_H, g_te.pm == bool(i), nullptr, i ? "PM" : "AM");
 }
 
 // Keypad keys 0..11 = 1-9, backspace, 0, Done (Figma Keypad: 3 x 146 px columns, 68 px rows).
@@ -306,7 +314,7 @@ inline void draw_time() {
 }
 
 // ---------- 02f Delete task / 03f Delete note ----------
-inline void draw_delete(const char *question, const char *action = nullptr) {  // also 02i/03h Discard
+inline void draw_delete(const char *question, const char *action = nullptr) {  // also 02j Discard changes
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   display.fillCircle(240, 337, 80, INK);  // badge 160x160, 5 px ring

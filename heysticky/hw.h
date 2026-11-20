@@ -3,7 +3,10 @@
 #pragma once
 #include <Arduino.h>
 #include <Wire.h>
+#include <time.h>
+#include <sys/time.h>
 #include "pins.h"
+#include "todo.h"  // day_num(): calendar date -> days, for the RTC
 
 // ---------- buzzer ----------
 // Driven with LEDC PWM: the duty sets the volume (50 % is the loudest one pin can drive a passive buzzer),
@@ -81,6 +84,44 @@ inline bool i2c_read(TwoWire &w, uint8_t addr, uint16_t reg, bool reg16, uint8_t
   return true;
 }
 
+inline bool i2c_write(TwoWire &w, uint8_t addr, uint8_t reg, const uint8_t *buf, size_t n) {
+  w.beginTransmission(addr);
+  w.write(reg);
+  w.write(buf, n);
+  return w.endTransmission() == 0;
+}
+
+// ---------- PCF8563 RTC (Wire1): keeps UTC on the battery while the Sticky is off ----------
+// The factory firmware uses a PCF8563; 0x51 is that chip's fixed address. Years 2000-2099 (century bit ignored).
+constexpr uint8_t RTC_ADDR = 0x51;
+inline uint8_t from_bcd(uint8_t v) { return (v >> 4) * 10 + (v & 0x0F); }
+inline uint8_t to_bcd(int v) { return uint8_t((v / 10) << 4 | (v % 10)); }
+
+inline bool hw_rtc_read(time_t &t) {  // false: no answer, or its voltage-low flag says the time was lost
+  uint8_t r[7];
+  if (!i2c_read(Wire1, RTC_ADDR, 0x02, false, r, 7) || (r[0] & 0x80)) return false;
+  const int y = 2000 + from_bcd(r[6]);
+  t = time_t(day_num(y, from_bcd(r[5] & 0x1F), from_bcd(r[3] & 0x3F)) * 86400LL +
+             from_bcd(r[2] & 0x3F) * 3600 + from_bcd(r[1] & 0x7F) * 60 + from_bcd(r[0] & 0x7F));
+  return y > 2016;
+}
+
+inline bool hw_rtc_write(time_t t) {  // also clears the voltage-low flag
+  tm x;
+  gmtime_r(&t, &x);
+  const uint8_t r[7] = {to_bcd(x.tm_sec), to_bcd(x.tm_min), to_bcd(x.tm_hour), to_bcd(x.tm_mday), uint8_t(x.tm_wday),
+                        to_bcd(x.tm_mon + 1), to_bcd(x.tm_year % 100)};
+  return i2c_write(Wire1, RTC_ADDR, 0x02, r, 7);
+}
+
+// System clock from the RTC (boot, and each wake: light sleep's own clock drifts). Only a change of 2 s or more is applied.
+inline bool hw_rtc_to_clock() {
+  time_t t;
+  if (!hw_rtc_read(t)) return false;
+  if (llabs(int64_t(t) - int64_t(time(nullptr))) >= 2) { timeval tv = {t, 0}; settimeofday(&tv, nullptr); }
+  return true;
+}
+
 // ---------- touch (GT911 on Wire) ----------
 inline uint8_t g_tp_addr = 0;
 inline uint16_t g_tp_maxX = 0, g_tp_maxY = 0;
@@ -142,6 +183,7 @@ inline TpState hw_touch_get(int16_t &x, int16_t &y) {
 struct TouchEv { int16_t x, y; bool down; };  // down = finger landed, else lifted (x/y = last point)
 inline QueueHandle_t g_touchQ = nullptr;
 inline volatile bool g_touchHeld = false;     // finger currently on the glass
+inline volatile int16_t g_touchX = 0, g_touchY = 0;  // where it is now (a hold that moved is a swipe, not a long press)
 constexpr uint32_t TOUCH_LOST_MS = 300;       // fallback release if the chip never reports 0 points
 constexpr int TOUCH_NEW_TAP_PX = 40;          // a jump this far within one contact = a new tap (fast typing)
 inline volatile bool g_touchOff = false;      // asked by sleep (power.h): GT911 powered down
@@ -169,6 +211,7 @@ inline void touch_task(void *) {
       }
       if (!down) { down = true; push(x, y, true); }
       lx = x; ly = y; last = millis();
+      g_touchX = x; g_touchY = y;
     } else if (down && (s == TP_RELEASE || millis() - last > TOUCH_LOST_MS)) {
       down = false;
       push(lx, ly, false);
@@ -217,6 +260,7 @@ inline void hw_begin() {
   pinMode(PIN_USB_PRESENT, INPUT);
   hw_buttons_begin();
   Wire1.begin(PIN_SENS_SDA, PIN_SENS_SCL, 100000);
+  Serial.println(hw_rtc_to_clock() ? "[rtc] clock set from the RTC" : "[rtc] no valid time in the RTC");
   if (!hw_touch_begin()) Serial.println("[touch] GT911 not found on 0x5D/0x14");
   // Wire (touch) is used only by this task from here on; Wire1 (sensors) stays on the main loop.
   g_touchQ = xQueueCreate(32, sizeof(TouchEv));

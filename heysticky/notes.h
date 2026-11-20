@@ -8,11 +8,32 @@
 constexpr unsigned NOTE_BYTES = 4096;   // bytes per note file, read and typed (RAM bound)
 constexpr unsigned TITLE_MAX = 120;
 
-struct Note { int num = 0; String title, body; };       // num 0 = not saved yet
+struct Note {      // num 0 = not saved yet
+  int num = 0;
+  String title, body;
+  String created, props;  // properties block: "created: YYYY-MM-DD HH:MM", other lines kept as written in props
+};
 struct NoteHead { int num; String title, preview; };     // what the list shows
 
-inline Note note_parse(const String &s) {
+// Optional properties block before the title ("---" lines, like Obsidian). Returns where the title starts (0 = none).
+inline int note_props(const String &s, Note &n) {
+  if (!(s.startsWith("---\n") || s.startsWith("---\r\n"))) return 0;
+  String created, props;
+  for (int i = s.indexOf('\n') + 1;;) {
+    const int j = s.indexOf('\n', i);
+    if (j < 0) return 0;  // never closed: not a block, the file is read as it is
+    String l = s.substring(i, j);
+    if (l.endsWith("\r")) l = l.substring(0, l.length() - 1);
+    if (l == "---") { n.created = created; n.props = props; return j + 1; }
+    if (l.startsWith("created: ")) created = l.substring(9);
+    else props += l + "\n";
+    i = j + 1;
+  }
+}
+
+inline Note note_parse(const String &in) {
   Note n;
+  const String s = in.substring(note_props(in, n));
   if (!s.startsWith("# ")) { n.body = s; return n; }  // no heading: the whole file is the body
   int nl = s.indexOf('\n');
   if (nl < 0) nl = s.length();
@@ -22,7 +43,12 @@ inline Note note_parse(const String &s) {
   return n;
 }
 
-inline String note_format(const Note &n) { return "# " + n.title + "\n" + n.body; }
+inline String note_format(const Note &n) {
+  String head;
+  if (n.created.length() || n.props.length())
+    head = String("---\n") + (n.created.length() ? "created: " + n.created + "\n" : String("")) + n.props + "---\n";
+  return head + "# " + n.title + "\n" + n.body;
+}
 
 inline String note_preview(const String &body) {  // first line with text
   for (int i = 0; i <= int(body.length());) {
@@ -55,25 +81,6 @@ inline String note_tag(int num) {  // "#09"
   char b[12];
   snprintf(b, sizeof b, "#%02d", num);
   return b;
-}
-
-// Keyboard auto-capital: at the start of a field or line, and after ". ", "! ", "? ".
-inline bool cap_next(const String &s) {
-  int i = s.length();
-  while (i > 0 && s[i - 1] == ' ') i--;
-  if (i == 0 || s[i - 1] == '\n') return true;
-  return i < int(s.length()) && (s[i - 1] == '.' || s[i - 1] == '!' || s[i - 1] == '?');
-}
-
-// Phone keyboard: a space typed right after "word " turns that space into ". ". True if it did.
-inline bool space_dot(String &s) {
-  const int n = s.length();
-  if (n < 2 || s[n - 1] != ' ') return false;
-  const uint8_t c = s[n - 2];
-  if (!isalnum(c) && c < 0x80) return false;  // UTF-8 bytes count as letters (Việt)
-  s[n - 1] = '.';
-  s += ' ';
-  return true;
 }
 
 // Word wrap to lines no wider than w (width() measures a String). Keeps the body's own line
