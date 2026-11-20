@@ -117,20 +117,20 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - [x] REQ-01 First boot with no Wi-Fi → hotspot `HeySticky-Setup`, Web setup screen shows `192.168.4.1` + QR
 - [x] REQ-02 Phone setup page saves Wi-Fi, name, city (with suggestions) — stored on the device only
 - [x] REQ-03 Home shows greeting, time/date, weather, indoor temp/humidity, Today count, dock
-- [ ] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works
+- [x] REQ-04 Time from NTP; weather every 30 min; no Wi-Fi → weather card says "Offline", everything else works (NTP clock passed in the README device test 2026-11-17; Offline checked 2026-11-20)
 - [x] REQ-05 To-do: add, tick, edit (long-tap), save, delete with confirmation, optional deadline (Date and Time, each on/off); overdue first, then by due date
 - [x] REQ-06 Notes: create, list, view, edit, save, delete with confirmation
 - [x] REQ-07 On-screen keyboard with partial refresh
 - [x] REQ-08 Settings: Auto-rotate, Sound, Language & Font, Software Update, Configuration (city shown, auto timezone, 30-min refresh, °C/°F), About
 - [x] REQ-09 Touch works on every screen; DOWN/UP page back/forward, top button and bottom-edge swipe go Home (§3)
-- [ ] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
+- [x] REQ-10 Idle → sleep; wake each minute to redraw the clock; top button wakes fully
 - [x] REQ-11 No secrets in source or in the `.bin`
-- [ ] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08, interim layout; not yet tested with the card removed)
+- [x] REQ-12 Missing SD card → "No microSD card" screen with retry (built in TASK-08; checked on the device with the card removed 2026-11-20)
 - [x] REQ-13 Release package: bootloader `0x0`, partition table `0x8000`, boot_app0 `0xE000`, app `0x10000` + `manifest.json` (`tools/release.sh`); a merged image padded to 32 MB is too big to publish
 - [x] REQ-14 OTA: on Wi-Fi connect (at most hourly) and on "Check for updates", compare with the latest GitHub Release; on **Install**, download, verify and install the app `.bin` into the spare OTA slot; reboot; roll back if the new image fails to start. SD data untouched
 - [x] REQ-15 Language English/Vietnamese; user fonts from `/fonts/<Name>/<slot>.vlw` (added on the phone page); built-in font covers Vietnamese diacritics
 - [x] REQ-17 Wi-Fi set up like iPhone Settings on the phone page (via the 04j hotspot): list nearby networks, join with a password while the page stays connected, wrong-password alert, up to 5 saved networks joined automatically in the background (strongest in range), forget a network
-- [ ] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
+- [x] REQ-16 About shows name, SN, MAC, software version, certifications and live SD card status (inserted, mounted, path, free space, file count)
 
 ### Phase 2 (`PLAN_AI.md`)
 
@@ -156,7 +156,7 @@ Notion daily sync (to-dos, notes, and voice recordings passed to the phone over 
 - [x] TASK-15 Wi-Fi (`feature/wifi`): saved-network list in flash (up to 5, migrate the old single network), non-blocking boot + background auto-join and reconnect (last UTC offset kept in flash so the clock and Timezone are right before the first weather reply), 04j hotspot with random WPA2 password + Wi-Fi QR (AP+STA), network scan cached just before the hotspot starts (test refresh while it runs), phone pages 06–06f + 06l as one page with JSON calls (status, scan, join + result, forget, city), test-join with wrong-password detection from the disconnect reason, page served only on the hotspot
 - [x] TASK-13 OTA (`feature/ota`): 32 MB two-slot OTA partition table (`tools/build.sh`), version check against GitHub Releases, `HTTPUpdate` install, rollback, Software Update screen
 - [x] TASK-14 Language & Font (`feature/lang`): `TR(en, vi)` string table on the Sticky and `L(en, vi)` on the phone page, 04a/04b/04c screens, user fonts as `/fonts/<Name>/<slot>.vlw` (checked by `vlw_ok()`, read into PSRAM), phone 06m Fonts + 06n Add font (TTF/OTF converted in the browser), `/api/fonts`, `/api/font`, `/api/font_del`
-- [ ] TASK-11 Power (`feature/power`): Sleep after (04l, `sleep_min`), idle light sleep, minute clock wake, 30-min Wi-Fi sync, top-button wake, sleep battery report, UP + DOWN shutdown and battery-empty shutdown with 01e / 01f (`power.h`)
+- [x] TASK-11 Power (`feature/power`): Sleep after (04l, `sleep_min`), idle light sleep, minute clock wake, 30-min Wi-Fi sync, top-button wake, sleep battery report, UP + DOWN shutdown and battery-empty shutdown with 01e / 01f (`power.h`)
 - [x] TASK-12 README (controls, SD layout, device test record), LICENSE (MIT), `tools/release.sh` (four flash files + manifest), public repo TaDuy2005/heysticky (history scrubbed: no-reply email, sample SN; gitleaks clean)
 
 ## 8. Data formats

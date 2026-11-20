@@ -153,8 +153,8 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | | |
 |---|---|
 | Hardware | reTerminal Sticky (ESP32-S3R8, 8 MB PSRAM, 32 MB flash, 3.97" e-paper, GT911 touch) |
-| Firmware | HeySticky v1.0.0, built with ESP32 Arduino core 3.3.12 |
-| Date | 2026-11-17 |
+| Firmware | HeySticky v1.0.0 – v1.1.0, built with ESP32 Arduino core 3.3.12 |
+| Date | 2026-11-17 (v1.0.0), 2026-11-20 (v1.1.0) |
 
 | Test | Result |
 |---|---|
@@ -166,6 +166,9 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 | Sleep after 2 min idle, clock updates each minute, top button wakes | Pass (on USB) |
 | UP + DOWN shutdown; 2 s top-button hold turns on, a tap does not (USB and battery) | Pass |
 | Software Update from GitHub Releases (v1.0.0 → v1.0.1 over Wi-Fi, marked good, settings and SD kept) | Pass |
+| v1.1.0: hold the top button to talk → to-dos or a note (20 clips, English / Vietnamese / mixed, 18 right) | Pass |
+| v1.1.0: phone page AI setup (06h1 / 06h2): test, save, edit, delete | Pass |
+| v1.1.0: Web setup turns off after 5 min without the phone; an open editor sleeps on its own screen | Pass |
 
 ## Credits and licences
 

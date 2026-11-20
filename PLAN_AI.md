@@ -98,4 +98,5 @@ The chat call gets: today's date, weekday, local time, the system language (en /
 - [x] "Plain (no AI)" → **Plain text** toggle on 06h under the AI key, plus a **Note instructions** toggle (hides the box; disabled while Plain text is on). Figma 06h EN + VI updated 2026-11-18. Plain notes drop characters the fonts can't draw; nothing left → 05d
 - [x] No way to delete a saved key → 06h4 Delete provider removes its URL, model and key (2026-11-18)
 - [x] AI-09: add mixed English / Vietnamese clips to the model comparison (§3)
+- [x] 05c ghost: 05a's ring (white inside) faded back into 05c's black badge 1–2 s after the full refresh (the dots' partial refreshes drive the whole panel). 05a's badge is now solid black with white dots, so the left-over image is black on black. Checked on the device 2026-11-20
 - [x] Battery cost of one clip (mic + Wi-Fi + TLS): 91 % → 86 % over 20 clips in ~46 min awake on battery, so at most ~0.25 % a clip (AI-09)
