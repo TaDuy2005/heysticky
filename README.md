@@ -40,10 +40,25 @@ API key (see <a href="#ai-setup">AI setup</a>).</td>
 <td><b>Done.</b> The Sticky shows what it saved, with Try again if it got it wrong.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
-<img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
-<td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
-redraws at once.</td>
+<td><img src="assets/screens/sleep.png" alt="Asleep" width="200"></td>
+<td><b>Sleep.</b> After 1–10 min idle the Sticky sleeps on Home with a moon; the clock still updates every
+minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself off when the battery is empty.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/settings.png" alt="Settings" width="200"></td>
+<td><b>Settings.</b> Sound (volume Low / Medium / High), Language &amp; Font, Software Update, Configuration (city,
+timezone, °C / °F), Sleep after, Web setup, About (SN, MAC, version, SD card and its files).</td>
+</tr>
+<tr>
+<td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
+<td><b>English and Tiếng Việt.</b> Every screen and the phone page in both languages. Home shows the clock
+(built-in RTC, keeps time with Wi-Fi off, 12-hour AM / PM), weather from Open-Meteo (no API key), indoor
+temperature and humidity, and today's to-do count. User fonts can be added from the phone.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/update.png" alt="Software Update" width="200"></td>
+<td><b>Software Update.</b> Checks this repository's GitHub Releases and installs over Wi-Fi, with rollback if the
+new version fails to start. Notes, to-dos and settings stay.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
@@ -57,25 +72,10 @@ offline), fonts, AI keys, and the To-do and Notes pages. Web setup turns itself 
 phone.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
-<td><b>English and Tiếng Việt.</b> Every screen and the phone page in both languages. Home shows the clock
-(built-in RTC, keeps time with Wi-Fi off, 12-hour AM / PM), weather from Open-Meteo (no API key), indoor
-temperature and humidity, and today's to-do count. User fonts can be added from the phone.</td>
-</tr>
-<tr>
-<td><img src="assets/screens/settings.png" alt="Settings" width="200"></td>
-<td><b>Settings.</b> Sound (volume Low / Medium / High), Language &amp; Font, Software Update, Configuration (city,
-timezone, °C / °F), Sleep after, Web setup, About (SN, MAC, version, SD card and its files).</td>
-</tr>
-<tr>
-<td><img src="assets/screens/sleep.png" alt="Asleep" width="200"></td>
-<td><b>Sleep.</b> After 1–10 min idle the Sticky sleeps on Home with a moon; the clock still updates every
-minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself off when the battery is empty.</td>
-</tr>
-<tr>
-<td><img src="assets/screens/update.png" alt="Software Update" width="200"></td>
-<td><b>Software Update.</b> Checks this repository's GitHub Releases and installs over Wi-Fi, with rollback if the
-new version fails to start. Notes, to-dos and settings stay.</td>
+<td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
+<img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
+<td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
+redraws at once.</td>
 </tr>
 </table>
 
