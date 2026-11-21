@@ -2,6 +2,8 @@
 
 Personal assistant firmware for the **Seeed reTerminal Sticky** (ESP32-S3, 3.97" e-paper, portrait).
 The e-paper screen is a dashboard you read at a glance; you add things by voice or from your phone.
+Works in **English and Tiếng Việt (Vietnamese)**: every screen, the phone page and voice input, including
+sentences that mix both.
 
 <p align="center">
   <img src="assets/preview.jpg" alt="HeySticky Home on a reTerminal Sticky: greeting, 6:57 PM clock, weather, indoor climate and 3 tasks today" width="320">
