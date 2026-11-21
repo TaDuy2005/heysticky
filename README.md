@@ -45,9 +45,15 @@ API key (see <a href="#ai-setup">AI setup</a>).</td>
 redraws at once.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
-<td><b>Phone setup page.</b> Turn on Web setup, scan the QR code, open <code>192.168.4.1</code>: name, city,
-Wi-Fi (up to 5 networks, joined automatically, or a switch to stay offline), fonts and AI keys.</td>
+<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
+<img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
+<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). The Sticky
+starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
+is an example). Scan the QR code to join, then open <code>192.168.4.1</code>, or let the page open by itself.
+<br><br>
+<b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
+offline), fonts, AI keys, and the To-do and Notes pages. Web setup turns itself off after 5 min without the
+phone.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
