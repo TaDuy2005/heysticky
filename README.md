@@ -40,7 +40,8 @@ API key (see <a href="#ai-setup">AI setup</a>).</td>
 <td><b>Done.</b> The Sticky shows what it saved, with Try again if it got it wrong.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"></td>
+<td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
+<img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
 <td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
 redraws at once.</td>
 </tr>
