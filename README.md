@@ -1,31 +1,83 @@
 # HeySticky
 
 Personal assistant firmware for the **Seeed reTerminal Sticky** (ESP32-S3, 3.97" e-paper, portrait).
-A home dashboard with clock, weather and indoor climate, to-dos with deadlines, notes on the microSD card,
-a phone setup page, English and Vietnamese, user fonts, sleep with a live clock, and over-the-air updates.
+The e-paper screen is a dashboard you read at a glance; you add things by voice or from your phone.
+Works in **English and Tiếng Việt (Vietnamese)**: every screen, the phone page and voice input, including
+sentences that mix both.
+
+<p align="center">
+  <img src="assets/preview.jpg" alt="HeySticky Home on a reTerminal Sticky: greeting, 6:57 PM clock, weather, indoor climate and 3 tasks today" width="320">
+</p>
 
 ## Features
 
-- **Home:** "Hello, {name}", big clock and date, weather (Open-Meteo, no API key), indoor temperature and
-  humidity, today's to-do count, app dock.
-- **To-do:** tick, open (long-tap) to set a deadline (date and/or time) or delete; add and edit by voice or on
-  the phone page.
-  Stored as plain Markdown in `/todo.md` on the microSD card.
-- **Notes:** view (scrolls) and delete on the Sticky; create and edit by voice or on the phone page. One Markdown
-  file per note in `/notes/`. To-dos and notes keep their created date and time.
-- **AI voice:** hold the top button and talk. Speech-to-text, then an AI turns it into to-dos (with deadlines,
-  "tomorrow at 9") or a note written your way. English and Vietnamese. Needs an API key (see AI setup).
-- **Phone To-do and Notes pages** (on the Sticky's hotspot): add, edit, tick and delete; the Sticky redraws at once.
-- **Clock:** the built-in RTC keeps the time with Wi-Fi off; 12-hour with AM / PM.
-- **Phone setup page:** turn on Web setup on the Sticky, scan the QR code to join its hotspot, open
-  `192.168.4.1` to set your name, city and Wi-Fi (up to 5 saved networks, joined automatically; a Wi-Fi switch on that page
-  keeps the Sticky offline).
-- **Settings:** Sound (on/off, volume Low / Medium / High), Language (English / Tiếng Việt), User Font, Software Update, Configuration
-  (city, timezone, °C/°F), Sleep after, Web setup, About (SN, MAC, version, SD card).
-- **Power:** sleeps after 1–10 min idle (Home with a moon, clock still updates every minute, weather every
-  60 min); shutdown with UP + DOWN; turns itself off when the battery is empty.
-- **Software Update:** checks this repository's GitHub Releases and installs over Wi-Fi, with rollback if the
-  new version fails to start.
+Screens below are from the Figma design; the photo above is the real device.
+
+<table>
+<tr>
+<td width="220"><img src="assets/screens/todo.png" alt="To-do list" width="200"></td>
+<td><b>To-do.</b> Tap to tick, long-tap to open. Each task can have a deadline (date and/or time) and keeps the
+date and time it was created. Pages loop as you swipe. Stored as plain Markdown in <code>/todo.md</code> on the
+microSD card.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/todo-deadline.png" alt="Task with deadline" width="200"></td>
+<td><b>Task details.</b> Deadline drop-down with date and 12-hour time, Created stamp, Delete and Done.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/note.png" alt="Note view" width="200"></td>
+<td><b>Notes.</b> Read (scrolls) and delete on the Sticky; create and edit by voice or on the phone. One Markdown
+file per note in <code>/notes/</code>.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/listening.png" alt="Listening" width="200"></td>
+<td><b>AI voice.</b> Hold the top button and talk (up to 60 s). Speech-to-text, then an AI turns it into to-dos
+with deadlines ("tomorrow at 9") or a note written your way. English and Vietnamese, also mixed. Needs your own
+API key (see <a href="#ai-setup">AI setup</a>).</td>
+</tr>
+<tr>
+<td><img src="assets/screens/ai-done.png" alt="Added" width="200"></td>
+<td><b>Done.</b> The Sticky shows what it saved, with Try again if it got it wrong.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/sleep.png" alt="Asleep" width="200"></td>
+<td><b>Sleep.</b> After 1–10 min idle the Sticky sleeps on Home with a moon; the clock still updates every
+minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself off when the battery is empty.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/settings.png" alt="Settings" width="200"></td>
+<td><b>Settings.</b> Sound (volume Low / Medium / High), Language &amp; Font, Software Update, Configuration (city,
+timezone, °C / °F), Sleep after, Web setup, About (SN, MAC, version, SD card and its files).</td>
+</tr>
+<tr>
+<td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
+<td><b>English and Tiếng Việt.</b> Every screen and the phone page in both languages. Home shows the clock
+(built-in RTC, keeps time with Wi-Fi off, 12-hour AM / PM), weather from Open-Meteo (no API key), indoor
+temperature and humidity, and today's to-do count. User fonts can be added from the phone.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/update.png" alt="Software Update" width="200"></td>
+<td><b>Software Update.</b> Checks this repository's GitHub Releases and installs over Wi-Fi, with rollback if the
+new version fails to start. Notes, to-dos and settings stay.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
+<img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
+<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). The Sticky
+starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
+is an example). Scan the QR code to join, then open <code>192.168.4.1</code>, or let the page open by itself.
+<br><br>
+<b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
+offline), fonts, AI keys, and the To-do and Notes pages. Web setup turns itself off after 5 min without the
+phone.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
+<img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
+<td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
+redraws at once.</td>
+</tr>
+</table>
 
 ## Controls
 
@@ -153,31 +205,17 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 3. Create GitHub Release `vX.Y.Z` with the files from `release/vX.Y.Z/`. The Sticky downloads the asset named
    `heysticky-app.bin`.
 
-## Device test record
+## Roadmap
 
-| | |
-|---|---|
-| Hardware | reTerminal Sticky (ESP32-S3R8, 8 MB PSRAM, 32 MB flash, 3.97" e-paper, GT911 touch) |
-| Firmware | HeySticky v1.0.0 – v1.2.0, built with ESP32 Arduino core 3.3.12 |
-| Date | 2026-11-17 (v1.0.0), 2026-11-20 (v1.1.0, v1.2.0) |
+The full list with details is in [ROADMAP.md](ROADMAP.md).
 
-| Test | Result |
-|---|---|
-| First boot without Wi-Fi opens Web setup; phone page saves name, city and Wi-Fi | Pass |
-| Home: clock (NTP), weather, indoor temperature/humidity, today's to-dos | Pass |
-| To-do add / tick / edit / deadline / delete, saved to `/todo.md` | Pass |
-| Notes create / view / edit / delete, saved to `/notes/` | Pass |
-| English / Vietnamese switch; user font from the phone page | Pass |
-| Sleep after 2 min idle, clock updates each minute, top button wakes | Pass (on USB) |
-| UP + DOWN shutdown; 2 s top-button hold turns on, a tap does not (USB and battery) | Pass |
-| Software Update from GitHub Releases (v1.0.0 → v1.0.1 over Wi-Fi, marked good, settings and SD kept) | Pass |
-| v1.1.0: hold the top button to talk → to-dos or a note (20 clips, English / Vietnamese / mixed, 18 right) | Pass |
-| v1.1.0: phone page AI setup (06h1 / 06h2): test, save, edit, delete | Pass |
-| v1.1.0: Web setup turns off after 5 min without the phone; an open editor sleeps on its own screen | Pass |
-| v1.2.0: RTC clock right before Wi-Fi joins and after off / on with Wi-Fi off | Pass |
-| v1.2.0: lists loop by swipe, Back gestures, 02e Deadline drop-down / Done / Discard, 03c and 04k scroll | Pass |
-| v1.2.0: phone To-do / Notes add, edit, tick, delete; the Sticky redraws; created date and time | Pass |
-| v1.2.0: 12-hour AM / PM times (Home, labels, Created, 02h, phone page) | Pass |
+- **Released:** v1.0 dashboard, To-do, Notes, phone setup, updates over Wi-Fi · v1.1 AI voice · v1.2 phone To-do
+  and Notes pages, RTC clock, 12-hour times.
+- **Next, v1.3.0 Poster:** one task shown big as a poster with your own picture, set up and pushed from the phone.
+- **Then:** choose and arrange the Home cards (widgets).
+- **Integrations:** Notion daily sync, Home Assistant, a book reader, deadline reminders, remote access.
+- **iPhone app over Bluetooth:** to-dos, notes and fonts without the hotspot.
+- **Power:** measure a night on battery, then decide on hourly deep sleep on Home.
 
 ## Credits and licences
 
