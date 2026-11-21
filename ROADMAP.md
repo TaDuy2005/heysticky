@@ -66,8 +66,10 @@ The phone page already has hidden rows for Notion, Home Assistant and Remote acc
 
 ## Small open items
 
-- [ ] **Seeed registry entry** — add a photo of the Sticky (`assets/preview.jpg`), refresh the entry to the
-      latest version, `npm test` + `npm run validate`, then fork / PR / form.
+- [x] **Seeed registry entry** — HeySticky 1.2.0 submitted as
+      [registry PR #152](https://github.com/Seeed-Projects/reterminal-sticky-playground-registry/pull/152)
+      (2026-11-21), device-tested. Waiting for Seeed's review; each new release needs a small PR there to update
+      the Playground's browser flasher.
 - [ ] **Certifications** in About — replace the "FCC · CE" placeholder with the text on the device label.
 - [ ] **16 px edge margin** (status bar, page counter, bottom buttons) — check against the visible pixels on the
       real panel.
