@@ -42,6 +42,7 @@ inline uint32_t g_wx_next = 0;   // millis() of the next weather fetch
 inline volatile bool g_ntpOk = false;  // an NTP reply came since boot (then HTTP Date headers are not needed)
 inline volatile time_t g_netTime = 0;  // UTC just taken from the network, waiting for net_loop() to store it in the RTC
 inline long g_utc_off = LONG_MIN;  // seconds, from Open-Meteo; the last one is kept in flash (utc_off)
+inline time_t g_bootClock = 0;  // RTC time at boot minus uptime: net_loop() logs how far off it was at the first network time
 
 inline bool http_json(const String &url, JsonDocument &doc);
 inline String url_enc(const String &s);
@@ -968,6 +969,7 @@ inline bool net_begin() {
   const String off = cfg_get("utc_off");  // last known offset: right clock before the first weather reply
   if (off.length()) g_utc_off = off.toInt();
   configTime(off.toInt(), 0, "pool.ntp.org", "time.google.com");
+  g_bootClock = time(nullptr) - millis() / 1000;
   sntp_set_time_sync_notification_cb([](timeval *tv) { g_ntpOk = true; g_netTime = tv->tv_sec; });
   g_web.on("/", HTTP_GET, [] {
     if (!ap_only()) return;
@@ -1130,6 +1132,18 @@ inline void net_store_time() {
 }
 
 inline void net_loop() {
+  // Once per turn-on: the RTC stops while the Sticky is off, so ask NTP as soon as Wi-Fi is up (SNTP started
+  // before Wi-Fi at boot, its first request failed and it is waiting on its own backoff).
+  static bool asked = false, logged = false;
+  if (!asked && WiFi.status() == WL_CONNECTED) {
+    asked = true;
+    configTime(g_utc_off == LONG_MIN ? 0 : g_utc_off, 0, "pool.ntp.org", "time.google.com");  // restarts SNTP: asks now
+    Serial.println("[ntp] turn-on time check");
+  }
+  if (!logged && g_netTime) {
+    logged = true;
+    Serial.printf("[ntp] turn-on check: clock was %lld s off\n", (long long)(g_netTime - g_bootClock - millis() / 1000));
+  }
   net_store_time();
   net_sta_step();
   if (g_webOn) { g_dns.processNextRequest(); g_web.handleClient(); }
