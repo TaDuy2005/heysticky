@@ -312,7 +312,8 @@ inline void draw_websetup(bool loading = false) {  // loading: toggle already On
     ws_qr("http://" + ip + "/", 258);
     ui_text(F_B25, TR("Or open", "Hoặc mở"), W / 2, 451, 33, AL_CENTER);
     ws_url(ip, 496);
-    ui_text(F_R25, TR("Use the same Wi-Fi.", "Dùng cùng mạng Wi-Fi."), W / 2, 595, 35, AL_CENTER);
+    const String q = "“" + WiFi.SSID() + "”";
+    ui_wrap(F_R25, TR("Use the same Wi-Fi " + q + " to connect.", "Dùng cùng Wi-Fi " + q + " để kết nối."), 40, 595, 400, 35, 4, AL_CENTER);
     return;
   }
   ui_text(F_B25, TR("Scan to join", "Quét để kết nối"), W / 2, 213, 33, AL_CENTER);
