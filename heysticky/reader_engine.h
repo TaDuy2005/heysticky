@@ -34,5 +34,6 @@ int toc_current();
 
 void draw();  // render the current page into the whole 480 x 800 screen; HeySticky draws the status bar and footer on top
 bool metadata(const String &path, String &title, String &author);  // for the library, without laying out
+void forget(const String &path);  // drop the book's layout cache (/.reader/epub_<hash>): deleted or replaced
 
 }  // namespace rd

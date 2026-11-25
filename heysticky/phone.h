@@ -1,11 +1,11 @@
-// Phone setup page: To-do (06o / 06p) and Notes (06q / 06r) API. The pages are in PAGE (net.h).
+// Phone setup page: To-do (06o / 06p), Notes (06q / 06r) and Books (06s) API. The pages are in PAGE (net.h).
 // Runs on the main loop (WebServer is polled from net_loop), so the card is never used by two tasks at once.
 // A task is addressed by its line index plus the line as the phone saw it ("was"): if the Sticky changed the
 // list meanwhile, the phone gets 409 and reloads instead of editing the wrong line.
 #pragma once
 #include "screens.h"
 
-inline bool g_phoneTodo = false, g_phoneNotes = false;  // changed from the phone: phone_loop() redraws
+inline bool g_phoneTodo = false, g_phoneNotes = false, g_phoneBooks = false;  // changed from the phone: phone_loop() redraws
 
 inline void phone_json(JsonDocument &d) {
   String s;
@@ -31,6 +31,7 @@ inline void api_counts() {  // 06 Setup rows: "To-do (n)" = open tasks, "Notes (
   JsonDocument d;
   d["todo"] = g_sdOk ? todo_left(g_tasks) : -1;
   d["notes"] = g_sdOk && notes_scan() ? int(g_notes.size()) : -1;
+  d["books"] = g_sdOk && books_scan() ? int(g_books.size()) : -1;
   phone_json(d);
 }
 
@@ -147,6 +148,72 @@ inline void api_note_del() {
   g_web.send(200, "text/plain", "ok");
 }
 
+// ---------- Books (06s): /books/<file>; the Sticky reads them (Apps › Reader) ----------
+constexpr size_t BOOK_MAX = 50u << 20;  // 50 MB a book
+inline bool book_name_ok(const String &n) {
+  if (!n.length() || n.length() > 120 || n.indexOf('/') >= 0 || n.indexOf('\\') >= 0 || !book_file(n)) return false;
+  for (unsigned i = 0; i < n.length(); i++)
+    if (uint8_t(n[i]) < 0x20) return false;
+  return true;
+}
+
+inline void api_books() {
+  if (!phone_card()) return;
+  if (!books_scan()) return g_web.send(503, "text/plain", "no card");
+  JsonDocument d;
+  JsonArray a = d["books"].to<JsonArray>();
+  for (const Book &b : g_books) {
+    JsonObject o = a.add<JsonObject>();
+    o["name"] = b.path.substring(strlen(BOOKS_DIR) + 1);
+    o["title"] = b.title;
+    o["author"] = b.author;
+    o["size"] = b.size;
+  }
+  phone_json(d);
+}
+
+// One book per request (multipart): /api/book?name=Frankenstein.epub. Written as .part, renamed when complete.
+inline File g_bookUp;
+inline bool g_bookOk = false;
+inline size_t g_bookN = 0;
+inline void api_book_part() {
+  HTTPUpload &u = g_web.upload();
+  const String name = g_web.arg("name"), path = String(BOOKS_DIR) + "/" + name, part = String(READER_DIR) + "/upload.part";
+  if (u.status == UPLOAD_FILE_START) {
+    g_bookN = 0;
+    g_bookOk = g_web.client().localIP() == WiFi.softAPIP() && (g_sdOk || sd_mount()) && book_name_ok(name);
+    if (g_bookOk) { SD.mkdir(BOOKS_DIR); SD.mkdir(READER_DIR); g_bookUp = SD.open(part, FILE_WRITE); g_bookOk = bool(g_bookUp); }
+  } else if (u.status == UPLOAD_FILE_WRITE) {
+    g_bookN += u.currentSize;
+    if (g_bookOk) g_bookOk = g_bookN <= BOOK_MAX && g_bookUp.write(u.buf, u.currentSize) == u.currentSize;
+  } else {  // END or ABORTED
+    if (g_bookUp) g_bookUp.close();
+    g_bookOk = g_bookOk && u.status == UPLOAD_FILE_END && g_bookN > 0;
+    if (g_bookOk) {
+      rd::forget(path);  // a book of the same name is replaced
+      SD.remove(path);
+      g_bookOk = SD.rename(part, path);
+    }
+    if (!g_bookOk) SD.remove(part);
+  }
+}
+inline void api_book_done() {
+  if (!ap_only()) return;
+  if (g_bookOk) g_phoneBooks = true;
+  g_web.send(g_bookOk ? 200 : 400, "text/plain", g_bookOk ? "OK" : "Upload failed");
+  g_bookOk = false;
+}
+
+inline void api_book_del() {
+  if (!ap_only() || !phone_card()) return;
+  const String name = g_web.arg("name"), path = String(BOOKS_DIR) + "/" + name;
+  if (!book_name_ok(name) || !SD.exists(path)) return g_web.send(404, "text/plain", "gone");
+  rd::forget(path);
+  if (!SD.remove(path)) return g_web.send(503, "text/plain", "no card");
+  g_phoneBooks = true;
+  g_web.send(200, "text/plain", "ok");
+}
+
 inline void phone_begin() {
   g_web.on("/api/counts", HTTP_GET, api_counts);
   g_web.on("/api/todo", HTTP_GET, api_todo);
@@ -156,6 +223,9 @@ inline void phone_begin() {
   g_web.on("/api/note", HTTP_GET, api_note);
   g_web.on("/api/note_set", HTTP_POST, api_note_set);
   g_web.on("/api/note_del", HTTP_POST, api_note_del);
+  g_web.on("/api/books", HTTP_GET, api_books);
+  g_web.on("/api/book", HTTP_POST, api_book_done, api_book_part);
+  g_web.on("/api/book_del", HTTP_POST, api_book_del);
 }
 
 // The Sticky shows what the phone changed: a list (or Home's Today count) redraws; a task or note screen,
@@ -172,5 +242,10 @@ inline void phone_loop() {
     const Screen s = g_screen;
     if (s == SCR_NOTE || s == SCR_DELNOTE) { notes_scan(); show(SCR_NOTES); }
     else if (s == SCR_NOTES) { notes_scan(); show(s); }
+  }
+  if (g_phoneBooks) {  // the library is read again; an open book that was deleted closes
+    g_phoneBooks = false;
+    const Screen s = g_screen;
+    if (s == SCR_LIBRARY || ((s == SCR_BOOK || s == SCR_CONTENTS) && !SD.exists(g_bookPath))) open_library();
   }
 }

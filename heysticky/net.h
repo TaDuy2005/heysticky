@@ -261,7 +261,8 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <button class="r" id="rf"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
 <button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
 <button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
-<button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
+<button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button>
+<button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Books</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -277,6 +278,7 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-todo" hidden></div>
 <div class="c" id="v-task" hidden></div>
 <div class="c" id="v-notes" hidden></div>
+<div class="c" id="v-books" hidden></div>
 <div class="c" id="v-note" hidden></div>
 <div class="c" id="v-noteed" hidden></div>
 </main><div id="ov"></div>
@@ -302,7 +304,7 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
  render()}
 
 function go(v,d){view=v;det=d||'';dirty=()=>false;
- if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='books')booksView();if(v==='note')noteView();if(v==='noteed')noteEdView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
@@ -313,7 +315,7 @@ function nav(v,d){history.pushState(null,'');go(v,d)}
 addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
  close();if(view==='noteed'&&det!=='new')go('note',det);else go(UP[view]||'setup')});
 $('back').onclick=()=>history.back();
-$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rb').onclick=()=>nav('books');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
@@ -325,13 +327,13 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','books'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
-  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú')}[view];
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),books:L('Books','Sách')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
- const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);
+ const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);$('lb').textContent=L('Books','Sách')+cnt(C.books);
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
@@ -650,6 +652,26 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
  v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
+// ---------- Books (06s): upload / delete; the Sticky reads them in Apps › Reader ----------
+const mb=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB',ext=n=>n.split('.').pop().toUpperCase();
+let UPL=null;  // {name, pct} while a book uploads
+async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/api/books');if(!d)return;
+ const file=E('input',{type:'file',accept:'.epub,.txt,.md',multiple:true,hidden:true});
+ const add=E('button',{className:'btn k',textContent:UPL?L('Uploading…','Đang tải lên…'):L('+  Upload book','+  Tải sách lên'),disabled:!!UPL});add.onclick=()=>file.click();
+ file.onchange=async()=>{for(const f of file.files){if(!/\.(epub|txt|md)$/i.test(f.name)||/[\/\\]/.test(f.name)||f.name[0]==='.'){alertBox(L('Only EPUB, TXT or MD files','Chỉ nhận tệp EPUB, TXT hoặc MD'),f.name);continue}
+   UPL={name:f.name.replace(/\.[^.]+$/,''),pct:0};booksView();
+   const ok=await new Promise(res=>{const x=new XMLHttpRequest(),fd=new FormData();fd.append('f',f,f.name);
+    x.upload.onprogress=e=>{if(e.lengthComputable){UPL.pct=Math.round(e.loaded*100/e.total);const m=$('upm');if(m)m.textContent=L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}};
+    x.onload=()=>res(x.status===200);x.onerror=()=>res(false);x.open('POST','/api/book?name='+encodeURIComponent(f.name));x.send(fd)});
+   UPL=null;if(!ok){alertBox(L('Couldn\'t upload the book','Không tải lên được sách'),f.name);break}}
+  booksView();counts()};
+ const rows=d.books.map(b=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
+  del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” and your place in it are removed from the card.','“'+b.title+'” và vị trí đang đọc sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView();counts()});
+  return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
+ if(UPL)rows.unshift(E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:UPL.name}),E('small',{className:'pr',id:'upm',textContent:L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}))));
+ const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('EPUB, TXT or MD. Books go into /books/ on the card. Read them on the Sticky: Apps › Reader.','EPUB, TXT hoặc MD. Sách được lưu vào /books/ trên thẻ. Đọc trên Sticky: Ứng dụng › Đọc.')});
+ if(!rows.length){v.replaceChildren(add,file,empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.')));add.style.margin='0 0 22px';return}
+ v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 

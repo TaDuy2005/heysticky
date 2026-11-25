@@ -214,4 +214,9 @@ bool metadata(const String &path, String &t, String &a) {
   return true;
 }
 
+void forget(const String &path) {
+  if (g_epub && g_epub->getPath() == path.c_str()) close();
+  Epub(std::string(path.c_str()), "/.reader").clearCache();
+}
+
 }  // namespace rd

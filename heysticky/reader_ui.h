@@ -55,7 +55,10 @@ inline bool books_scan() {
       e.close();
       auto k = std::find_if(known.begin(), known.end(), [&](const Book &o) { return o.path == b.path; });
       if (k != known.end() && k->size == b.size) b = *k;
-      else changed = true;  // new, or replaced with a different file: its place no longer fits
+      else {  // new, or replaced with a different file: its place and its old layout no longer fit
+        if (k != known.end()) rd::forget(b.path);
+        changed = true;
+      }
       if (!b.title.length()) {
         if (!rd::metadata(b.path, b.title, b.author) || !b.title.length()) b.title = book_name(b.path);
         changed = true;
