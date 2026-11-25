@@ -88,7 +88,7 @@ inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, 
 // Runs inside the web handler, so the page waits on "Testing…" (up to AI_TIMEOUT_MS).
 // Reply: {"code": HTTP status or < 0, "msg": the service's error text} or {"why": "stt"|"wifi"} when nothing was sent.
 inline void api_ai_test() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   const bool stt = g_web.arg("svc") == "stt";
   String url = g_web.arg("url"), model = g_web.arg("model"), key = g_web.arg("key"), order = g_web.arg("order"), sort = g_web.arg("sort");
   for (String *s : {&url, &model, &key, &order}) s->trim();

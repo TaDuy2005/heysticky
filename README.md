@@ -67,6 +67,10 @@ new version fails to start. Notes, to-dos and settings stay.</td>
 starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
 is an example). Scan the QR code to join, then open <code>192.168.4.1</code>, or let the page open by itself.
 <br><br>
+<b>Home Wi-Fi.</b> Once the Sticky is on your Wi-Fi, pick <b>Home Wi-Fi</b> instead of Hotspot: after a
+warning (anyone on that Wi-Fi can open the page, and it is not encrypted) it shows a QR code and its address on
+your network, for example <code>192.168.1.42</code>. Your phone stays on your Wi-Fi.
+<br><br>
 <b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
 offline), fonts, AI keys, and the To-do and Notes pages. Web setup turns itself off after 5 min without the
 phone.</td>
@@ -74,7 +78,7 @@ phone.</td>
 <tr>
 <td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
 <img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
-<td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
+<td><b>Phone To-do and Notes pages.</b> On the Sticky's hotspot or your home Wi-Fi: add, edit, tick and delete; the Sticky
 redraws at once.</td>
 </tr>
 </table>
@@ -102,7 +106,8 @@ redraws at once.</td>
 3. Set **Profile** (name, city) and **Wi-Fi**. Turn Web setup off on the Sticky when done.
 
 Wi-Fi passwords and settings are kept in the Sticky's flash only. They are never in the source or the `.bin`,
-and the setup page is served only on the Sticky's own password-protected hotspot.
+and the setup page is served on the Sticky's own password-protected hotspot, or on your home Wi-Fi only after
+you choose Home Wi-Fi and accept its warning (plain HTTP: use it only on a Wi-Fi you trust).
 
 ## AI setup
 

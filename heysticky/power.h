@@ -192,9 +192,9 @@ inline void power_loop() {
   else if (!both) both = millis() | 1;
   else if (millis() - both >= OFF_HOLD_MS) power_off(false);
   if (millis() - batAt >= 60000 && g_ota != OTA_INSTALLING) { batAt = millis(); if (battery_empty()) power_off(true); }
-  if (g_webOn && millis() - g_webSeen >= WEB_IDLE_MS && millis() - g_lastInput >= WEB_IDLE_MS) {  // phone gone: hotspot off
+  if (g_webOn && millis() - g_webSeen >= WEB_IDLE_MS && millis() - g_lastInput >= WEB_IDLE_MS) {  // phone gone: web setup off (either mode)
     Serial.println("[net] no phone for 5 min");
-    net_hotspot(false);
+    net_web(false);
     if (g_screen == SCR_WEBSETUP) g_redraw = true;
   }
   if (may_sleep()) power_sleep();
