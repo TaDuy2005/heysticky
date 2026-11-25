@@ -13,7 +13,10 @@ inline void phone_json(JsonDocument &d) {
   g_web.sendHeader("Cache-Control", "no-store");
   g_web.send(200, "application/json", s);
 }
-inline bool phone_card() {  // 503 = no card; the page says "Put a microSD card in the Sticky first."
+// Every To-do / Notes call starts here: only on the address 04j chose (web_ok: 404 on the other network), then
+// 503 = no card; the page says "Put a microSD card in the Sticky first."
+inline bool phone_card() {
+  if (!web_ok()) return false;
   if (g_sdOk || sd_mount()) return true;
   g_web.send(503, "text/plain", "no card");
   return false;
@@ -28,6 +31,7 @@ inline String one_line_arg(const char *k, unsigned max) {
 
 // ---------- To-do ----------
 inline void api_counts() {  // 06 Setup rows: "To-do (n)" = open tasks, "Notes (n)"
+  if (!web_ok()) return;
   JsonDocument d;
   d["todo"] = g_sdOk ? todo_left(g_tasks) : -1;
   d["notes"] = g_sdOk && notes_scan() ? int(g_notes.size()) : -1;
