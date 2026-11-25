@@ -239,7 +239,7 @@ static int s_qrX, s_qrY, s_qrS;
 static void qr_modules(esp_qrcode_handle_t q) {
   const int n = esp_qrcode_get_size(q);
   s_qrS = 157 / n;  // whole pixels per module inside the 181 px frame
-  const int x0 = 150 + (181 - n * s_qrS) / 2, y0 = 175 + (181 - n * s_qrS) / 2;
+  const int x0 = 150 + (181 - n * s_qrS) / 2, y0 = s_qrY + (181 - n * s_qrS) / 2;
   for (int y = 0; y < n; y++)
     for (int x = 0; x < n; x++)
       if (esp_qrcode_get_module(q, x, y)) display.fillRect(x0 + x * s_qrS, y0 + y * s_qrS, s_qrS, s_qrS, INK);
@@ -252,6 +252,48 @@ static void kv_center(const String &k, const String &v, int y) {
   ui_text(F_R25, v, x + w - ui_width(F_R25, v), y, 35);
 }
 
+static void ws_qr(const String &s, int y) {  // 181 px framed QR, centred
+  ui_card(150, y, 181, 181, 6, 2);
+  s_qrY = y;
+  esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
+  cfg.display_func = qr_modules;
+  esp_qrcode_generate(&cfg, s.c_str());
+}
+
+static void ws_url(const String &ip, int y) {  // black box with the address
+  display.fillRoundRect(40, y, 400, 87, 12, INK);
+  ui_text(F_X42, ip, W / 2, y + 16, 55, AL_CENTER, PAPER, INK);
+}
+
+// Under the Hotspot | Home Wi-Fi choice (Figma 04j): 1 = the Home Wi-Fi warning before its QR, 2 = no Wi-Fi.
+enum WsNote : uint8_t { WS_NONE, WS_WARN, WS_NOWIFI };
+inline WsNote g_wsNote = WS_NONE;  // asked for by a tap; the hotspot keeps running meanwhile
+inline WsNote ws_note() {  // Home Wi-Fi that lost its network shows "No Wi-Fi" too
+  return g_wsNote ? g_wsNote : g_webOn && g_webHome && WiFi.status() != WL_CONNECTED ? WS_NOWIFI : WS_NONE;
+}
+inline bool ws_home() { return g_wsNote || g_webHome; }  // the choice shows Home Wi-Fi
+
+// WebNotice: badge "!", title, body, centred between the choice (y 195) and the buttons (y 705).
+static void draw_ws_note(WsNote n) {
+  const bool warn = n == WS_WARN;
+  const String title = warn ? TR("Open on home Wi-Fi?", "Mở trên Wi-Fi nhà?") : TR("No Wi-Fi connection", "Không có Wi-Fi");
+  const String body = warn ? TR("Anyone on this Wi-Fi can open this page, and it isn’t encrypted. Use it only on a Wi-Fi you trust.",
+                                "Ai dùng chung Wi-Fi này đều mở được trang này, và trang không được mã hoá. Chỉ dùng trên Wi-Fi bạn tin cậy.")
+                           : TR("Set up Wi-Fi with Hotspot first.", "Hãy cài Wi-Fi bằng Điểm phát trước.");
+  const int lines = ui_wrap(F_R25, body, 40, 0, 400, 35, 5, AL_CENTER, false);
+  const int top = 195 + (705 - 195 - (160 + 18 + 42 + 18 + 35 * lines)) / 2;
+  display.fillCircle(240, top + 80, 80, INK);  // Badge 160, 3 px ring
+  display.fillCircle(240, top + 80, 77, PAPER);
+  display.fillRoundRect(232, top + 36, 16, 60, 8, INK);  // "!"
+  display.fillCircle(240, top + 116, 9, INK);
+  ui_text(F_X32, title, W / 2, top + 178, 42, AL_CENTER);
+  ui_wrap(F_R25, body, 40, top + 238, 400, 35, 5, AL_CENTER);
+  if (warn) {
+    ui_button(40, 705, 193, 79, false, nullptr, TR("Turn on", "Bật"));
+    ui_button(247, 705, 193, 79, true, &ICON_X24, TR("Cancel", "Huỷ"));
+  } else ui_button(40, 705, 400, 79, true, nullptr, TR("Use Hotspot", "Dùng Điểm phát"));
+}
+
 inline void draw_websetup(bool loading = false) {  // loading: toggle already On while the hotspot starts
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
@@ -259,17 +301,25 @@ inline void draw_websetup(bool loading = false) {  // loading: toggle already On
   ui_toggle(372, 56, g_webOn || loading);
   display.fillRect(40, 109, 400, 3, INK);
   if (loading) { ui_text(F_B25, TR("Loading...", "Đang tải..."), W / 2, (H - 33) / 2, 33, AL_CENTER); return; }
-  if (!g_webOn) return;  // Off: no hotspot, nothing to show
-  ui_text(F_B25, TR("Scan to join", "Quét để kết nối"), W / 2, 130, 33, AL_CENTER);
-  ui_card(150, 175, 181, 181, 6, 2);
-  const String qr = String("WIFI:T:WPA;S:") + AP_SSID + ";P:" + g_apPass + ";;";  // the phone camera joins the hotspot
-  esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
-  cfg.display_func = qr_modules;
-  esp_qrcode_generate(&cfg, qr.c_str());
-  kv_center("Wi-Fi", AP_SSID, 368);
-  kv_center(TR("Password", "Mật khẩu"), g_apPass, 415);
-  ui_text(F_B25, TR("Then open", "Rồi mở"), W / 2, 462, 33, AL_CENTER);
-  display.fillRoundRect(40, 507, 400, 87, 12, INK);
-  ui_text(F_X42, WiFi.softAPIP().toString(), W / 2, 523, 55, AL_CENTER, PAPER, INK);
-  ui_text(F_R25, TR("It may open by itself.", "Trang có thể tự mở."), W / 2, 606, 35, AL_CENTER);
+  if (!g_webOn) return;  // Off: nothing below the top bar, not even the choice
+  const bool home = ws_home();
+  ui_button(40, 128, 194, 67, !home, nullptr, TR("Hotspot", "Điểm phát"));
+  ui_button(246, 128, 194, 67, home, nullptr, TR("Home Wi-Fi", "Wi-Fi nhà"));
+  if (const WsNote n = ws_note()) return draw_ws_note(n);
+  if (home) {  // the phone joins nothing: the QR opens the page on the home network
+    const String ip = WiFi.localIP().toString();
+    ui_text(F_B25, TR("Scan to open", "Quét để mở"), W / 2, 213, 33, AL_CENTER);
+    ws_qr("http://" + ip + "/", 258);
+    ui_text(F_B25, TR("Or open", "Hoặc mở"), W / 2, 451, 33, AL_CENTER);
+    ws_url(ip, 496);
+    ui_text(F_R25, TR("Use the same Wi-Fi.", "Dùng cùng mạng Wi-Fi."), W / 2, 595, 35, AL_CENTER);
+    return;
+  }
+  ui_text(F_B25, TR("Scan to join", "Quét để kết nối"), W / 2, 213, 33, AL_CENTER);
+  ws_qr(String("WIFI:T:WPA;S:") + AP_SSID + ";P:" + g_apPass + ";;", 258);  // the phone camera joins the hotspot
+  kv_center("Wi-Fi", AP_SSID, 451);
+  kv_center(TR("Password", "Mật khẩu"), g_apPass, 498);
+  ui_text(F_B25, TR("Then open", "Rồi mở"), W / 2, 545, 33, AL_CENTER);
+  ws_url(WiFi.softAPIP().toString(), 590);
+  ui_text(F_R25, TR("It may open by itself.", "Trang có thể tự mở."), W / 2, 689, 35, AL_CENTER);
 }

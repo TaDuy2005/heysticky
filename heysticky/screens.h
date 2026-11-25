@@ -356,7 +356,7 @@ inline void settings_tap(int x, int y) {
     case SR_SOUND: hw_beep(); show(SCR_SOUND); break;
     case SR_CONFIG: hw_beep(); show(SCR_CONFIG); break;
     case SR_SLEEP: hw_beep(); show(SCR_SLEEP); break;
-    case SR_WEB: hw_beep(); show(SCR_WEBSETUP); break;
+    case SR_WEB: hw_beep(); g_wsNote = WS_NONE; show(SCR_WEBSETUP); break;
     case SR_ABOUT: hw_beep(); show(SCR_ABOUT); break;
     case SR_UPDATE: hw_beep(); show(SCR_UPDATE); break;
     case SR_LANG: hw_beep(); show(SCR_LANGFONT); break;
@@ -375,11 +375,38 @@ inline void sound_tap(int x, int y) {
   g_redraw = true;
 }
 
+inline void websetup_hotspot() {  // On (or back from Home Wi-Fi): scans first (about 3 s), new password each time
+  draw_websetup(true);
+  ui_partial(0, 0, W, H);  // show On + Loading... before the start
+  net_web(true);
+}
+
+// 04j: toggle; then Hotspot | Home Wi-Fi (Home Wi-Fi asks first: warning, or "No Wi-Fi").
 inline void websetup_tap(int x, int y) {
-  if (!top_right(x, y)) return;
-  hw_beep();
-  if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
-  net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
+  const WsNote note = ws_note();
+  if (top_right(x, y)) {
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (g_webOn) net_web(false);
+    else websetup_hotspot();  // always starts on Hotspot
+  } else if (!g_webOn) {
+    return;
+  } else if (in(x, y, 40, 128, 194, 67) && ws_home()) {  // Hotspot
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (g_webHome) websetup_hotspot();
+  } else if (in(x, y, 246, 128, 194, 67) && !ws_home()) {  // Home Wi-Fi: the hotspot runs until Turn on
+    hw_beep();
+    g_wsNote = WiFi.status() == WL_CONNECTED ? WS_WARN : WS_NOWIFI;
+  } else if (note && in(x, y, 40, 705, 400, 79)) {
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (note == WS_WARN && x < 240) net_web(true, true);  // Turn on
+    else if (g_webHome) websetup_hotspot();                // Use Hotspot after Home Wi-Fi lost its network
+    // Cancel / Use Hotspot from the notice: the hotspot never stopped
+  } else {
+    return;
+  }
   g_redraw = true;
 }
 
