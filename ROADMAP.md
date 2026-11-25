@@ -1,7 +1,6 @@
 # HeySticky — Roadmap
 
-What is planned after v1.2.0. `PLAN.md` holds the full spec for each item once it is agreed; this page is the
-short list. Updated 2026-11-25.
+What is planned after v1.2.0. Updated 2026-11-25.
 
 ## Direction
 

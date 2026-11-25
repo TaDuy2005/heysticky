@@ -196,7 +196,7 @@ c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson
 ```
 
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
-`python3 tools/make_icons.py` (PNGs in `tools/icons/`). `PLAN.md` is the full design and behaviour spec.
+`python3 tools/make_icons.py` (PNGs in `tools/icons/`).
 
 ### Releasing an update
 
