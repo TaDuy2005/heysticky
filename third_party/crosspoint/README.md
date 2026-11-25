@@ -28,5 +28,8 @@ GrayscaleCapabilities and the ContentProtection interface.
 - Hyphenation: Russian, Swedish and Ukrainian patterns (LPPL) removed from `LanguageRegistry.cpp`.
 - Removed: `Epub/ContentProtection.cpp`, `Epub/BookKey.*`, DeviceSecret, TrustedTime (DRM).
 - `miniz/third_party/miniz.c` renamed `miniz.c.inc` so Arduino does not compile it twice.
+- Markdown: `Txt/MarkdownLite.h` (new) renders `.md` books (headings, emphasis, lists, links, code);
+  `Txt/TxtToHtml.cpp` streams `.md` through it (`MD_CACHE_VERSION` 2) and `Txt/Txt.cpp` lists its headings
+  as the table of contents.
 - `Epub/Epub/blocks/TextBlock.cpp` includes `<fontIds.h>`; the image converters read the panel size
   from `HalDisplay` constants instead of a global `display`.

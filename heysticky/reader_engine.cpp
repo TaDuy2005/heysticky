@@ -67,7 +67,7 @@ ReaderRenderSpec spec() {
   s.viewportWidth = PAGE_W;
   s.viewportHeight = PAGE_H;
   s.hyphenationEnabled = true;
-  s.embeddedStyle = true;
+  s.embeddedStyle = false;  // one look for every book: the books' own CSS mixes left / justify / right / center
   return s;
 }
 

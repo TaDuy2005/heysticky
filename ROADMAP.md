@@ -47,8 +47,7 @@ One task shown big, as a poster, until you take it down.
 - [ ] **Reader** — built on `feature/reader`, waiting for the device test: EPUB (with pictures), TXT and MD from
       `/books/` on the card, library with the last book first, place kept per book, text size S / M, Contents,
       upload and delete on the phone page. Layout by CrossPoint Reader's engine.
-  - [ ] Later: **PDF** (converted to text on the phone page, pdf.js), Markdown `#` headings as chapters in
-        Contents, books in sub-folders of `/books/`.
+  - [ ] Later: **PDF** (converted to text on the phone page, pdf.js), books in sub-folders of `/books/`.
 - [ ] **Deadline reminders** — beep at a task's due time, waking from sleep for it.
 - [ ] **Remote access (Tailscale)** — experimental; only with community ESP-IDF libraries.
 

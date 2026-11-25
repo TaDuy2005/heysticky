@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 // Just enough of Arduino's String for reader.h.
 struct String : std::string {
@@ -14,6 +15,7 @@ struct String : std::string {
   unsigned length() const { return unsigned(size()); }
   String substring(size_t a, size_t b = npos) const { return a >= size() ? "" : String(substr(a, b == npos ? npos : b - a)); }
   int indexOf(char c, size_t from = 0) const { auto p = find(c, from); return p == npos ? -1 : int(p); }
+  int indexOf(const char *t, size_t from = 0) const { auto p = find(t, from); return p == npos ? -1 : int(p); }
   int lastIndexOf(const char *s) const { auto p = rfind(s); return p == npos ? -1 : int(p); }
   bool startsWith(const String &s) const { return rfind(s, 0) == 0; }
   bool endsWith(const char *s) const { std::string t(s); return size() >= t.size() && compare(size() - t.size(), t.size(), t) == 0; }
@@ -27,6 +29,14 @@ inline String operator+(const String &a, const String &b) { return String(static
 inline String operator+(const String &a, const char *b) { return String(static_cast<const std::string &>(a) + static_cast<const std::string &>(b)); }
 
 #include "reader.h"
+#include "../third_party/crosspoint/src/Txt/MarkdownLite.h"
+
+static std::string md(const std::vector<std::string> &lines) {
+  mdlite::Converter c;
+  for (const auto &l : lines) c.line(l);
+  c.finish();
+  return c.out;
+}
 
 static Book mk(const char *path, const char *title, uint32_t seq) {
   Book b;
@@ -53,6 +63,9 @@ int main() {
   // which files are books
   assert(book_file("Moby-Dick.EPUB") && book_file("notes.md") && book_file("a.txt"));
   assert(!book_file("._Moby-Dick.epub") && !book_file("cover.jpg") && !book_file("book.pdf") && !book_file(""));
+  assert(book_title_clean("Alice's Adventures in Wonderland / Illustrated by Arthur Rackham. With a Proem by Austin Dobson") ==
+         "Alice's Adventures in Wonderland");
+  assert(book_title_clean(" Frankenstein ") == "Frankenstein" && book_title_clean("A/B testing") == "A/B testing");
   assert(book_name("/books/The Time Machine.epub") == "The Time Machine" && book_name("/books/README") == "README");
 
   // order: last opened first, then never opened A-Z (case-insensitive)
@@ -79,6 +92,24 @@ int main() {
   // book page taps: left third back, middle menu, right third forward
   assert(page_zone(0) == ZONE_PREV && page_zone(159) == ZONE_PREV && page_zone(160) == ZONE_MENU);
   assert(page_zone(319) == ZONE_MENU && page_zone(320) == ZONE_NEXT && page_zone(479) == ZONE_NEXT);
+
+  // Markdown books: headings with the anchors the TOC uses, paragraphs, lists, emphasis, code, links
+  assert(md({"# Reading notes", "", "Two lines", "of one paragraph."}) ==
+         "<h1 id=\"md1\">Reading notes</h1>\n<p>Two lines of one paragraph.</p>\n");
+  assert(md({"## Tiếng **Việt** ##", "- one", "* two", "1. three"}) ==
+         "<h2 id=\"md1\">Tiếng <b>Việt</b></h2>\n<p>\xE2\x80\xA2 one</p>\n<p>\xE2\x80\xA2 two</p>\n<p>1. three</p>\n");
+  assert(md({"A *b* __c__ `d<e>` [link](http://x) ![pic](p.png) snake_case_name 2 * 3"}) ==
+         "<p>A <i>b</i> <b>c</b> d&lt;e&gt; link  snake_case_name 2 * 3</p>\n");
+  assert(md({"```", "# not a heading", "```", "#hashtag", "---", "> quoted"}) ==
+         "<p># not a heading</p>\n<p>#hashtag</p>\n<p>quoted</p>\n");
+  {
+    mdlite::Scanner sc;  // the TOC pass counts headings the same way, BOM and fences included
+    int lv;
+    std::string_view t;
+    assert(sc.heading("\xEF\xBB\xBF# First", lv, t) && lv == 1 && t == "First" && sc.headings == 1);
+    assert(!sc.heading("```", lv, t) && !sc.heading("# in code", lv, t) && !sc.heading("```", lv, t));
+    assert(sc.heading("### Third level", lv, t) && lv == 3 && sc.headings == 2 && !sc.heading("####### seven", lv, t));
+  }
 
   puts("reader_test: all passed");
 }

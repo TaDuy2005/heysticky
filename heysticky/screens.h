@@ -391,7 +391,7 @@ inline void book_tap(int x, int y) {
     if (large == reader_large()) return;
     hw_beep();
     cfg_set("rd_size", large ? "M" : "S");
-    draw_reader_wait(rd::title(), TR("Opening…", "Đang mở…"));  // the chapter is laid out again in the new size
+    draw_reader_wait(book_title_clean(rd::title()), TR("Opening…", "Đang mở…"));  // the chapter is laid out again in the new size
     if (!rd::show(rd::chapter(), rd::offset(), large)) { show(SCR_BOOKERR); return; }
     g_menu = false;
     book_remember();
@@ -403,7 +403,7 @@ inline void contents_tap(int x, int y) {
   const int i = contents_hit(x, y);
   if (i < 0) return;
   hw_beep();
-  draw_reader_wait(rd::title(), TR("Opening…", "Đang mở…"));
+  draw_reader_wait(book_title_clean(rd::title()), TR("Opening…", "Đang mở…"));
   if (!rd::to_toc(i, reader_large())) { show(SCR_BOOKERR); return; }
   book_remember();
   show(SCR_BOOK);

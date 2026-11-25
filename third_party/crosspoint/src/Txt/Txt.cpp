@@ -1,5 +1,7 @@
 #include "Txt.h"
 
+#include "MarkdownLite.h"
+
 #include <Epub/BookMetadataCache.h>
 #include <FsHelpers.h>
 #include <HalStorage.h>
@@ -197,7 +199,33 @@ bool Txt::buildTxtCache(const std::string& filepath, const std::string& cachePat
   }
 
   std::string title = FsHelpers::getFileNameWithoutExtension(filepath);
-  bookMetadataCache->createTocEntry(title, "content.html", "", 0);
+  // HeySticky: a Markdown book's headings are its chapters (anchors "md1", "md2", ... as TxtToHtml writes them).
+  int headings = 0;
+  if (FsHelpers::hasMarkdownExtension(filepath)) {
+    HalFile src;
+    if (Storage.openFileForRead("TXT", filepath, src)) {
+      mdlite::Scanner scan;
+      std::string line;
+      const auto add = [&]() {
+        int level;
+        std::string_view text;
+        if (scan.heading(line, level, text) && !text.empty()) {
+          bookMetadataCache->createTocEntry(utf8ComposeNfc(std::string(text)), "content.html",
+                                            "md" + std::to_string(scan.headings), static_cast<uint8_t>(level - 1));
+          headings++;
+        }
+        line.clear();
+      };
+      char buf[512];
+      for (int n; (n = src.read(buf, sizeof(buf))) > 0;)
+        for (int i = 0; i < n; i++) {
+          if (buf[i] == '\n') add();
+          else if (buf[i] != '\r') line += buf[i];
+        }
+      if (!line.empty()) add();
+    }
+  }
+  if (!headings) bookMetadataCache->createTocEntry(title, "content.html", "", 0);
 
   if (!bookMetadataCache->endTocPass()) {
     LOG_ERR("TXT", "Could not end writing toc pass");

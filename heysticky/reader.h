@@ -60,6 +60,15 @@ inline bool book_parse(const String &line, Book &b) {
   return true;
 }
 
+// A book's own title, without what Project Gutenberg adds after " / " ("Alice's Adventures in Wonderland / Illustrated
+// by Arthur Rackham. With a Proem by ..."): the library has room for two lines.
+inline String book_title_clean(String t) {
+  const int cut = t.indexOf(" / ");
+  if (cut > 0) t = t.substring(0, cut);
+  t.trim();
+  return t;
+}
+
 // File name without folder and extension: the title until the book's own title is read.
 inline String book_name(const String &path) {
   const int slash = path.lastIndexOf("/"), dot = path.lastIndexOf(".");

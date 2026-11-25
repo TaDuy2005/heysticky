@@ -5,10 +5,12 @@
 #include <Memory.h>
 
 #include <algorithm>
+
+#include "MarkdownLite.h"  // HeySticky: .md rendered (headings, emphasis, lists)
 #include <cstring>
 
 const char* TxtToHtml::cacheVersionTag(std::string_view filename) {
-  return FsHelpers::hasMarkdownExtension(filename) ? "<!-- MD_CACHE_VERSION: 1 -->" : "<!-- TXT_CACHE_VERSION: 1 -->";
+  return FsHelpers::hasMarkdownExtension(filename) ? "<!-- MD_CACHE_VERSION: 2 -->" : "<!-- TXT_CACHE_VERSION: 1 -->";
 }
 
 size_t TxtToHtml::escapedHtmlSize(const std::string_view text) {
@@ -66,6 +68,9 @@ bool TxtToHtml::stream(std::string_view filename, void* readerCtx, int (*readFn)
 
   bool isStart = true;
   bool atLineStart = true;
+  const bool markdown = FsHelpers::hasMarkdownExtension(filename);  // HeySticky: line by line through mdlite
+  mdlite::Converter md;
+  std::string mdLine;
   size_t pendingSpaces = 0;
   int bytesRead = 0;
 
@@ -81,6 +86,18 @@ bool TxtToHtml::stream(std::string_view filename, void* readerCtx, int (*readFn)
     for (int i = startIdx; i < bytesRead; i++) {
       uint8_t b = inBuf[i];
       if (b == '\r') continue;
+
+      if (markdown) {
+        if (b != '\n') {
+          mdLine += static_cast<char>(b);
+          continue;
+        }
+        md.line(mdLine);
+        mdLine.clear();
+        writeStr(md.out);
+        md.out.clear();
+        continue;
+      }
 
       if (b == '\n') {
         pendingSpaces = 0;
@@ -123,6 +140,11 @@ bool TxtToHtml::stream(std::string_view filename, void* readerCtx, int (*readFn)
     return false;
   }
 
+  if (markdown) {
+    if (!mdLine.empty()) md.line(mdLine);
+    md.finish();
+    writeStr(md.out);
+  }
   writeStr("\n</body>\n</html>\n");
   flushOut();
   if (!outputOk) {

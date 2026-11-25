@@ -63,6 +63,7 @@ inline bool books_scan() {
         if (!rd::metadata(b.path, b.title, b.author) || !b.title.length()) b.title = book_name(b.path);
         changed = true;
       }
+      b.title = book_title_clean(b.title);  // also for titles saved before it was cut
       now.push_back(b);
     }
     dir.close();
@@ -92,6 +93,13 @@ inline void book_remember() {
 }
 
 // ---------- 07 Library / 07a empty ----------
+// Titles take up to two lines: the Continue card grows by a line, a row drops its author line.
+inline std::vector<String> card_title(const Book &b) { return ui_lines(F_X30, b.title, 360, 2); }
+inline int lib_rows_top() {  // first row's y on the current page
+  if (g_libPage != 0 || !lib_continue(g_books)) return NROW_TOP;
+  return 316 + (int(card_title(g_books[0]).size()) - 1) * 40;
+}
+
 inline void draw_library() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
@@ -105,18 +113,19 @@ inline void draw_library() {
     return;
   }
   g_libPage = constrain(g_libPage, 0, lib_pages(g_books) - 1);
-  int y = NROW_TOP;
+  const int y = lib_rows_top();
   if (g_libPage == 0 && lib_continue(g_books)) {  // Continue card: the last book opened
     const Book &b = g_books[0];
-    ui_card(40, 128, 400, 172, 14, 3);
+    const std::vector<String> tl = card_title(b);
+    const int dy = (int(tl.size()) - 1) * 40;
+    ui_card(40, 128, 400, 172 + dy, 14, 3);
     ui_text(F_R20, TR("Continue", "Đọc tiếp"), 60, 144, 26);
-    ui_text(F_X28, ui_fit(F_X28, b.title, 360), 60, 172, 37);
-    ui_text(F_R25, ui_fit(F_R25, b.author, 360), 60, 212, 33);
-    display.fillRoundRect(60, 260, 280, 16, 8, INK);
-    display.fillRoundRect(62, 262, 276, 12, 6, PAPER);
-    display.fillRect(62, 262, 276 * b.pct / 100, 12, INK);
-    ui_text(F_R25, String(b.pct) + "%", 420, 251, 33, AL_RIGHT);
-    y = 316;
+    for (size_t k = 0; k < tl.size(); k++) ui_text(F_X30, tl[k], 60, 170 + k * 40, 40);
+    ui_text(F_R25, ui_fit(F_R25, b.author, 360), 60, 212 + dy, 33);
+    display.fillRoundRect(60, 260 + dy, 280, 16, 8, INK);
+    display.fillRoundRect(62, 262 + dy, 276, 12, 6, PAPER);
+    display.fillRect(62, 262 + dy, 276 * b.pct / 100, 12, INK);
+    ui_text(F_R25, String(b.pct) + "%", 420, 251 + dy, 33, AL_RIGHT);
   }
   for (int r = 0;; r++) {
     const int i = lib_index(g_books, g_libPage, r);
@@ -125,8 +134,9 @@ inline void draw_library() {
     const int ry = y + r * NROW_H;
     const String right = b.seq ? String(b.pct) + "%" : TR("New", "Mới");
     const int rw = ui_text(F_R25, right, 440, ry + 13, 33, AL_RIGHT);
-    ui_text(F_X25, ui_fit(F_X25, b.title, 400 - rw - 16), 40, ry + 13, 33);
-    ui_text(F_R25, ui_fit(F_R25, b.author, 400), 40, ry + 50, 33);
+    const std::vector<String> tl = ui_lines(F_X25, b.title, 400 - rw - 16, 2);
+    for (size_t k = 0; k < tl.size(); k++) ui_text(F_X25, tl[k], 40, ry + 13 + k * 37, 33);
+    if (tl.size() < 2) ui_text(F_R25, ui_fit(F_R25, b.author, 400), 40, ry + 50, 33);
     display.fillRect(40, ry + NROW_H - 1, 400, 1, INK);
   }
   if (lib_pages(g_books) > 1) ui_page_counter(String(g_libPage + 1) + "/" + lib_pages(g_books));
@@ -135,8 +145,8 @@ inline void draw_library() {
 inline int library_hit(int x, int y) {  // index into g_books under (x, y), or -1
   if (x < 40 || x >= 440 || g_books.empty()) return -1;
   const bool card = g_libPage == 0 && lib_continue(g_books);
-  if (card && y >= 128 && y < 300) return 0;
-  const int top = card ? 316 : NROW_TOP;
+  const int top = lib_rows_top();
+  if (card && y >= 128 && y < top - 16) return 0;
   return y < top ? -1 : lib_index(g_books, g_libPage, (y - top) / NROW_H);
 }
 
@@ -185,7 +195,8 @@ inline void draw_book() {
   if (g_menu) {
     display.fillRect(0, MENU_Y, W, H - MENU_Y, PAPER);
     display.fillRect(0, MENU_Y, W, 3, INK);
-    ui_text(F_X25, ui_fit(F_X25, rd::title(), 400), 40, MENU_Y + 22, 33);
+    const Book *b = open_book();
+    ui_text(F_X25, ui_fit(F_X25, b ? b->title : rd::title(), 400), 40, MENU_Y + 22, 33);
     ui_text(F_R20, ui_fit(F_R20, rd::chapter_title() + " · " + (rd::page() + 1) + "/" + rd::pages() + " · " + rd::percent() + "%", 400),
             40, MENU_Y + 58, 26);
     const int toc = rd::toc_current();
