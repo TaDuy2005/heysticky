@@ -200,7 +200,8 @@ The AI and report tests also need ArduinoJson (installed by the build profile):
 for t in ai report; do c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
 
-Report a bug by email runs on a Cloudflare Worker (`tools/bug-worker`, checked by `node tools/bug-worker/test.mjs`).
+Report a bug goes through the report server at `sticky.davidtalab.cc` (its own repo, `TaDuy2005/heysticky-report-server`,
+in Docker on the Pi): the form for email or GitHub sign-in, and the states 04u and the phone page show.
 
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
 `python3 tools/make_icons.py` (PNGs in `tools/icons/`).

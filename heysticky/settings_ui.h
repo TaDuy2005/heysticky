@@ -347,17 +347,12 @@ inline void bug_draft(const String &title = "", const String &body = "") {
   g_bugBody = body;
 }
 
-// States from GitHub's issue search (no token: 10 searches a minute, REPORT_ORS + 1 IDs each). Saved if changed.
+// States from the report server, one request; cancelled and unfinished reports drop off. Saved if changed.
 inline bool reports_refresh(std::vector<Report> &v) {
   if (v.empty() || WiFi.status() != WL_CONNECTED) return false;
-  JsonDocument f;
-  report_filter(f);
-  bool changed = false;
-  for (size_t i = 0; i < v.size(); i += REPORT_ORS + 1) {
-    JsonDocument d;
-    if (!http_json(report_search_url(v, i, REPORT_ORS + 1), d, &f)) break;  // offline or rate-limited: keep the last states
-    changed |= reports_apply(v, i, REPORT_ORS + 1, d["items"]);
-  }
+  JsonDocument d;
+  if (!http_json(report_status_url(v), d) || !d.is<JsonObject>()) return false;  // offline or server down: the last states
+  const bool changed = reports_apply(v, d.as<JsonObjectConst>());
   if (changed) reports_save(v);
   return changed;
 }
@@ -414,14 +409,14 @@ inline void draw_bugqr(bool mail) {
   ui_topbar(mail ? "Email" : "GitHub", "");
   ui_text(F_B25, mail ? TR("Scan to report by email", "Quét để báo lỗi qua email") : TR("Scan to report on GitHub", "Quét để báo lỗi trên GitHub"),
           W / 2, 130, 33, AL_CENTER);
-  ws_qr(mail ? report_mail_url(g_bug, g_bugBody, g_vi) : report_gh_url(g_bug, g_bugBody), 175, 260, 244, 25);
+  ws_qr(report_url(g_bug, g_bugBody, g_vi, !mail), 175, 260, 244, 25);
   if (mail) {
     ui_text(F_R25, REPORT_HOST, W / 2, 455, 33, AL_CENTER);
     ui_wrap(F_R25, TR("Type your email on your phone. We send a link to confirm it’s you.",
                       "Nhập email trên điện thoại. Chúng tôi gửi liên kết để xác nhận đó là bạn."), 40, 500, 400, 33, 3, AL_CENTER);
   } else {
-    ui_wrap(F_R25, TR("Sign in to GitHub on your phone, check the text, then tap Create.",
-                      "Đăng nhập GitHub trên điện thoại, kiểm tra nội dung, rồi bấm Create."), 40, 455, 400, 33, 3, AL_CENTER);
+    ui_wrap(F_R25, TR("On your phone, check the text, then tap Send with GitHub and sign in.",
+                      "Trên điện thoại, kiểm tra nội dung, rồi bấm Gửi bằng GitHub và đăng nhập."), 40, 455, 400, 33, 3, AL_CENTER);
   }
   ui_text(F_R20, TR("Report ", "Báo cáo ") + g_bug.id, W / 2, mail ? 645 : 600, 26, AL_CENTER);
   ui_button(40, 705, 400, 79, true, nullptr, TR("Done", "Xong"));
@@ -457,5 +452,5 @@ inline void draw_buglist() {
     info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, ui_fit(F_B25, title, 400 - ui_width(F_R25, st) - 12), st, false);
     waiting |= r.st == 'w';
   }
-  if (waiting) ui_text(F_R20, TR("Waiting: not on GitHub yet.", "Đang chờ: chưa có trên GitHub."), W / 2, 735, 26, AL_CENTER);
+  if (waiting) ui_text(F_R20, TR("Waiting: not sent yet.", "Đang chờ: chưa gửi."), W / 2, 735, 26, AL_CENTER);
 }

@@ -62,27 +62,28 @@ int main() {
   // links
   assert(q_enc("Clock stops, 9:41 AM") == "Clock+stops%2C+9%3A41+AM" && q_enc("a~b_c-d.e") == "a~b_c-d.e");
   Report r{"HS-7K2P", "Clock stops in sleep", 'w'};
-  const String gh = report_gh_url(r, "It sleeps.");
-  assert(gh == String("https://github.com/TaDuy2005/heysticky/issues/new?title=Clock+stops+in+sleep&body=It+sleeps.%0A%0AReport+HS-7K2P%2C+HeySticky+") + FW_VERSION);
-  assert(report_gh_url({"HS-7K2P", "", 'w'}, "") == String("https://github.com/TaDuy2005/heysticky/issues/new?title=&body=Report+HS-7K2P%2C+HeySticky+") + FW_VERSION);
-  assert(report_mail_url(r, "", true) == String("https://sticky.davidtalab.cc/r?id=HS-7K2P&v=") + FW_VERSION + "&l=vi&t=Clock+stops+in+sleep");
-  assert(report_mail_url({"HS-7K2P", "", 'w'}, "", false) == String("https://sticky.davidtalab.cc/r?id=HS-7K2P&v=") + FW_VERSION);
+  const String V = FW_VERSION;
+  assert(report_url(r, "It sleeps.", false, true) == "https://sticky.davidtalab.cc/r?id=HS-7K2P&v=" + V + "&via=gh&t=Clock+stops+in+sleep&b=It+sleeps.");
+  assert(report_url(r, "", true, false) == "https://sticky.davidtalab.cc/r?id=HS-7K2P&v=" + V + "&l=vi&t=Clock+stops+in+sleep");
+  assert(report_url({"HS-7K2P", "", 'w'}, "", false, false) == "https://sticky.davidtalab.cc/r?id=HS-7K2P&v=" + V);
   // a full AI report must stay a QR the 260 px frame draws at 3 px a module (version 16, 586 bytes at ECC low)
   const String longBody(std::string(300, 'w'));
-  assert(report_gh_url({"HS-7K2P", String(std::string(40, 'w')), 'w'}, longBody).length() < 586);
+  assert(report_url({"HS-7K2P", String(std::string(40, 'w')), 'w'}, longBody, true, true).length() < 586);
 
-  // search: one query per REPORT_ORS + 1 IDs
-  std::vector<Report> s = {{"HS-AAAA", "A", 'w'}, {"HS-BBBB", "", 'w'}, {"HS-CCCC", "C", 'o'}};
-  assert(report_search_url(s, 0, 2) == "https://api.github.com/search/issues?per_page=20&q=repo%3ATaDuy2005%2Fheysticky+is%3Aissue+%22HS-AAAA%22+OR+%22HS-BBBB%22");
+  // states from the server: one request; left out = cancelled / unfinished / never opened -> dropped
+  std::vector<Report> s = {{"HS-AAAA", "A", 'w'}, {"HS-BBBB", "", 'w'}, {"HS-CCCC", "C", 'o'}, {"HS-DDDD", "D", 'w'}};
+  assert(report_status_url(s) == "https://sticky.davidtalab.cc/s?ids=HS-AAAA,HS-BBBB,HS-CCCC,HS-DDDD");
+  assert(report_status_url({}) == "https://sticky.davidtalab.cc/s?ids=");
   JsonDocument d;
-  deserializeJson(d, R"([{"title":"Clock stops","body":"x\n\nReport HS-AAAA, HeySticky 1.2.0","state":"closed","state_reason":"completed"},
-                        {"title":"Weather shows --","body":"Report HS-BBBB","state":"open","state_reason":null}])");
-  assert(reports_apply(s, 0, 3, d.as<JsonVariantConst>()));
-  assert(s[0].st == 'f' && s[1].st == 'o' && s[1].title == "Weather shows --" && s[2].st == 'w' && s[0].title == "A");
-  assert(!reports_apply(s, 0, 3, d.as<JsonVariantConst>()));  // nothing new
-  deserializeJson(d, R"([{"title":"t","body":"HS-AAAA","state":"closed","state_reason":"not_planned"}])");
-  reports_apply(s, 0, 1, d.as<JsonVariantConst>());
-  assert(s[0].st == 'x');
+  deserializeJson(d, R"({"HS-AAAA":{"st":"f","t":"Clock stops"},"HS-BBBB":{"st":"o","t":"Weather shows --"},"HS-DDDD":{"st":"w","t":""}})");
+  assert(reports_apply(s, d.as<JsonObjectConst>()));
+  assert(s.size() == 3 && s[0].id == "HS-AAAA" && s[0].st == 'f' && s[0].title == "A");  // the Sticky's own title stays
+  assert(s[1].st == 'o' && s[1].title == "Weather shows --" && s[2].id == "HS-DDDD" && s[2].st == 'w');
+  assert(!reports_apply(s, d.as<JsonObjectConst>()));  // nothing new
+  deserializeJson(d, R"({"HS-AAAA":{"st":"x"},"HS-BBBB":{"st":"q"},"HS-DDDD":7})");  // a made-up state or shape: dropped
+  assert(reports_apply(s, d.as<JsonObjectConst>()) && s.size() == 1 && s[0].st == 'x');
+  deserializeJson(d, "{}");
+  assert(reports_apply(s, d.as<JsonObjectConst>()) && s.empty());
 
   // AI bug report: bug / unclear, the prompt switches and the transcript goes alone
   AiResult a = ai_parse("```json\n{\"type\":\"bug\",\"title\":\"Clock stops in sleep\",\"body\":\"After an hour asleep\\nthe clock stays.\"}\n```");

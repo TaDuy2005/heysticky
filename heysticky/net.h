@@ -680,13 +680,13 @@ function bugNewView(){
    if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(!window.open(d.url,'_blank'))location.href=d.url};return x};
  $('v-bugnew').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
   b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'),
-  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: type your report, then confirm your email.','GitHub: đăng nhập, rồi bấm Create. Email: nhập báo cáo, rồi xác nhận email.')}))}
-async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking GitHub…','Đang kiểm tra GitHub…')}));
+  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: tap Send with GitHub and sign in. Email: type your report, then confirm your email.','GitHub: bấm Gửi bằng GitHub và đăng nhập. Email: nhập báo cáo, rồi xác nhận email.')}))}
+async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking…','Đang kiểm tra…')}));
  const d=await getJ('/api/reports');if(!d||view!=='bugs')return;
  if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),''));return}
  const ST={w:L('Waiting','Đang chờ'),o:L('Open','Đang mở'),f:L('Fixed','Đã sửa'),x:L('Won’t fix','Không sửa')};
  v.replaceChildren(E('div',{className:'g'},...d.reports.map(r=>E('div',{className:'r'},E('b',{className:'n',textContent:r.title||r.id}),E('span',{textContent:ST[r.st]})))),
-  E('p',{className:'foot',textContent:L('Waiting: not on GitHub yet. Fixed: the issue is closed.','Đang chờ: chưa có trên GitHub. Đã sửa: issue đã đóng.')}))}
+  E('p',{className:'foot',textContent:L('Waiting: not sent yet. Fixed: the issue is closed.','Đang chờ: chưa gửi. Đã sửa: issue đã đóng.')}))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 

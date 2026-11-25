@@ -1,18 +1,17 @@
-// Report a bug (Figma 04n-04u, 06t-06v): report IDs, the saved list, the GitHub and email links, issue states.
+// Report a bug (Figma 04n-04u, 06t-06v): report IDs, the saved list, the report server's links and states.
 // No I/O here, so tools/report_test.cpp checks it on the Mac. The Sticky side is in settings_ui.h / screens.h,
-// the phone side in phone.h, the email path in tools/bug-worker.
+// the phone side in phone.h. The server (heysticky-report-server repo, on the Pi) has the form for both ways to send
+// (email, or GitHub sign-in), opens the issues, and knows which reports were sent, cancelled or left unfinished.
 #pragma once
 #include <cctype>
 #include <vector>
 #include <ArduinoJson.h>
 #include "settings.h"
 
-constexpr const char *REPORT_REPO = "TaDuy2005/heysticky";  // public: issues are read with no token
-constexpr const char *REPORT_HOST = "sticky.davidtalab.cc";  // tools/bug-worker
+constexpr const char *REPORT_HOST = "sticky.davidtalab.cc";  // the report server
 constexpr int REPORTS_MAX = 9;                              // rows that fit 04u; the oldest drops off
-constexpr int REPORT_ORS = 5;                               // GitHub search: at most 5 OR per query
 
-// A report the Sticky follows on 04u. st: 'w' Waiting (no issue found yet), 'o' Open, 'f' Fixed, 'x' Won't fix.
+// A report the Sticky follows on 04u. st: 'w' Waiting (the form is open, not sent yet), 'o' Open, 'f' Fixed, 'x' Won't fix.
 struct Report {
   String id, title;
   char st = 'w';
@@ -68,58 +67,37 @@ inline String q_enc(const String &s) {
   return o;
 }
 
-// 04p: GitHub's New issue page with the title and text filled in; the last line carries the ID 04u searches for.
-inline String report_gh_url(const Report &r, const String &body) {
-  String b = body;
-  if (b.length()) b += "\n\n";
-  b += String("Report ") + r.id + ", HeySticky " + FW_VERSION;
-  return String("https://github.com/") + REPORT_REPO + "/issues/new?title=" + q_enc(r.title) + "&body=" + q_enc(b);
-}
-
-// 04q: the Worker's form (08a), filled in. l: the page's language.
-inline String report_mail_url(const Report &r, const String &body, bool vi) {
-  String u = String("https://") + REPORT_HOST + "/r?id=" + r.id + "&v=" + FW_VERSION + (vi ? "&l=vi" : "");
+// 04p / 04q: the server's form, filled in; gh: Send with GitHub is the black button; vi: the page in Vietnamese.
+inline String report_url(const Report &r, const String &body, bool vi, bool gh) {
+  String u = String("https://") + REPORT_HOST + "/r?id=" + r.id + "&v=" + FW_VERSION + (gh ? "&via=gh" : "") + (vi ? "&l=vi" : "");
   if (r.title.length()) u += "&t=" + q_enc(r.title);
   if (body.length()) u += "&b=" + q_enc(body);
   return u;
 }
 
-// GitHub search for reports [from, from + n): repo:… is:issue "HS-AAAA" OR "HS-BBBB"
-inline String report_search_url(const std::vector<Report> &v, size_t from, size_t n) {
-  String q = String("repo:") + REPORT_REPO + " is:issue";
-  for (size_t i = from; i < from + n && i < v.size(); i++) q += String(i > from ? " OR \"" : " \"") + v[i].id + "\"";
-  return "https://api.github.com/search/issues?per_page=20&q=" + q_enc(q);
+// The states of every followed report in one request: {"HS-AAAA":{"st":"o","t":"title"}, ...}
+inline String report_status_url(const std::vector<Report> &v) {
+  String u = String("https://") + REPORT_HOST + "/s?ids=";
+  for (size_t i = 0; i < v.size(); i++) {
+    if (i) u += ",";
+    u += v[i].id;
+  }
+  return u;
 }
 
-inline char issue_state(JsonVariantConst it) {  // closed as not planned or duplicate = Won't fix, else Fixed
-  if (String(it["state"] | "") == "open") return 'o';
-  const String why = it["state_reason"] | "";
-  return why == "not_planned" || why == "duplicate" ? 'x' : 'f';
-}
-
-// Search results -> states for reports [from, from + n). A report the search didn't return is Waiting (the issue
-// isn't made yet, or was deleted). A report with no title (made on the phone) takes the issue's. True if anything changed.
-inline bool reports_apply(std::vector<Report> &v, size_t from, size_t n, JsonVariantConst items) {
+// The server's reply -> the list. A report it leaves out was cancelled, left unfinished for an hour, or never
+// opened (Done without scanning), so it is dropped. A report with no title (made on the phone) takes the form's.
+// True if anything changed.
+inline bool reports_apply(std::vector<Report> &v, JsonObjectConst st) {
   bool changed = false;
-  for (size_t i = from; i < from + n && i < v.size(); i++) {
-    Report &r = v[i];
-    char st = 'w';
-    String title;
-    for (JsonVariantConst it : items.as<JsonArrayConst>()) {
-      const String t = it["title"] | "", b = it["body"] | "";
-      if (t.indexOf(r.id.c_str()) < 0 && b.indexOf(r.id.c_str()) < 0) continue;
-      st = issue_state(it);
-      title = t;
-      break;
-    }
-    if (r.title.isEmpty() && title.length()) { r.title = title.substring(0, 80); changed = true; }
-    if (st != r.st) { r.st = st; changed = true; }
+  for (size_t i = 0; i < v.size();) {
+    JsonObjectConst s = st[v[i].id.c_str()];
+    const String c = s["st"] | "";
+    if (s.isNull() || c.length() != 1 || !strchr("wofx", c[0])) { v.erase(v.begin() + i); changed = true; continue; }
+    Report &r = v[i++];
+    const String t = s["t"] | "";
+    if (r.title.isEmpty() && t.length()) { r.title = t.substring(0, 80); changed = true; }
+    if (c[0] != r.st) { r.st = c[0]; changed = true; }
   }
   return changed;
-}
-
-// Only these fields of the search reply are kept in memory.
-inline void report_filter(JsonDocument &f) {
-  JsonObject it = f["items"].add<JsonObject>();
-  for (const char *k : {"title", "body", "state", "state_reason"}) it[k] = true;
 }
