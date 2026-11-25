@@ -1552,6 +1552,16 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     return;
   }
 
+  // HeySticky: a table nested in a cell is flattened into that cell, but each of its rows still starts a line
+  // (Gutenberg's CONTENTS: a chapter table beside a picture ran together as one paragraph).
+  if (self->tableDepth > 1 && strcmp(name, "tr") == 0) {
+    if (self->partWordBufferIndex > 0) self->flushPartWordBuffer();
+    if (self->currentTextBlock && !self->currentTextBlock->isEmpty()) {
+      if (self->insideTableCell) self->fallbackTableRowToStacked();
+      self->breakTextLine(self->blockStyleStack.back().withoutTop().withoutBottom());
+    }
+  }
+
   if (self->tableDepth == 1 && strcmp(name, "tr") == 0) {
     self->finishTableRow();
     if (self->currentTextBlock && !self->currentTextBlock->isEmpty()) {

@@ -111,5 +111,16 @@ int main() {
     assert(sc.heading("### Third level", lv, t) && lv == 3 && sc.headings == 2 && !sc.heading("####### seven", lv, t));
   }
 
+  // Contents gaps: a chapter file is listed under its opening (Alice's chapter files have no headings)
+  assert(html_opening_title("<html><head><title>Alice</title></head><body class=\"x\"><div class=\"chapter\">CHAPTER I</div>\n"
+                            "<div class=\"sidenote\"><i>Down the\nRabbit-Hole</i></div><div><img src=\"a.png\"/></div>"
+                            "<div class=\"unindent\">LICE was beginning to get very tired</div>") == "CHAPTER I Down the Rabbit-Hole");
+  assert(html_opening_title("<body><h2>Caf&#233; &amp; Tea&nbsp;Time</h2><p>Long text follows here, far more than sixty bytes of it, honestly.</p>") ==
+         "Caf\xC3\xA9 & Tea Time");
+  assert(html_opening_title("<body><p>and so the rest of the chapter goes on, split from the file before it by the converter.</p>") == "");
+  assert(html_opening_title("<body><div><img src=\"cover.jpg\"/></div></body>") == "");  // a cover: no entry
+  assert(html_opening_title("<body><p>Chapter 2</p><p>The second block is far too long to be part of the chapter title.</p>") ==
+         "Chapter 2");
+
   puts("reader_test: all passed");
 }

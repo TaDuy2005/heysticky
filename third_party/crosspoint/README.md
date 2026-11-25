@@ -33,3 +33,6 @@ GrayscaleCapabilities and the ContentProtection interface.
   as the table of contents.
 - `Epub/Epub/blocks/TextBlock.cpp` includes `<fontIds.h>`; the image converters read the panel size
   from `HalDisplay` constants instead of a global `display`.
+- `Epub/Epub/parsers/ChapterHtmlSlimParser.cpp`: each row of a table nested in a table cell starts a new
+  line instead of running into one paragraph; `Epub/Epub/Section.cpp` `SECTION_FILE_VERSION` 77 so cached
+  chapters are laid out again.

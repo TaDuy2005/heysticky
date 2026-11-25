@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <algorithm>
+#include <string>
 #include <vector>
 
 struct Book {
@@ -116,3 +117,66 @@ inline int lib_index(const std::vector<Book> &books, int p, int r) {
 // 07d book page, three columns: left = previous page, middle = reader menu (07e), right = next page.
 enum PageZone : uint8_t { ZONE_PREV, ZONE_MENU, ZONE_NEXT };
 inline PageZone page_zone(int x) { return x < 160 ? ZONE_PREV : x < 320 ? ZONE_MENU : ZONE_NEXT; }
+
+// 07f Contents gaps: a chapter file the book's own table of contents skips is listed under its opening, the text of
+// its first one or two blocks (Alice: "CHAPTER I" + "Down the Rabbit-Hole"), up to TOC_FILL_MAX bytes. A file that
+// opens with a longer block (the rest of a split chapter) or has no text (a cover) gets no entry: "".
+// ponytail: a split file opening with a short line ("Yes.") still gets one; fine for Gutenberg-style books.
+constexpr size_t TOC_FILL_MAX = 60;
+inline std::string html_opening_title(const std::string &h) {
+  static const char *const BLOCKS[] = {"p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th", "tr", "br",
+                                       "blockquote", "figure", "section", "table", "body"};
+  const size_t body = h.find("<body");
+  std::string out, block;
+  int blocks = 0;
+  auto add = [&](const std::string &t) { if (!t.empty() && block.size() <= TOC_FILL_MAX) block += t; };
+  auto utf8 = [](unsigned c) {
+    std::string u;
+    if (c < 0x80) u += char(c);
+    else if (c < 0x800) u += char(0xC0 | c >> 6), u += char(0x80 | (c & 63));
+    else u += char(0xE0 | c >> 12), u += char(0x80 | (c >> 6 & 63)), u += char(0x80 | (c & 63));
+    return u;
+  };
+  // false = stop: two blocks taken, or one too long
+  auto end_block = [&]() {
+    while (!block.empty() && block.back() == ' ') block.pop_back();
+    if (block.empty()) return true;
+    const std::string b = block;
+    block.clear();
+    if (b.size() > TOC_FILL_MAX || (!out.empty() && out.size() + 1 + b.size() > TOC_FILL_MAX)) return false;
+    out += (out.empty() ? "" : " ") + b;
+    return ++blocks < 2;
+  };
+  for (size_t i = body == std::string::npos ? 0 : h.find('>', body) + 1; i < h.size(); i++) {
+    const char c = h[i];
+    if (c == '<') {
+      const size_t e = h.find('>', i);
+      if (e == std::string::npos) break;
+      size_t a = i + 1 + (h[i + 1] == '/');
+      std::string tag;
+      while (a < e && isalnum(uint8_t(h[a]))) tag += char(tolower(uint8_t(h[a++])));
+      i = e;
+      if (std::find_if(std::begin(BLOCKS), std::end(BLOCKS), [&](const char *b) { return tag == b; }) != std::end(BLOCKS) &&
+          !end_block())
+        break;
+    } else if (c == '&') {
+      const size_t e = h.find(';', i);
+      if (e == std::string::npos || e - i > 8) { add("&"); continue; }
+      const std::string n = h.substr(i + 1, e - i - 1);
+      i = e;
+      if (n == "amp") add("&");
+      else if (n == "nbsp") add(block.empty() || block.back() == ' ' ? "" : " ");
+      else if (n == "lt") add("<");
+      else if (n == "gt") add(">");
+      else if (n == "quot") add("\"");
+      else if (n == "apos") add("'");
+      else if (n.size() > 1 && n[0] == '#') add(utf8(unsigned(n[1] == 'x' ? strtoul(n.c_str() + 2, nullptr, 16) : strtoul(n.c_str() + 1, nullptr, 10))));
+    } else if (isspace(uint8_t(c))) {
+      add(block.empty() || block.back() == ' ' ? "" : " ");
+    } else {
+      add(std::string(1, c));
+    }
+  }
+  if (blocks < 2) end_block();
+  return out;
+}

@@ -900,8 +900,10 @@ inline void screens_loop() {
   if (g_pageDirty) { g_pageDirty = false; show(g_screen); }  // the font or Wi-Fi switch changed from the phone page
   if (g_redraw) {
     g_redraw = false;
+    const bool left = g_screen == SCR_BOOK && rd::image_page();  // the book page being left
     draw_screen();
-    ui_partial(0, 0, W, H);
+    if (left || (g_screen == SCR_BOOK && rd::image_page())) ui_full();  // dithered pictures ghost under a partial refresh
+    else ui_partial(0, 0, W, H);
   }
   if (g_screen == SCR_HOME) home_tick();
   else if (g_screen == SCR_TIME && g_timeDirty) {  // one refresh for all digits typed during the last one

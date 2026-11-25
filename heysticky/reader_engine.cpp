@@ -1,6 +1,7 @@
 // Reader engine glue: opens a book with CrossPoint's Epub (EPUB, TXT and MD), lays chapters out with its
 // Section cache and draws pages with its GfxRenderer into a 1-bit buffer, then copies that to Seeed_GFX.
 #include "reader_engine.h"
+#include "reader.h"  // html_opening_title
 
 #include <CrossPoint.h>
 #include <Epub/Page.h>
@@ -10,7 +11,9 @@
 #include <EpdFontFamily.h>
 #include <FontCacheManager.h>
 #include <FontDecompressor.h>
+#include <SD.h>
 #include <Seeed_GFX.h>
+#include <Txt/Txt.h>
 #include <builtinFonts/notosans_12_bold.h>
 #include <builtinFonts/notosans_12_bolditalic.h>
 #include <builtinFonts/notosans_12_italic.h>
@@ -22,6 +25,7 @@
 #include <fontIds.h>
 
 #include <memory>
+#include <vector>
 
 extern Seeed_GFX display;
 
@@ -43,6 +47,80 @@ std::shared_ptr<Epub> g_epub;
 std::unique_ptr<Section> g_section;
 int g_spine = 0;
 bool g_large = false;
+bool g_image = false;  // the page last drawn has a picture
+
+// 07f Contents: the book's own entries, plus one for each chapter file they skip (Gutenberg's Alice lists 6 entries
+// and none of its 12 chapters), titled from the file's opening (reader.h html_opening_title).
+struct TocRow {
+  std::string title, anchor;
+  int spine, own;  // own: index in the book's table of contents; -1 = filled in
+};
+std::vector<TocRow> g_toc;
+
+// Opening of chapter file `href`: its first 8 KB is plenty for a title.
+struct Head : Print {
+  std::string s;
+  size_t write(uint8_t c) override { return write(&c, 1); }
+  size_t write(const uint8_t *b, size_t n) override {
+    const size_t k = std::min(n, size_t(8192) - std::min(s.size(), size_t(8192)));
+    s.append(reinterpret_cast<const char *>(b), k);
+    return k;  // short = stop reading
+  }
+};
+
+// Titles for the skipped files, worked out once per book: <book cache>/toc_fill.tsv, "spine<TAB>title" per line.
+std::vector<std::string> fill_titles(const std::vector<bool> &listed) {
+  std::vector<std::string> fill(listed.size());
+  if (Txt::isTxtOrMd(g_epub->getPath())) return fill;  // TXT / MD: Contents are the Markdown headings
+  const String path = String(g_epub->getCachePath().c_str()) + "/toc_fill.tsv";
+  if (File f = SD.open(path)) {
+    while (f.available()) {
+      const String line = f.readStringUntil('\n');
+      const int tab = line.indexOf('\t'), i = line.toInt();
+      if (tab > 0 && i >= 0 && i < int(fill.size())) fill[i] = line.substring(tab + 1).c_str();
+    }
+    f.close();
+    return fill;
+  }
+  String out;
+  for (size_t i = 0; i < listed.size(); i++) {
+    if (listed[i]) continue;
+    Head h;
+    g_epub->readItemContentsToStream(g_epub->getSpineItem(i).href, h, 1024, true);
+    fill[i] = html_opening_title(h.s);
+    out += String(int(i)) + "\t" + fill[i].c_str() + "\n";
+  }
+  if (File f = SD.open(path, FILE_WRITE)) {
+    f.print(out);
+    f.close();
+  }
+  return fill;
+}
+
+void build_toc() {
+  g_toc.clear();
+  const int n = g_epub->getTocItemsCount(), spines = g_epub->getSpineItemsCount();
+  std::vector<BookMetadataCache::TocEntry> own;
+  std::vector<bool> listed(spines);
+  for (int i = 0; i < n; i++) {
+    own.push_back(g_epub->getTocItem(i));
+    if (own[i].spineIndex >= 0 && own[i].spineIndex < spines) listed[own[i].spineIndex] = true;
+  }
+  const std::vector<std::string> fill = fill_titles(listed);
+  int next = 0;  // the first file not yet passed: skipped files go in before the entry after them
+  auto fill_to = [&](int s) {
+    for (; next < s; next++)
+      if (!listed[next] && !fill[next].empty()) g_toc.push_back({fill[next], "", next, -1});
+  };
+  for (int i = 0; i < n; i++) {
+    if (own[i].spineIndex >= 0) {
+      fill_to(own[i].spineIndex);
+      next = std::max(next, own[i].spineIndex + 1);
+    }
+    g_toc.push_back({own[i].title, own[i].anchor, own[i].spineIndex, i});
+  }
+  fill_to(spines);
+}
 
 void begin() {
   if (g_ready) return;
@@ -95,6 +173,7 @@ bool open(const String &path) {
   if (!e->load(true, false)) return false;
   e->setupCacheDir();
   g_epub = std::move(e);
+  build_toc();
   ImageBlock::setExtractor(g_epub.get(), [](void *ctx, const char *src, const char *dest) {
     return static_cast<Epub *>(ctx)->extractItemToFile(src, dest);
   });
@@ -104,6 +183,7 @@ bool open(const String &path) {
 void close() {
   g_section.reset();
   g_epub.reset();
+  g_toc.clear();
   g_spine = 0;
 }
 
@@ -149,9 +229,9 @@ bool prev() {
 }
 
 bool to_toc(int toc, bool large) {
-  if (!g_epub || toc < 0 || toc >= g_epub->getTocItemsCount()) return false;
-  const auto t = g_epub->getTocItem(toc);
-  if (t.spineIndex < 0 || !show(t.spineIndex, 0, large)) return false;
+  if (!g_epub || toc < 0 || toc >= int(g_toc.size())) return false;
+  const TocRow &t = g_toc[toc];
+  if (t.spine < 0 || !show(t.spine, 0, large)) return false;
   if (!t.anchor.empty())
     if (const auto p = g_section->getPageForAnchor(t.anchor)) g_section->currentPage = *p;
   return true;
@@ -173,13 +253,18 @@ int percent() {
   return constrain(int(g_epub->calculateProgress(g_spine, float(page() + 1) / pages()) * 100.0f + 0.5f), 0, 100);
 }
 
-int toc_count() { return g_epub ? g_epub->getTocItemsCount() : 0; }
-String toc_title(int i) { return g_epub ? String(g_epub->getTocItem(i).title.c_str()) : String(); }
+int toc_count() { return int(g_toc.size()); }
+String toc_title(int i) { return i >= 0 && i < int(g_toc.size()) ? String(g_toc[i].title.c_str()) : String(); }
 
 int toc_current() {
   if (!g_section) return -1;
-  const int t = g_section->getTocIndexForPage(g_section->currentPage);
-  return t >= 0 ? t : g_epub->getTocIndexForSpineIndex(g_spine);
+  for (size_t r = 0; r < g_toc.size(); r++)  // a filled-in file: the book's own list has nothing for it
+    if (g_toc[r].own < 0 && g_toc[r].spine == g_spine) return int(r);
+  int t = g_section->getTocIndexForPage(g_section->currentPage);
+  if (t < 0) t = g_epub->getTocIndexForSpineIndex(g_spine);
+  for (size_t r = 0; t >= 0 && r < g_toc.size(); r++)
+    if (g_toc[r].own == t) return int(r);
+  return -1;
 }
 
 String chapter_title() {
@@ -189,8 +274,10 @@ String chapter_title() {
 
 void draw() {
   renderer.clearScreen();
+  g_image = false;
   if (g_section) {
     if (auto page = g_section->loadPage(g_section->currentPage)) {
+      g_image = page->hasImages();
       ImageBlock::clearRenderFailures();
       auto scope = fontCache.createPrewarmScope();  // first pass collects the glyphs, then decompresses them at once
       page->render(renderer, font_id(), PAGE_X, PAGE_Y);
@@ -206,6 +293,8 @@ void draw() {
   display.drawBitmapRotatedCW(0, 0, hal.getFrameBuffer(), HalDisplay::DISPLAY_WIDTH, HalDisplay::DISPLAY_HEIGHT,
                               TFT_WHITE, TFT_BLACK);
 }
+
+bool image_page() { return g_image; }
 
 bool metadata(const String &path, String &t, String &a) {
   Epub e(std::string(path.c_str()), "/.reader");
