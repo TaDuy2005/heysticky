@@ -1,7 +1,7 @@
 # HeySticky — Roadmap
 
 What is planned after v1.2.0. `PLAN.md` holds the full spec for each item once it is agreed; this page is the
-short list. Updated 2026-11-20.
+short list. Updated 2026-11-25.
 
 ## Direction
 
@@ -75,7 +75,9 @@ The phone page already has hidden rows for Notion, Home Assistant and Remote acc
       real panel.
 - [ ] **Auto-rotate** — the setting is stored; rotation needs the IMU.
 
-## Paused or dropped
+## Paused
 
-- **Paused:** repeat tasks and other to-do extras (2026-11-20).
-- **Dropped:** tap inside text to place the cursor — there is no typing on the Sticky any more.
+- **Repeat tasks** and other to-do extras (2026-11-20).
+- **Raise to wake** (2026-11-25), under consideration and still in development on `feature/raise-to-wake`.
+  Picking it up and tilting it 30° wakes it, and pushes or knocks don't, but in a trouser pocket it kept
+  waking: the IMU alone can't tell when someone is looking at the screen (no proximity or light sensor).
