@@ -194,11 +194,13 @@ update can never change later. Host tests for the data formats:
 for t in notes todo settings wifi; do c++ -std=c++17 -I heysticky tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
 
-The AI test also needs ArduinoJson (installed by the build profile):
+The AI and report tests also need ArduinoJson (installed by the build profile):
 
 ```bash
-c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/ai_test.cpp -o /tmp/ai_test && /tmp/ai_test
+for t in ai report; do c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
+
+Report a bug by email runs on a Cloudflare Worker (`tools/bug-worker`, checked by `node tools/bug-worker/test.mjs`).
 
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
 `python3 tools/make_icons.py` (PNGs in `tools/icons/`).
