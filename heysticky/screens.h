@@ -352,7 +352,11 @@ inline void open_library() {  // read fresh each time: books may have come from 
 inline void open_book(int i) {  // 07g while the book (and its chapter, the first time) is laid out
   const Book b = g_books[i];
   draw_reader_wait(b.title, TR("Opening…", "Đang mở…"));
-  if (!rd::open(b.path) || !rd::show(b.chapter, b.offset, reader_large())) { rd::close(); show(SCR_BOOKERR); return; }
+  if (!rd::open(b.path) || !rd::show(b.seq ? b.chapter : rd::start_chapter(), b.seq ? b.offset : 0, reader_large())) {
+    rd::close();
+    show(SCR_BOOKERR);
+    return;
+  }
   g_bookPath = b.path;
   g_books[i].seq = next_seq(g_books);
   library_order(g_books);

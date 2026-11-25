@@ -17,6 +17,7 @@ String author();
 // Lay out `chapter` (cached on the card per text size) and go to the page holding `offset`.
 // large: Noto Sans 14 pt (M) instead of 12 pt (S). Slow the first time a chapter is laid out.
 bool show(int chapter, uint32_t offset, bool large);
+int start_chapter();  // where a book never opened starts: its first text (EPUB guide), not the cover
 bool next();  // false at the end of the book
 bool prev();  // false at the start
 bool to_toc(int toc, bool large);  // Contents: jump to a chapter's start

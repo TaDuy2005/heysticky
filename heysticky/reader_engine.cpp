@@ -124,6 +124,8 @@ bool show(int chapter, uint32_t offset, bool large) {
   return true;
 }
 
+int start_chapter() { return g_epub ? max(0, g_epub->getSpineIndexForTextReference()) : 0; }
+
 bool next() {
   if (!g_section) return false;
   if (g_section->currentPage + 1 < g_section->pageCount) {
