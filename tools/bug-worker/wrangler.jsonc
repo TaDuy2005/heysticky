@@ -1,0 +1,12 @@
+// Report a bug by email (Figma 08a-08c). Secrets, set once: OWNER_EMAIL, GH_APP_ID, GH_APP_KEY.
+{
+  "name": "heysticky-bugs",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "routes": [{ "pattern": "sticky.davidtalab.cc", "custom_domain": true }],
+  "vars": { "FROM": "report@sticky.davidtalab.cc", "REPO": "TaDuy2005/heysticky" },
+  "kv_namespaces": [{ "binding": "PENDING", "id": "set-by-deploy" }],
+  "send_email": [{ "name": "EMAIL" }],
+  "ratelimits": [{ "name": "LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
+  "observability": { "enabled": true }
+}
