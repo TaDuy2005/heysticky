@@ -208,8 +208,8 @@ inline void draw_book() {
     info_row(MENU_ROW0 + 144, 72, F_B28, TR("Library", "Thư viện"), "", true);
     return;
   }
-  // Pages count within the chapter (laying out the whole book for a book-wide count is too slow), so it says so.
-  const String where = String(rd::page() + 1) + "/" + rd::pages() + TR(" in chapter · ", " trong chương · ") + rd::percent() + "%";
+  // Pages count within the chapter (laying out the whole book for a book-wide count is too slow).
+  const String where = String(rd::page() + 1) + "/" + rd::pages() + " · " + rd::percent() + "%";
   const int rw = ui_text(F_R20, where, 440, 758, 26, AL_RIGHT);
   ui_text(F_R20, ui_fit(F_R20, rd::chapter_title(), 400 - rw - 12), 40, 758, 26);
 }
