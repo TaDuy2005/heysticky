@@ -44,7 +44,11 @@ One task shown big, as a poster, until you take it down.
 - [ ] **Notion daily sync** — to-dos and notes; voice recordings handed to the phone over Bluetooth, then deleted
       from the card.
 - [ ] **Home Assistant** — a dashboard of chosen entities; the Home tile in Apps (now "later").
-- [ ] **Reader** — read books / long text from the card (the Reader tile in Apps, now "later").
+- [ ] **Reader** — built on `feature/reader`, waiting for the device test: EPUB (with pictures), TXT and MD from
+      `/books/` on the card, library with the last book first, place kept per book, text size S / M, Contents,
+      upload and delete on the phone page. Layout by CrossPoint Reader's engine.
+  - [ ] Later: **PDF** (converted to text on the phone page, pdf.js), Markdown `#` headings as chapters in
+        Contents, books in sub-folders of `/books/`.
 - [ ] **Deadline reminders** — beep at a task's due time, waking from sleep for it.
 - [ ] **Remote access (Tailscale)** — experimental; only with community ESP-IDF libraries.
 
