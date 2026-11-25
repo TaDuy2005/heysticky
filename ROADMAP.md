@@ -9,14 +9,6 @@ The e-ink screen is a **dashboard**: it shows data and is read at a glance. Typi
 slow for it). Input comes by **voice** (hold the top button) and from the **phone**: the setup page today, a native
 iPhone app over Bluetooth later. Every screen is designed in Figma first, in English and Vietnamese.
 
-## Released
-
-- **v1.0** — Home dashboard (clock, weather, indoor climate, today's to-dos), To-do, Notes, Settings, phone setup
-  page, sleep with a live clock, English / Vietnamese, user fonts, over-the-air updates.
-- **v1.1** — AI voice: hold the top button and talk; the Sticky saves to-dos (with deadlines) or a note.
-- **v1.2** — Phone To-do and Notes pages; on-screen keyboard removed; RTC clock that keeps time without Wi-Fi;
-  created date and time on every item; 12-hour AM / PM times; hourly weather.
-
 ## Next — v1.3.0 Poster (`feature/poster`)
 
 One task shown big, as a poster, until you take it down.
@@ -75,9 +67,15 @@ The phone page already has hidden rows for Notion, Home Assistant and Remote acc
       real panel.
 - [ ] **Auto-rotate** — the setting is stored; rotation needs the IMU.
 
-## Paused
+## Considering features
 
 - **Repeat tasks** and other to-do extras (2026-11-20).
 - **Raise to wake** (2026-11-25), under consideration and still in development on `feature/raise-to-wake`.
   Picking it up and tilting it 30° wakes it, and pushes or knocks don't, but in a trouser pocket it kept
   waking: the IMU alone can't tell when someone is looking at the screen (no proximity or light sensor).
+- **NFC module** — a 3D-printed case with an NFC reader that sticks to the back of the Sticky with magnets and
+  sends each tag tap over Bluetooth (its own small BLE chip and battery). Magnets stay away from the NFC coil,
+  with a ferrite sheet behind it. Open: what a tap does (tick a to-do, show a poster, log a check-in…).
+- **Voice stand** — a 3D-printed, USB-powered stand with a speaker and microphone, like a smart speaker: it
+  listens for a wake word, runs the AI and speaks the reply while the Sticky shows it, and charges the Sticky.
+  Needs a mute switch and a listening light. Shares the BLE link with the iPhone app.
