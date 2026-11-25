@@ -30,7 +30,7 @@ enum SetRow : uint8_t { SR_ROTATE, SR_SOUND, SR_LANG, SR_UPDATE, SR_CONFIG, SR_S
 inline const struct { const Icon *icon; const char *label, *vi; } SET_ROWS[SR_COUNT] = {
   {&ICON_SET_ROTATE, "Auto-rotate", "Tự xoay"}, {&ICON_SET_SOUND, "Sound", "Âm thanh"},
   {&ICON_SET_LANG, "Language & Font", "Ngôn ngữ & Phông"}, {&ICON_SET_UPDATE, "Software Update", "Cập nhật phần mềm"},
-  {&ICON_SET_CONFIG, "Configuration", "Cấu hình"}, {&ICON_SET_SLEEP, "Sleep after", "Ngủ sau"}, {&ICON_SET_WEB, "Web setup", "Cài đặt qua web"}, {&ICON_SET_ABOUT, "About", "Thông tin"},
+  {&ICON_SET_CONFIG, "Configuration", "Cấu hình"}, {&ICON_SET_SLEEP, "Auto-sleep", "Tự ngủ"}, {&ICON_SET_WEB, "Web setup", "Cài đặt qua web"}, {&ICON_SET_ABOUT, "About", "Thông tin"},
 };
 
 inline bool set_rotate() { return cfg_get("rotate") == "1"; }  // stored only: no screen rotates yet (needs the IMU)
@@ -130,7 +130,7 @@ inline void draw_sound() {
   }
 }
 
-// ---------- 04l Sleep after (flash key sleep_min, 0 = Never) ----------
+// ---------- 04l Auto-sleep (flash key sleep_min, 0 = Never) ----------
 inline const int SLEEP_CHOICES[] = {1, 2, 5, 10, 0};
 constexpr int SLEEP_N = sizeof SLEEP_CHOICES / sizeof SLEEP_CHOICES[0];
 inline int g_sleepMin = 2;  // loaded at boot
@@ -143,7 +143,7 @@ inline void draw_sleep() {
     rows.push_back(m ? String(m) + TR(" min", " phút") : TR("Never", "Không bao giờ"));
     if (m == g_sleepMin) sel = i;
   }
-  draw_choices(TR("Sleep after", "Ngủ sau"), rows, sel);
+  draw_choices(TR("Auto-sleep", "Tự ngủ"), rows, sel);
 }
 
 // ---------- 04a Language & Font, 04b System Language, 04c User Font ----------

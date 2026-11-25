@@ -47,7 +47,7 @@ minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself of
 <tr>
 <td><img src="assets/screens/settings.png" alt="Settings" width="200"></td>
 <td><b>Settings.</b> Sound (volume Low / Medium / High), Language &amp; Font, Software Update, Configuration (city,
-timezone, °C / °F), Sleep after, Web setup, About (SN, MAC, version, SD card and its files).</td>
+timezone, °C / °F), Auto-sleep, Web setup, Report a bug, About (SN, MAC, version, SD card and its files).</td>
 </tr>
 <tr>
 <td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>

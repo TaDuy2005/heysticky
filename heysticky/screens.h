@@ -197,7 +197,7 @@ inline int apps_hit(int x, int y) {
 
 // ---------- navigation ----------
 inline Screen g_discardBack = SCR_TASK;  // 02j Cancel returns here
-inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Sleep after counts from here
+inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Auto-sleep counts from here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
 inline void draw_screen() {
