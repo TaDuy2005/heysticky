@@ -209,9 +209,8 @@ inline void draw_book() {
     return;
   }
   // Pages count within the chapter (laying out the whole book for a book-wide count is too slow).
-  const int pw = ui_text(F_R20, String(rd::page() + 1) + "/" + rd::pages(), W / 2, 758, 26, AL_CENTER);
-  ui_text(F_R20, String(rd::percent()) + "%", 440, 758, 26, AL_RIGHT);
-  ui_text(F_R20, ui_fit(F_R20, rd::chapter_title(), W / 2 - pw / 2 - 40 - 12), 40, 758, 26);
+  // Chapter title and % are in the reader menu (07e).
+  ui_text(F_R20, String(rd::page() + 1) + "/" + rd::pages(), W / 2, 758, 26, AL_CENTER);
 }
 
 // ---------- 07f Contents ----------
