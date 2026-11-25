@@ -1,16 +1,19 @@
-// HeySticky screens: 01 Home, 01a Apps, To-do (todo_ui.h), Notes (notes_ui.h), Settings (settings_ui.h); navigation and touch.
+// HeySticky screens: 01 Home, 01a Apps, To-do (todo_ui.h), Notes (notes_ui.h), Reader (reader_ui.h), Settings (settings_ui.h);
+// navigation and touch.
 // Coordinates from the Figma frames.
 #pragma once
 #include "ui.h"
 #include "net.h"
 #include "todo_ui.h"
 #include "notes_ui.h"
+#include "reader_ui.h"
 #include "settings_ui.h"
 #include "ai_ui.h"
 #include "ai.h"
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
-                       SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
+                       SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD,
+                       SCR_LIBRARY, SCR_BOOK, SCR_CONTENTS, SCR_BOOKERR, SCR_RDNOSD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
 inline Screen g_screen = SCR_HOME;
@@ -167,7 +170,7 @@ struct Tile { int x, y; const Icon *icon; const char *label, *vi; bool later; };
 inline const Tile TILES[] = {
   {40, 126, &ICON_APP_TODO, "To-do", "Việc cần làm", false},   {250, 126, &ICON_APP_NOTE, "Notes", "Ghi chú", false},
   {40, 306, &ICON_APP_GEAR, "Settings", "Cài đặt", false}, {250, 306, &ICON_APP_HOME, "Home", "Nhà", true},
-  {40, 486, &ICON_APP_BOOK, "Reader", "Đọc", true},
+  {40, 486, &ICON_APP_BOOK, "Reader", "Đọc", false},
 };
 
 inline void draw_apps() {
@@ -215,6 +218,11 @@ inline void draw_screen() {
     case SCR_NOTE: draw_note_view(); break;
     case SCR_DELNOTE: draw_delete(TR("Delete note?", "Xoá ghi chú?")); break;
     case SCR_DISCARD: draw_delete(TR("Discard changes?", "Bỏ thay đổi?"), TR("Discard", "Bỏ")); break;
+    case SCR_LIBRARY: draw_library(); break;
+    case SCR_BOOK: draw_book(); break;
+    case SCR_CONTENTS: draw_contents(); break;
+    case SCR_BOOKERR: draw_book_error(); break;
+    case SCR_RDNOSD: draw_reader_nosd(); break;
     case SCR_SETTINGS: draw_settings(); break;
     case SCR_CONFIG: draw_config(); break;
     case SCR_TEMP: draw_temp(); break;
@@ -329,6 +337,74 @@ inline void sleep_tap(int y) {
 // ---------- touch ----------
 inline bool in(int x, int y, int x0, int y0, int w, int h) { return x >= x0 && x < x0 + w && y >= y0 && y < y0 + h; }
 inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  // Cancel / Clear / Back
+
+// ---------- Reader (07) ----------
+inline bool reader_screen(Screen s) { return s >= SCR_LIBRARY && s <= SCR_RDNOSD; }
+
+inline void open_library() {  // read fresh each time: books may have come from a computer or the phone page
+  rd::close();
+  g_menu = false;
+  if (!g_sdOk && sd_inserted()) draw_reader_wait(TR("Library", "Thư viện"), TR("Loading…", "Đang tải…"));
+  if (books_scan()) show(SCR_LIBRARY);
+  else show(SCR_RDNOSD);
+}
+
+inline void open_book(int i) {  // 07g while the book (and its chapter, the first time) is laid out
+  const Book b = g_books[i];
+  draw_reader_wait(b.title, TR("Opening…", "Đang mở…"));
+  if (!rd::open(b.path) || !rd::show(b.chapter, b.offset, reader_large())) { rd::close(); show(SCR_BOOKERR); return; }
+  g_bookPath = b.path;
+  g_books[i].seq = next_seq(g_books);
+  library_order(g_books);
+  g_libPage = 0;
+  g_menu = false;
+  book_remember();
+  show(SCR_BOOK);
+}
+
+inline void book_turn(int d) {  // nothing further = silent
+  if (!(d > 0 ? rd::next() : rd::prev())) return;
+  hw_beep();
+  book_remember();
+  g_redraw = true;
+}
+
+inline void book_tap(int x, int y) {
+  if (!g_menu) {
+    const PageZone z = page_zone(x);
+    if (z == ZONE_MENU) { hw_beep(); g_menu = true; g_redraw = true; }
+    else book_turn(z == ZONE_NEXT ? 1 : -1);
+    return;
+  }
+  if (y < MENU_Y) { hw_beep(); g_menu = false; g_redraw = true; return; }  // tap the page: close the menu
+  if (in(x, y, 40, MENU_ROW0, 400, 72)) {
+    hw_beep();
+    g_menu = false;
+    g_tocPage = max(0, rd::toc_current()) / TOC_ROWS;
+    show(SCR_CONTENTS);
+  } else if (y >= MENU_ROW0 + 72 && y < MENU_ROW0 + 144 && x >= SIZE_S_X - 8 && x < SIZE_M_X + SIZE_W + 8) {
+    const bool large = x >= SIZE_M_X - 8;
+    if (large == reader_large()) return;
+    hw_beep();
+    cfg_set("rd_size", large ? "M" : "S");
+    draw_reader_wait(rd::title(), TR("Opening…", "Đang mở…"));  // the chapter is laid out again in the new size
+    if (!rd::show(rd::chapter(), rd::offset(), large)) { show(SCR_BOOKERR); return; }
+    g_menu = false;
+    book_remember();
+    show(SCR_BOOK);
+  } else if (in(x, y, 40, MENU_ROW0 + 144, 400, 72)) { hw_beep(); open_library(); }
+}
+
+inline void contents_tap(int x, int y) {
+  const int i = contents_hit(x, y);
+  if (i < 0) return;
+  hw_beep();
+  draw_reader_wait(rd::title(), TR("Opening…", "Đang mở…"));
+  if (!rd::to_toc(i, reader_large())) { show(SCR_BOOKERR); return; }
+  book_remember();
+  show(SCR_BOOK);
+}
+
 
 inline void todo_tap(int x, int y) {  // tap = tick; hold = 02e (screens_input)
   const int idx = todo_row_at(y);
@@ -483,6 +559,10 @@ inline bool scrolls(int d) {  // d = +1 next / later, -1 previous / earlier; fal
   else if (g_screen == SCR_NOTES) loop_page(g_notesPage, notes_pages(), d);
   else if (g_screen == SCR_NOTE) scroll_by(g_viewTop, g_viewMax, g_viewStep, d);
   else if (g_screen == SCR_FILES) scroll_by(g_filesTop, files_max(), FILES_ROWS - 1, d);
+  else if (g_screen == SCR_LIBRARY) loop_page(g_libPage, lib_pages(g_books), d);
+  else if (g_screen == SCR_CONTENTS) loop_page(g_tocPage, toc_pages(), d);
+  else if (g_screen == SCR_BOOK && g_menu) { hw_beep(); g_menu = false; g_redraw = true; }  // any move closes the menu
+  else if (g_screen == SCR_BOOK) book_turn(d);
   else return false;
   return true;
 }
@@ -491,8 +571,12 @@ inline void back() {
   else if (settings_screen(g_screen)) go(settings_parent());
   else if (g_screen == SCR_APPS || g_screen == SCR_NOSD || g_screen == SCR_TODO || g_screen == SCR_NOTES) go(g_screen == SCR_APPS ? SCR_HOME : SCR_APPS);
   else if (g_screen == SCR_NOTE) go(SCR_NOTES);
+  else if (g_screen == SCR_BOOK && g_menu) { hw_beep(); g_menu = false; g_redraw = true; }
+  else if (g_screen == SCR_BOOK || g_screen == SCR_BOOKERR) { hw_beep(); open_library(); }
+  else if (g_screen == SCR_CONTENTS) go(SCR_BOOK);
+  else if (g_screen == SCR_LIBRARY || g_screen == SCR_RDNOSD) { rd::close(); go(SCR_APPS); }
 }
-inline bool scroll_screen() { return g_screen == SCR_NOTE || g_screen == SCR_FILES; }
+inline bool scroll_screen() { return g_screen == SCR_NOTE || g_screen == SCR_FILES || g_screen == SCR_BOOK; }  // UP / DOWN scroll (book: turn pages)
 inline void button_down() { if (scroll_screen()) scrolls(1); else back(); }
 inline void button_up() { if (scroll_screen()) scrolls(-1); else if (g_screen == SCR_HOME) go(SCR_APPS); }
 // Home asks first (02j) instead of losing a changed deadline.
@@ -674,7 +758,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
   const int dy = y1 - y0;
   if (abs(dy) > 80 && abs(dy) > abs(dx) && scrolls(dy < 0 ? 1 : -1)) return;  // drag up = later / next page, like a phone
   if (swipe && (g_screen == SCR_HOME || g_screen == SCR_APPS || g_screen == SCR_TODO || g_screen == SCR_NOTES || g_screen == SCR_NOTE || g_screen == SCR_NOSD ||
-                settings_screen(g_screen))) {
+                settings_screen(g_screen) || reader_screen(g_screen))) {
     if (dx > 0) back();
     else if (g_screen == SCR_HOME) go(SCR_APPS);
     return;
@@ -701,6 +785,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       if (t == 0) { hw_beep(); open_todo(); }
       else if (t == 1) { hw_beep(); open_notes(); }
       else if (t == 2) { hw_beep(); show(SCR_SETTINGS); }
+      else if (t == 4) { hw_beep(); open_library(); }
       return;
     }
     case SCR_TODO: todo_tap(x0, y0); return;
@@ -723,6 +808,11 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       }
       return;
     case SCR_NOTES: notes_tap(x0, y0); return;
+    case SCR_LIBRARY: { const int i = library_hit(x0, y0); if (i >= 0) { hw_beep(); open_book(i); } return; }
+    case SCR_BOOK: book_tap(x0, y0); return;
+    case SCR_CONTENTS: contents_tap(x0, y0); return;
+    case SCR_BOOKERR: if (in(x0, y0, 40, 712, 400, 72)) { hw_beep(); open_library(); } return;
+    case SCR_RDNOSD: if (in(x0, y0, 40, 712, 400, 72)) { hw_beep(); open_library(); } return;
     case SCR_REVIEW: review_tap(x0, y0); return;
     case SCR_DONE: done_tap(x0, y0); return;
     case SCR_FAILED: failed_tap(x0, y0); return;
@@ -790,11 +880,12 @@ inline void sd_watch() {
   shown = in;
   pending = -1;
   Serial.printf("[sd] card %s\n", in ? "in" : "out");
-  if (!in) { SD.end(); g_sdOk = false; }
+  if (!in) { rd::close(); SD.end(); g_sdOk = false; }
   else if (g_screen == SCR_SDCARD) sd_files_scan();  // mounts, and 04i shows the file count
   else sd_mount();
   if (g_screen == SCR_ABOUT || g_screen == SCR_SDCARD) g_redraw = true;
   else if (g_screen == SCR_FILES && !in) show(SCR_SDCARD);
+  else if (reader_screen(g_screen) && !in) show(SCR_RDNOSD);  // the book was on the card
 }
 
 inline void screens_loop() {

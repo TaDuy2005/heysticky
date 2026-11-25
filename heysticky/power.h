@@ -20,8 +20,9 @@ inline bool may_sleep() {
 }
 
 // Editors sleep on their own screen (no Home, no moon): light sleep keeps the typing, the top button comes back to it.
+// A book page (07d) sleeps on the page too, with the moon in its status bar.
 inline bool editor_screen() {
-  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_DISCARD;
+  return g_screen == SCR_TASK || g_screen == SCR_DATE || g_screen == SCR_TIME || g_screen == SCR_DISCARD || g_screen == SCR_BOOK;
 }
 
 inline void touch_power(bool on) {
@@ -146,6 +147,7 @@ inline void power_sleep() {
   const bool stay = editor_screen();
   g_asleep = true;
   if (!stay) show(SCR_HOME);  // 01b / 01d
+  else if (g_screen == SCR_BOOK) { g_menu = false; show(SCR_BOOK); }  // the page stays, with the moon
   touch_power(false);
   wifi_off();
   setCpuFrequencyMhz(80);
@@ -183,6 +185,7 @@ inline void power_sleep() {
   g_asleep = false;
   g_lastInput = millis();
   if (!stay) show(SCR_HOME);
+  else if (g_screen == SCR_BOOK) show(SCR_BOOK);  // moon gone
 }
 
 inline void power_loop() {
