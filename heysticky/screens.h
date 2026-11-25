@@ -12,7 +12,8 @@
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
-                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
+                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND,
+                       SCR_BUGMENU, SCR_BUGNEW, SCR_BUGGH, SCR_BUGMAIL, SCR_BUGREVIEW, SCR_BUGLIST };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -227,6 +228,12 @@ inline void draw_screen() {
     case SCR_USERFONT: draw_userfont(); break;
     case SCR_SLEEP: draw_sleep(); break;
     case SCR_SOUND: draw_sound(); break;
+    case SCR_BUGMENU: draw_bugmenu(); break;
+    case SCR_BUGNEW: draw_bugnew(); break;
+    case SCR_BUGGH: draw_bugqr(false); break;
+    case SCR_BUGMAIL: draw_bugqr(true); break;
+    case SCR_BUGREVIEW: draw_bugreview(); break;
+    case SCR_BUGLIST: draw_buglist(); break;
     case SCR_LISTEN: draw_listen(); break;
     case SCR_WORKING: draw_working(); break;
     case SCR_REVIEW: draw_review(); break;
@@ -295,6 +302,9 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
     case SCR_SDCARD: return SCR_ABOUT;
     case SCR_FILES: return SCR_SDCARD;
     case SCR_SYSLANG: case SCR_USERFONT: return SCR_LANGFONT;
+    case SCR_BUGNEW: case SCR_BUGLIST: return SCR_BUGMENU;
+    case SCR_BUGREVIEW: return SCR_BUGNEW;
+    case SCR_BUGGH: case SCR_BUGMAIL: return g_bugBody.length() ? SCR_BUGREVIEW : SCR_BUGNEW;  // the AI's report stays
     default: return SCR_SETTINGS;  // Configuration, About, Web setup
   }
 }
@@ -357,6 +367,7 @@ inline void settings_tap(int x, int y) {
     case SR_CONFIG: hw_beep(); show(SCR_CONFIG); break;
     case SR_SLEEP: hw_beep(); show(SCR_SLEEP); break;
     case SR_WEB: hw_beep(); g_wsNote = WS_NONE; show(SCR_WEBSETUP); break;
+    case SR_BUG: hw_beep(); show(SCR_BUGMENU); break;
     case SR_ABOUT: hw_beep(); show(SCR_ABOUT); break;
     case SR_UPDATE: hw_beep(); show(SCR_UPDATE); break;
     case SR_LANG: hw_beep(); show(SCR_LANGFONT); break;
@@ -453,6 +464,39 @@ inline void update_tap(int x, int y) {  // Check / Install / Try again; both blo
   g_redraw = true;
 }
 
+// ---------- 04n-04u Report a bug ----------
+inline void open_buglist() {  // the saved states at once, then GitHub's (a second or two) if anything changed
+  g_reports = reports_load();
+  show(SCR_BUGLIST);
+  if (reports_refresh(g_reports)) g_redraw = true;
+}
+
+inline void bugmenu_tap(int x, int y) {
+  if (x < 40 || x >= 440) return;
+  const int r = srow_at(y, SROW_H, 2);
+  if (r == 0) { hw_beep(); show(SCR_BUGNEW); }
+  else if (r == 1) { hw_beep(); open_buglist(); }
+}
+
+inline void bugnew_tap(int x, int y) {  // the first card is the top button, not a tap
+  for (int i = 1; i < 3; i++)
+    if (in(x, y, 40, BUGOPT_Y + i * BUGOPT_STEP, 400, BUGOPT_H)) { hw_beep(); bug_draft(); show(i == 1 ? SCR_BUGGH : SCR_BUGMAIL); }
+}
+
+inline void bugqr_tap(int x, int y) {  // Done: 04u follows the report from now on
+  if (!in(x, y, 40, 705, 400, 79)) return;
+  hw_beep();
+  report_keep(g_bug);
+  g_bugBody = "";
+  show(SCR_BUGMENU);
+}
+
+inline void bugreview_tap(int x, int y) {  // one ID for this report, whichever way it is sent
+  if (in(x, y, 40, 619, 193, 72)) { hw_beep(); show(SCR_BUGGH); }
+  else if (in(x, y, 247, 619, 193, 72)) { hw_beep(); show(SCR_BUGMAIL); }
+  else if (in(x, y, 40, 705, 400, 79)) { hw_beep(); g_bugBody = ""; show(SCR_BUGNEW); }  // then hold the top button again
+}
+
 inline void notes_tap(int x, int y) {
   const int num = notes_row_at(y);
   if (num && x >= 40 && x < 440) { hw_beep(); open_note(num); }
@@ -533,9 +577,14 @@ inline size_t g_lastWav = 0;                    // the take, kept for Try again 
 
 inline bool ai_screen(Screen s) { return s >= SCR_LISTEN && s <= SCR_FAILED; }
 
+inline bool g_bugTake = false;  // the take started on 04t / 04r: a bug report, back to 04t
+
 inline void listen_start() {
   if (g_screen == SCR_WORKING || !mic_start()) { hw_beep(BEEP_MS, 1200); return; }  // the job still reads the last take
-  if (!ai_screen(g_screen)) g_listenBack = g_screen;
+  if (!ai_screen(g_screen)) {
+    g_bugTake = g_screen == SCR_BUGNEW || g_screen == SCR_BUGREVIEW;
+    g_listenBack = g_bugTake ? SCR_BUGNEW : g_screen;
+  }
   show(SCR_LISTEN);  // recording already runs in the mic task during this full refresh
 }
 
@@ -548,7 +597,7 @@ inline void ai_fail(AiFail f, int code) {
 }
 
 inline void ai_begin() {  // 05a opens with Heard you ticked; the calls run in their task
-  const AiFail f = ai_start(g_lastWav);
+  const AiFail f = ai_start(g_lastWav, g_bugTake);
   if (f) return ai_fail(f, 0);
   g_aiStep = 1;
   show(SCR_WORKING);
@@ -612,6 +661,7 @@ inline void working_loop() {
   }
   if (g_job.fail) return ai_fail(g_job.fail, g_job.code);
   g_aiText = g_job.text;
+  if (g_job.r.kind == AI_BUG) { bug_draft(g_job.r.note.title, g_job.r.note.body); hw_beep(); show(SCR_BUGREVIEW); return; }
   g_aiSecs = mic_seconds();
   if (g_job.r.kind == AI_NOTE && g_job.cfg.plain) {  // 06h Plain text: your words, minus what the fonts can't draw
     g_job.r.note = plain_note(g_aiText);
@@ -720,6 +770,10 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_USERFONT: userfont_tap(y0); return;
     case SCR_SLEEP: sleep_tap(y0); return;
     case SCR_SOUND: sound_tap(x0, y0); return;
+    case SCR_BUGMENU: bugmenu_tap(x0, y0); return;
+    case SCR_BUGNEW: bugnew_tap(x0, y0); return;
+    case SCR_BUGGH: case SCR_BUGMAIL: bugqr_tap(x0, y0); return;
+    case SCR_BUGREVIEW: bugreview_tap(x0, y0); return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(); open_todo(); }
       return;

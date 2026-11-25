@@ -46,7 +46,7 @@ inline volatile time_t g_netTime = 0;  // UTC just taken from the network, waiti
 inline long g_utc_off = LONG_MIN;  // seconds, from Open-Meteo; the last one is kept in flash (utc_off)
 inline time_t g_bootClock = 0;  // RTC time at boot minus uptime: net_loop() logs how far off it was at the first network time
 
-inline bool http_json(const String &url, JsonDocument &doc);
+inline bool http_json(const String &url, JsonDocument &doc, const JsonDocument *filter = nullptr);
 inline String url_enc(const String &s);
 
 // ---------- saved networks ----------
@@ -260,6 +260,7 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 .wh .col{position:relative;width:76px;height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}.wh .col::-webkit-scrollbar{display:none}.wh .col i{display:block;height:72px}
 .wh .col div{height:36px;line-height:36px;text-align:center;scroll-snap-align:center;font-size:20px;cursor:pointer}.wh .co{position:relative;line-height:180px;font-weight:700;font-size:20px}
 .nv h2{font-size:22px;margin:0 0 4px}.nv .cd{font-size:13px;text-align:right;margin:0 0 12px}.nv .bd{white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5;margin:0 0 8px}
+.r.off .ico,.r.off .n,.r.off .ch{opacity:.35}.btn+.btn{margin-top:14px}
 .emp{text-align:center;padding:40px 0}.emp b{display:block;font-size:18px;margin-bottom:8px}.emp p{font-size:14px;margin:0}.cr{font-size:13px;margin:12px 0 0}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
@@ -269,7 +270,8 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <button class="r" id="rf"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
 <button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
 <button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
-<button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
+<button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button>
+<button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg><b class="n" id="lbg" style="flex:none">Report a bug</b><span id="bi" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg></span><span style="flex:1"></span><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -287,6 +289,9 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-notes" hidden></div>
 <div class="c" id="v-note" hidden></div>
 <div class="c" id="v-noteed" hidden></div>
+<div class="c" id="v-bug" hidden></div>
+<div class="c" id="v-bugnew" hidden></div>
+<div class="c" id="v-bugs" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -310,18 +315,20 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
  render()}
 
 function go(v,d){view=v;det=d||'';dirty=()=>false;
- if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();if(v==='bugnew')bugNewView();if(v==='bugs')bugsView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
 // Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
-const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes'};
+const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes',bugnew:'bug',bugs:'bug'};
 function nav(v,d){history.pushState(null,'');go(v,d)}
 // A form with unsaved changes asks first (06p2 / 06r2): the back step is undone until Discard.
 addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
  close();if(view==='noteed'&&det!=='new')go('note',det);else go(UP[view]||'setup')});
 $('back').onclick=()=>history.back();
 $('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+// Report a bug opens GitHub or the email form, so the phone needs internet: on the hotspot the row is grayed (06 Pop-up).
+$('rb').onclick=()=>S.home?nav('bug'):alertBox(L('Report a bug needs internet','Báo lỗi cần internet'),L('On the Sticky, switch Web setup to Home Wi-Fi.','Trên Sticky, chuyển Cài đặt qua web sang Wi-Fi nhà.'));
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
@@ -333,15 +340,17 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','bug','bugnew','bugs'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
-  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú')}[view];
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),
+  bug:L('Report a bug','Báo lỗi'),bugnew:L('Create a report','Tạo báo cáo'),bugs:L('My reports','Báo cáo của tôi')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · ','Đã kết nối với Sticky · ')+location.hostname;
  $('warn').hidden=!S.home;$('warn-t').textContent=L('Open on your home Wi-Fi','Đang mở trên Wi-Fi nhà');
  $('warn-p').textContent=L('Anyone on this Wi-Fi can open this page, and it isn’t encrypted. Use it only on a Wi-Fi you trust.','Ai dùng chung Wi-Fi này đều mở được trang này, và trang không được mã hoá. Chỉ dùng trên Wi-Fi bạn tin cậy.');
  const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);
+ $('lbg').textContent=L('Report a bug','Báo lỗi');$('rb').classList.toggle('off',!S.home);$('bi').hidden=!!S.home;
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
@@ -660,6 +669,24 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
  v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
+// ---------- Report a bug (06t / 06u / 06v): the Sticky gives the report ID and the link; the phone opens it ----------
+const BI={pen:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a1 1 0 0 1 3 3l-9 9a2 2 0 0 1-.85.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.85z"/>',
+ list:'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>'};
+function bugView(){const rw=(i,t,v)=>{const b=E('button',{className:'r'},ico(BI[i]),E('b',{className:'n',textContent:t}),E('span',{className:'ch',textContent:'›'}));b.onclick=()=>nav(v);return b};
+ $('v-bug').replaceChildren(E('div',{className:'g'},rw('pen',L('Create a report','Tạo báo cáo'),'bugnew'),rw('list',L('My reports','Báo cáo của tôi'),'bugs')))}
+function bugNewView(){
+ const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});
+  x.onclick=async()=>{x.disabled=true;let d=null;try{const r=await api('/api/report',{via});if(r.ok)d=await r.json()}catch(e){}x.disabled=false;
+   if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(!window.open(d.url,'_blank'))location.href=d.url};return x};
+ $('v-bugnew').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
+  b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'),
+  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: type your report, then confirm your email.','GitHub: đăng nhập, rồi bấm Create. Email: nhập báo cáo, rồi xác nhận email.')}))}
+async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking GitHub…','Đang kiểm tra GitHub…')}));
+ const d=await getJ('/api/reports');if(!d||view!=='bugs')return;
+ if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),''));return}
+ const ST={w:L('Waiting','Đang chờ'),o:L('Open','Đang mở'),f:L('Fixed','Đã sửa'),x:L('Won’t fix','Không sửa')};
+ v.replaceChildren(E('div',{className:'g'},...d.reports.map(r=>E('div',{className:'r'},E('b',{className:'n',textContent:r.title||r.id}),E('span',{textContent:ST[r.st]})))),
+  E('p',{className:'foot',textContent:L('Waiting: not on GitHub yet. Fixed: the issue is closed.','Đang chờ: chưa có trên GitHub. Đã sửa: issue đã đóng.')}))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 
@@ -1016,7 +1043,7 @@ inline bool net_begin() {
 }
 
 // ---------- HTTPS JSON (certificates checked against the core's built-in root CA bundle) ----------
-inline bool http_json(const String &url, JsonDocument &doc) {
+inline bool http_json(const String &url, JsonDocument &doc, const JsonDocument *filter) {  // filter: keep only these fields
   NetworkClientSecure tls;
   tls.useBuiltinCACertBundle();
   HTTPClient http;
@@ -1029,7 +1056,8 @@ inline bool http_json(const String &url, JsonDocument &doc) {
     const long long t = http_date(http.header("Date").c_str());
     if (t > 1700000000LL) { timeval tv = {time_t(t), 0}; settimeofday(&tv, nullptr); g_netTime = t; }
   }
-  const bool ok = code == 200 && !deserializeJson(doc, http.getString());
+  const bool ok = code == 200 && !(filter ? deserializeJson(doc, http.getString(), DeserializationOption::Filter(*filter))
+                                          : deserializeJson(doc, http.getString()));
   if (!ok) Serial.printf("[http] %d %s\n", code, url.c_str());
   http.end();
   return ok;
