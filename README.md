@@ -36,7 +36,7 @@ file per note in <code>/notes/</code>.</td>
 puts the book you were reading first, with how far you got; a book opens where you left it, also after sleep or
 a restart. Tap the right or left side (or swipe, or UP / DOWN) to turn the page, the middle for Contents and text
 size S / M. Laid out by the engine of <a href="https://github.com/crosspoint-reader/crosspoint-reader">CrossPoint
-Reader</a> (hyphenation, the book's own styles), built into the HeySticky firmware.</td>
+Reader</a> (hyphenation, pictures), built into the HeySticky firmware.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/listening.png" alt="Listening" width="200"></td>
