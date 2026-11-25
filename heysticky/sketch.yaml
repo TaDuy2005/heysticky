@@ -8,5 +8,9 @@ profiles:
       - platform: esp32:esp32 (3.3.12)
     libraries:
       - ArduinoJson (7.4.3)
+      - PNGdec (1.1.6)        # Reader: EPUB pictures (CrossPoint engine)
+      - JPEGDEC (1.8.5)
+      - AnimatedGIF (2.2.0)
+      - dir: ../third_party/crosspoint
       - dir: ../libs/Seeed_GFX2
 default_profile: heysticky
