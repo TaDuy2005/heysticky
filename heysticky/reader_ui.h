@@ -18,7 +18,7 @@ inline bool g_menu = false;        // 07e sheet over the page
 inline int g_tocPage = 0;          // 07f page
 constexpr int TOC_TOP = 112, TOC_H = 64, TOC_ROWS = 9;
 
-inline bool reader_large() { return cfg_get("rd_size") == "M"; }  // 07e Text size: S = Noto Sans 12 pt, M = 14 pt
+inline bool reader_large() { return cfg_get("rd_size") == "M"; }  // 07e Text size: S = JetBrains Mono 12 pt, M = 14 pt
 
 // ---------- card ----------
 inline bool books_save() {
