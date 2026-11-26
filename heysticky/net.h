@@ -673,8 +673,7 @@ function bugView(){
   x.onclick=async()=>{x.disabled=true;let d=null;try{const r=await api('/api/report',{via});if(r.ok)d=await r.json()}catch(e){}x.disabled=false;
    if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(via==='mail'||!window.open(d.url,'_blank'))location.href=d.url};return x};
  $('v-bug').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
-  b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'),
-  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: your mail app opens; tap Send.','GitHub: đăng nhập, rồi bấm Create. Email: ứng dụng email mở ra; bấm Gửi.')}))}
+  b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 
