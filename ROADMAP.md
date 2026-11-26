@@ -29,8 +29,8 @@ is agreed but not started · **Considering** is an idea, not a promise.
 - **v1.1** — AI voice: speak a to-do or a note.
 - **v1.2** — phone To-do and Notes pages, RTC clock, 12-hour times.
 - **v1.2.1** — Report a bug (GitHub or email), Web setup on home Wi-Fi.
-- **v1.3.0** — Reader: EPUB, TXT and Markdown books, card fonts.
-- **v1.3.1** — new flash layout so big updates install over Wi-Fi (one USB install).
+- **v1.3.1** — Reader (EPUB, TXT and Markdown books, card fonts) and a new flash layout so big updates install
+  over Wi-Fi (one USB install).
 
 ---
 
