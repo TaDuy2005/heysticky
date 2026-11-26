@@ -11,7 +11,8 @@ constexpr char OTA_REPO[] = "TaDuy2005/heysticky";  // public repo whose GitHub 
 constexpr char OTA_ASSET[] = "heysticky-app.bin";
 constexpr uint32_t OTA_AUTO_GAP_MS = 60UL * 60 * 1000;  // auto checks at most hourly (GitHub: 60 calls/h without a token)
 
-enum OtaState : uint8_t { OTA_IDLE, OTA_CHECKING, OTA_LATEST, OTA_AVAIL, OTA_ERR, OTA_INSTALLING, OTA_FAILED };
+// OTA_USB: newer, but too big for the spare slot of a Sticky installed before v1.3.1 (ota_fits): needs one USB install.
+enum OtaState : uint8_t { OTA_IDLE, OTA_CHECKING, OTA_LATEST, OTA_AVAIL, OTA_ERR, OTA_INSTALLING, OTA_FAILED, OTA_USB };
 inline OtaState g_ota = OTA_IDLE;
 inline String g_otaTag, g_otaUrl;  // latest release and its app .bin
 inline int g_otaPct = 0;
@@ -26,12 +27,16 @@ inline void ota_check() {
   if (!http_json(String("https://api.github.com/repos/") + OTA_REPO + "/releases/latest", d)) { g_ota = OTA_ERR; return; }
   g_otaTag = d["tag_name"].as<String>();
   g_otaUrl = "";
+  uint32_t size = 0;
   for (JsonObject a : d["assets"].as<JsonArray>())
-    if (a["name"] == OTA_ASSET) g_otaUrl = a["browser_download_url"].as<String>();
+    if (a["name"] == OTA_ASSET) g_otaUrl = a["browser_download_url"].as<String>(), size = a["size"];
   const bool newer = ver_newer(g_otaTag.c_str(), FW_VERSION);
-  g_ota = !newer ? OTA_LATEST : g_otaUrl.length() ? OTA_AVAIL : OTA_ERR;  // newer but no app .bin: can't install
+  const esp_partition_t *next = esp_ota_get_next_update_partition(nullptr);
+  const bool fits = next && ota_fits(next->address, next->size, size);
+  g_ota = !newer ? OTA_LATEST : !g_otaUrl.length() ? OTA_ERR : fits ? OTA_AVAIL : OTA_USB;  // no app .bin: can't install
   cfg_set("ota_last", String(long(time(nullptr))));
-  Serial.printf("[ota] latest %s (running v%s): %s\n", g_otaTag.c_str(), FW_VERSION, newer ? "update" : "up to date");
+  Serial.printf("[ota] latest %s (running v%s): %s, %u B into 0x%x\n", g_otaTag.c_str(), FW_VERSION,
+                newer ? (fits ? "update" : "needs USB install") : "up to date", unsigned(size), next ? unsigned(next->address) : 0);
 }
 
 // "Last checked today 9:30 AM" / "Last checked 12/11 9:30 AM"; "" if never (or before the clock was set).

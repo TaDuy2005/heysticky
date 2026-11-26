@@ -71,6 +71,7 @@ inline void draw_update() {
     case OTA_ERR: head = TR("Couldn’t check for updates", "Không kiểm tra được"); break;
     case OTA_INSTALLING: head = TR("Installing ", "Đang cài ") + v + "… " + g_otaPct + "%"; sub = TR("Don’t turn off the Sticky. It restarts when done.", "Đừng tắt Sticky. Xong sẽ tự khởi động lại."); break;
     case OTA_FAILED: head = TR("Update failed", "Cập nhật thất bại"); sub = TR("This version is unchanged.", "Phiên bản hiện tại giữ nguyên."); btn = TR("Try again", "Thử lại"); break;
+    case OTA_USB: head = TR(v + " needs a USB install", "Bản " + v + " cần cài qua USB"); sub = TR("Install it once from a computer; settings stay.", "Cài một lần từ máy tính; cài đặt vẫn giữ."); break;
   }
   ui_text(F_B25, head, 40, 194, 33);
   ui_wrap(F_R25, sub, 40, 235, 400, 33, 2);  // one sentence, wrapped: Vietnamese runs longer than English

@@ -1,6 +1,6 @@
 # HeySticky Roadmap
 
-What comes after **v1.3.0**. Last updated 2026-11-26.
+What comes after **v1.3.1**. Last updated 2026-11-26.
 
 HeySticky turns the reTerminal Sticky into an e-ink **dashboard**: it shows your day at a glance and is not typed
 on, because the panel is too slow for a keyboard. Input comes by **voice** (hold the top button) and from the
@@ -15,7 +15,7 @@ is agreed but not started · **Considering** is an idea, not a promise.
 | Feature | Status |
 | --- | --- |
 | [Poster](#poster) | Next |
-| [Reader](#reader) | Released in v1.3.0 |
+| [Reader](#reader) | Released in v1.3.1 |
 | [Home widgets](#home-widgets) | Planned |
 | [Home Assistant](#home-assistant) | Planned |
 | [Notion daily sync](#notion-daily-sync) | Planned |
@@ -30,6 +30,7 @@ is agreed but not started · **Considering** is an idea, not a promise.
 - **v1.2** — phone To-do and Notes pages, RTC clock, 12-hour times.
 - **v1.2.1** — Report a bug (GitHub or email), Web setup on home Wi-Fi.
 - **v1.3.0** — Reader: EPUB, TXT and Markdown books, card fonts.
+- **v1.3.1** — new flash layout so big updates install over Wi-Fi (one USB install).
 
 ---
 
@@ -56,7 +57,7 @@ own picture, until you take it down.
 
 ## Reader
 
-**Status:** Released in v1.3.0
+**Status:** Released in v1.3.1
 
 **Why.** A 480 × 800 e-ink screen is good for reading, and the card has room for a whole library.
 

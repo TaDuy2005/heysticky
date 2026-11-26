@@ -38,6 +38,11 @@ int main() {
   assert(ver_newer("v1.0.1", "1.0.0"));
   assert(ver_newer("1.1.0", "1.0.9"));
   assert(ver_newer("v2.0.0", "1.10.3"));
+  assert(ota_fits(0xC90000, 12800 * 1024, 3227168));    // v1.2.1 into the old app1
+  assert(!ota_fits(0xC90000, 12800 * 1024, 4458240));   // v1.3.0 runs past 16 MB in the old app1
+  assert(ota_fits(0x10000, 12800 * 1024, 4458240));     // old app0 is fine
+  assert(ota_fits(0x800000, 0x7F0000, 4458240) && ota_fits(0x800000, 0x7F0000, 0x7F0000));  // new app1, full slot
+  assert(!ota_fits(0x800000, 0x7F0000, 0x7F0001));      // larger than the slot
   assert(ver_newer("v1.10.0", "1.9.0"));  // numbers, not text
   assert(!ver_newer("v1.0.0", "1.0.0"));
   assert(!ver_newer("v0.9.9", "1.0.0"));
