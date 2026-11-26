@@ -50,13 +50,6 @@ minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself of
 timezone, °C / °F), Auto-sleep, Web setup, Report a bug, About (SN, MAC, version, SD card and its files).</td>
 </tr>
 <tr>
-<td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
-<td><b>Report a bug.</b> In Settings, hold the top button and tell the AI what went wrong, or tap GitHub or Email
-and scan the QR code with your phone. GitHub opens a new issue and Email opens your mail app to
-<code>heystickyreport@gmail.com</code>, both already filled in with the report and its number (HS-XXXX); an email
-gets an automatic reply. The phone setup page has the same two buttons. Your phone needs internet.</td>
-</tr>
-<tr>
 <td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
 <td><b>English and Tiếng Việt.</b> Every screen and the phone page in both languages. Home shows the clock
 (built-in RTC, keeps time with Wi-Fi off, 12-hour AM / PM), weather from Open-Meteo (no API key), indoor
@@ -68,25 +61,37 @@ temperature and humidity, and today's to-do count. User fonts can be added from 
 new version fails to start. Notes, to-dos and settings stay.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
-<img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
-<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). The Sticky
-starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
+<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: Hotspot and Home Wi-Fi buttons, QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
+<img src="assets/screens/web-setup-home-wifi.png" alt="Web setup on the Sticky with Home Wi-Fi picked: QR code and 192.168.1.42 on the home network" width="200"></td>
+<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). Two buttons
+at the top pick how your phone connects: <b>Hotspot</b> or <b>Home Wi-Fi</b>. Web setup turns itself off after
+5 min without the phone.
+<br><br>
+<b>Hotspot.</b> The Sticky starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
 is an example). Scan the QR code to join, then open <code>192.168.4.1</code>, or let the page open by itself.
 <br><br>
 <b>Home Wi-Fi.</b> Once the Sticky is on your Wi-Fi, pick <b>Home Wi-Fi</b> instead of Hotspot: after a
 warning (anyone on that Wi-Fi can open the page, and it is not encrypted) it shows a QR code and its address on
-your network, for example <code>192.168.1.42</code>. Your phone stays on your Wi-Fi.
-<br><br>
-<b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
-offline), fonts, AI keys, and the To-do and Notes pages. Web setup turns itself off after 5 min without the
-phone.</td>
+your network, for example <code>192.168.1.42</code>. Your phone stays on your Wi-Fi.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
+<td><b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
+offline), fonts, AI keys, the To-do and Notes pages, and Report a bug (greyed out on the hotspot, since it needs
+internet).</td>
 </tr>
 <tr>
 <td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
 <img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
 <td><b>Phone To-do and Notes pages.</b> On the Sticky's hotspot or your home Wi-Fi: add, edit, tick and delete; the Sticky
 redraws at once.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
+<td><b>Report a bug.</b> In Settings, hold the top button and tell the AI what went wrong, or tap GitHub or Email
+and scan the QR code with your phone. GitHub opens a new issue and Email opens your mail app to
+<code>heystickyreport@gmail.com</code>, both already filled in with the report and its number (HS-XXXX); an email
+gets an automatic reply. The phone setup page has the same two buttons. Your phone needs internet.</td>
 </tr>
 </table>
 
@@ -224,13 +229,14 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 
 The full list with details is in [ROADMAP.md](ROADMAP.md).
 
-- **Released:** v1.0 dashboard, To-do, Notes, phone setup, updates over Wi-Fi · v1.1 AI voice · v1.2 phone To-do
-  and Notes pages, RTC clock, 12-hour times · v1.2.1 Report a bug, Web setup on home Wi-Fi.
-- **Upcoming, Poster:** one task shown big as a poster with your own picture, set up and pushed from the phone.
-- **Then:** choose and arrange the Home cards (widgets).
-- **Integrations:** Notion daily sync, Home Assistant, a book reader, deadline reminders, remote access.
-- **iPhone app over Bluetooth:** to-dos, notes and fonts without the hotspot.
-- **Power:** measure a night on battery, then decide on hourly deep sleep on Home.
+- [Poster](ROADMAP.md#poster)
+- [Reader](ROADMAP.md#reader)
+- [Home widgets](ROADMAP.md#home-widgets)
+- [Home Assistant](ROADMAP.md#home-assistant)
+- [Notion daily sync](ROADMAP.md#notion-daily-sync)
+- [Remote access](ROADMAP.md#remote-access)
+- [iPhone app over Bluetooth](ROADMAP.md#iphone-app-over-bluetooth)
+- [Considering features](ROADMAP.md#considering-features)
 
 ## Credits and licences
 
