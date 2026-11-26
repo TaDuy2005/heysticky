@@ -50,6 +50,13 @@ minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself of
 timezone, °C / °F), Auto-sleep, Web setup, Report a bug, About (SN, MAC, version, SD card and its files).</td>
 </tr>
 <tr>
+<td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
+<td><b>Report a bug.</b> In Settings, hold the top button and tell the AI what went wrong, or tap GitHub or Email
+and scan the QR code with your phone. GitHub opens a new issue and Email opens your mail app to
+<code>heystickyreport@gmail.com</code>, both already filled in with the report and its number (HS-XXXX); an email
+gets an automatic reply. The phone setup page has the same two buttons. Your phone needs internet.</td>
+</tr>
+<tr>
 <td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
 <td><b>English and Tiếng Việt.</b> Every screen and the phone page in both languages. Home shows the clock
 (built-in RTC, keeps time with Wi-Fi off, 12-hour AM / PM), weather from Open-Meteo (no API key), indoor
@@ -218,8 +225,8 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 The full list with details is in [ROADMAP.md](ROADMAP.md).
 
 - **Released:** v1.0 dashboard, To-do, Notes, phone setup, updates over Wi-Fi · v1.1 AI voice · v1.2 phone To-do
-  and Notes pages, RTC clock, 12-hour times.
-- **Next, v1.3.0 Poster:** one task shown big as a poster with your own picture, set up and pushed from the phone.
+  and Notes pages, RTC clock, 12-hour times · v1.2.1 Report a bug, Web setup on home Wi-Fi.
+- **Upcoming, Poster:** one task shown big as a poster with your own picture, set up and pushed from the phone.
 - **Then:** choose and arrange the Home cards (widgets).
 - **Integrations:** Notion daily sync, Home Assistant, a book reader, deadline reminders, remote access.
 - **iPhone app over Bluetooth:** to-dos, notes and fonts without the hotspot.
