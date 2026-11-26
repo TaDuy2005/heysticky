@@ -694,7 +694,7 @@ async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/ap
   del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” and your place in it are removed from the card.','“'+b.title+'” và vị trí đang đọc sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView()});
   return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
  if(UPL)rows.unshift(upRow());
- const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('EPUB, MD or TXT only. Books go into /books/ on the card. Read them on the Sticky: Apps › Reader.','Chỉ nhận EPUB, MD hoặc TXT. Sách được lưu vào /books/ trên thẻ. Đọc trên Sticky: Ứng dụng › Đọc.')});
+ const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('Supported EPUB, TXT or MD only','Chỉ hỗ trợ EPUB, TXT hoặc MD')});
  const list=rows.length?E('div',{className:'g'},...rows):empty(L('No books yet','Chưa có sách'),L('Upload EPUB, MD or TXT files here, or copy them into /books/ on the card.','Tải tệp EPUB, MD hoặc TXT lên ở đây, hoặc chép vào /books/ trên thẻ.'));
  if(!rows.length)add.style.margin='0 0 22px';
  v.replaceChildren(list,add,file,note)}
@@ -714,8 +714,8 @@ async function rfontsView(){const v=$('v-rfonts'),fd=UPL?{fonts:[],use:''}:await
   return frow(f.name,f.sizes.join(', ')+' pt',f.name,del)})];
  if(UPL)rows.push(upRow());
  const link=E('a',{href:'https://crosspointreader.com/fonts',target:'_blank',rel:'noopener',textContent:'crosspointreader.com/fonts'});
- const note=E('p',{className:'note',style:'margin-top:12px'},L('.cpfont only. Build one from a TTF or OTF, or pick a ready-made font, at ','Chỉ nhận .cpfont. Tạo phông từ tệp TTF hoặc OTF, hoặc chọn phông có sẵn, tại '),link,
-  L(' (your phone needs internet). Name the files like Literata_12.cpfont, sizes 12 and 14. Tap a font to read with it.',' (điện thoại cần internet). Đặt tên tệp như Literata_12.cpfont, cỡ 12 và 14. Chạm vào một phông để đọc bằng phông đó.'));
+ const note=E('p',{className:'note',style:'margin-top:12px'},L('Supported .cpfont and sizes 12 and 14 only','Chỉ hỗ trợ .cpfont, cỡ 12 và 14'),E('br'),
+  L('Visit ','Truy cập '),link,L(' to create/download font',' để tạo/tải phông'));
  v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
 const upRow=()=>E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:UPL.name}),E('small',{className:'pr',id:'upm',textContent:L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'})));
 // ---------- Report a bug (06u): the Sticky gives the report ID and the link; the phone opens it ----------
