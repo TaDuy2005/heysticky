@@ -97,11 +97,13 @@ internet).</td>
 redraws at once.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/phone-books.png" alt="Phone Reader page" width="200"></td>
-<td><b>Phone Reader page.</b> <b>Books:</b> upload EPUB, TXT or MD books to the card (several at once, with
-progress) and delete them, or copy them into <code>/books/</code> with the card in a computer. <b>Fonts:</b> upload
-fonts made with CrossPoint's <a href="https://crosspointreader.com/fonts">SD-card font builder</a>, named like
-<code>Literata_12.cpfont</code> (sizes 12 and 14), tap one to read with it, or delete it.</td>
+<td><img src="assets/screens/phone-books.png" alt="Phone Books page" width="200"><br><br>
+<img src="assets/screens/phone-fonts.png" alt="Phone Fonts page" width="200"></td>
+<td><b>Phone Reader page.</b> Two pages. <b>Books:</b> upload EPUB, MD or TXT books to the card (several at once,
+with progress) and delete them, or copy them into <code>/books/</code> with the card in a computer. <b>Fonts:</b>
+upload <code>.cpfont</code> fonts, built from a TTF or OTF or picked ready-made at
+<a href="https://crosspointreader.com/fonts">crosspointreader.com/fonts</a> and named like
+<code>Literata_12.cpfont</code> (sizes 12 and 14); tap one to read with it, or delete it.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
