@@ -695,9 +695,8 @@ async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/ap
   return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
  if(UPL)rows.unshift(upRow());
  const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('Supported EPUB, TXT or MD only','Chỉ hỗ trợ EPUB, TXT hoặc MD')});
- const list=rows.length?E('div',{className:'g'},...rows):empty(L('No books yet','Chưa có sách'),L('Upload EPUB, MD or TXT files here, or copy them into /books/ on the card.','Tải tệp EPUB, MD hoặc TXT lên ở đây, hoặc chép vào /books/ trên thẻ.'));
- if(!rows.length)add.style.margin='0 0 22px';
- v.replaceChildren(list,add,file,note)}
+ if(!rows.length){add.style.margin='0 0 22px';v.replaceChildren(add,file,empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.')),note);return}
+ v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
 // Fonts: tap a row to read with it; Noto Sans is built in and can't be deleted.
 async function rfontsView(){const v=$('v-rfonts'),fd=UPL?{fonts:[],use:''}:await getJ('/api/rfonts');if(!fd)return;
  const file=E('input',{type:'file',accept:'.cpfont',multiple:true,hidden:true});
