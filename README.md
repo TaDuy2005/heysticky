@@ -264,7 +264,7 @@ The full list with details is in [ROADMAP.md](ROADMAP.md).
 - [Seeed_GFX2](https://github.com/Seeed-Studio/Seeed_GFX2) display library (MIT), Seeed Studio.
 - [ArduinoJson](https://arduinojson.org/) (MIT), Benoît Blanchon.
 - Reader engine from [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) (MIT), with
-  Expat and miniz (MIT), uzlib (zlib) and hyphenation patterns; notices in
+  Expat and miniz (MIT), uzlib (zlib), Noto Sans (SIL OFL 1.1) and hyphenation patterns; notices in
   `third_party/crosspoint/licenses/`. JPEGDEC, PNGdec and AnimatedGIF (Apache-2.0), Larry Bank.
 - [JetBrains Mono](https://www.jetbrains.com/lp/mono/) font (SIL Open Font License 1.1, `fonts/OFL.txt`).
 - Weather and city search: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0 data).

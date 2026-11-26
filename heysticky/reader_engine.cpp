@@ -14,12 +14,15 @@
 #include <SD.h>
 #include <Seeed_GFX.h>
 #include <Txt/Txt.h>
-#include <builtinFonts/jetbrainsmono_12_bold.h>
-#include <builtinFonts/jetbrainsmono_12_italic.h>
-#include <builtinFonts/jetbrainsmono_12_regular.h>
-#include <builtinFonts/jetbrainsmono_14_bold.h>
-#include <builtinFonts/jetbrainsmono_14_italic.h>
-#include <builtinFonts/jetbrainsmono_14_regular.h>
+#include <builtinFonts/notosans_12_bold.h>
+#include <builtinFonts/notosans_12_bolditalic.h>
+#include <builtinFonts/notosans_12_italic.h>
+#include <builtinFonts/notosans_12_regular.h>
+#include <builtinFonts/notosans_14_bold.h>
+#include <builtinFonts/notosans_14_bolditalic.h>
+#include <builtinFonts/notosans_14_italic.h>
+#include <builtinFonts/notosans_14_regular.h>
+#include <fontIds.h>
 
 #include <memory>
 #include <vector>
@@ -34,13 +37,10 @@ GfxRenderer renderer(hal);
 FontDecompressor decompressor;
 FontCacheManager fontCache(renderer.getFontMap(), renderer.getSdCardFonts(), renderer.getTtfFonts());
 
-// The UI's JetBrains Mono, made with CrossPoint's fontconvert.py (third_party/crosspoint/README.md). No bold italic in
-// fonts/: bold stands in. New font IDs, so chapters cached with the old font are laid out again (Section checks the ID).
-EpdFont j12r(&jetbrainsmono_12_regular), j12b(&jetbrainsmono_12_bold), j12i(&jetbrainsmono_12_italic);
-EpdFont j14r(&jetbrainsmono_14_regular), j14b(&jetbrainsmono_14_bold), j14i(&jetbrainsmono_14_italic);
-EpdFontFamily mono12(12, &j12r, &j12b, &j12i, &j12b);
-EpdFontFamily mono14(14, &j14r, &j14b, &j14i, &j14b);
-constexpr int MONO12_ID = 0x4A424D0C, MONO14_ID = 0x4A424D0E;  // "JBM" + pt
+EpdFont n12r(&notosans_12_regular), n12b(&notosans_12_bold), n12i(&notosans_12_italic), n12bi(&notosans_12_bolditalic);
+EpdFont n14r(&notosans_14_regular), n14b(&notosans_14_bold), n14i(&notosans_14_italic), n14bi(&notosans_14_bolditalic);
+EpdFontFamily noto12(12, &n12r, &n12b, &n12i, &n12bi);
+EpdFontFamily noto14(14, &n14r, &n14b, &n14i, &n14bi);
 
 bool g_ready = false;
 std::shared_ptr<Epub> g_epub;
@@ -130,12 +130,12 @@ void begin() {
   decompressor.init();
   fontCache.setFontDecompressor(&decompressor);
   renderer.setFontCacheManager(&fontCache);
-  renderer.insertFont(MONO12_ID, mono12);
-  renderer.insertFont(MONO14_ID, mono14);
+  renderer.insertFont(NOTOSANS_12_FONT_ID, noto12);
+  renderer.insertFont(NOTOSANS_14_FONT_ID, noto14);
   g_ready = true;
 }
 
-int font_id() { return g_large ? MONO14_ID : MONO12_ID; }
+int font_id() { return g_large ? NOTOSANS_14_FONT_ID : NOTOSANS_12_FONT_ID; }
 
 ReaderRenderSpec spec() {
   ReaderRenderSpec s;

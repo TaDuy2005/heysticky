@@ -23,10 +23,7 @@ GrayscaleCapabilities and the ContentProtection interface.
   `HalDisplay` as a plain 1-bit framebuffer (no grayscale), `BoardConfig`, `HalGPIO`, `Logging`
   (compiled out) and a ContentProtection stub (no DRM: protected books do not open). `HalMemory.*`
   and `fontIds.h` are CrossPoint's, moved here.
-- Fonts: CrossPoint's built-in fonts are removed. `EpdFont/builtinFonts/jetbrainsmono_{12,14}_{regular,bold,italic}.h`
-  are HeySticky's JetBrains Mono (`fonts/`), made with CrossPoint's `lib/EpdFont/scripts/fontconvert.py` at the commit above:
-  `fontconvert.py jetbrainsmono_12_regular 12 fonts/JetBrainsMono-Regular.ttf --2bit --compress --zopfli`
-  (needs `freetype-py`, `fonttools`, `zopfli`).
+- Fonts: only Noto Sans 12 pt and 14 pt (regular, bold, italic, bold italic) are kept.
 - `EpdFont/VectorFontSupport.h`: TTF/OTF rendering always off (FreeType is not vendored).
 - Hyphenation: Russian, Swedish and Ukrainian patterns (LPPL) removed from `LanguageRegistry.cpp`.
 - Removed: `Epub/ContentProtection.cpp`, `Epub/BookKey.*`, DeviceSecret, TrustedTime (DRM).
