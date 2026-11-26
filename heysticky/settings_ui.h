@@ -450,7 +450,7 @@ inline void draw_buglist() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_topbar(TR("My reports", "Báo cáo của tôi"), "");
-  ui_text(F_R20, TR("Only GitHub reports are listed here.", "Chỉ hiển thị báo cáo trên GitHub."), W / 2, 735, 26, AL_CENTER);
+  ui_text(F_R20, TR("Only GitHub reports are listed.", "Chỉ hiển thị báo cáo trên GitHub."), W / 2, 735, 26, AL_CENTER);
   if (g_reports.empty()) { ui_text(F_R25, TR("No reports yet", "Chưa có báo cáo"), W / 2, 430, 33, AL_CENTER); return; }
   for (size_t i = 0; i < g_reports.size(); i++) {
     const Report &r = g_reports[i];

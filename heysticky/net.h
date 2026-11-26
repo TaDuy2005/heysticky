@@ -683,10 +683,10 @@ function bugNewView(){
   E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: your mail app opens; tap Send.','GitHub: đăng nhập, rồi bấm Create. Email: ứng dụng email mở ra; bấm Gửi.')}))}
 async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking GitHub…','Đang kiểm tra GitHub…')}));
  const d=await getJ('/api/reports');if(!d||view!=='bugs')return;
- if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),L('Only GitHub reports are listed here.','Chỉ hiển thị báo cáo trên GitHub.')));return}
+ if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),L('Only GitHub reports are listed.','Chỉ hiển thị báo cáo trên GitHub.')));return}
  const ST={w:L('Waiting','Đang chờ'),o:L('Open','Đang mở'),f:L('Fixed','Đã sửa'),x:L('Won’t fix','Không sửa')};
  v.replaceChildren(E('div',{className:'g'},...d.reports.map(r=>E('div',{className:'r'},E('b',{className:'n',textContent:r.title||r.id}),E('span',{textContent:ST[r.st]})))),
-  E('p',{className:'foot',textContent:L('Only GitHub reports are listed here.','Chỉ hiển thị báo cáo trên GitHub.')}))}
+  E('p',{className:'foot',textContent:L('Only GitHub reports are listed.','Chỉ hiển thị báo cáo trên GitHub.')}))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 
