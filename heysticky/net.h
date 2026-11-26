@@ -691,7 +691,7 @@ async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/ap
    UPL=null;if(e){alertBox(L('Couldn\'t upload the book','Không tải lên được sách'),f.name);break}}
   booksView()};
  const rows=d.books.map(b=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},trash());
-  del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” and your place in it are removed from the card.','“'+b.title+'” và vị trí đang đọc sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView()});
+  del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” will be removed permanently from the card.','“'+b.title+'” sẽ bị xoá vĩnh viễn khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView()});
   return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
  if(UPL)rows.unshift(upRow());
  const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('Supported EPUB, TXT or MD only','Chỉ hỗ trợ EPUB, TXT hoặc MD')});
