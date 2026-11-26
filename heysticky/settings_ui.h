@@ -407,7 +407,6 @@ inline void draw_bugnew() {
     ui_wrap(F_R25, sub[i], 64, y + 72, i ? 320 : 352, 33, 2);
     if (i) ui_icon(ICON_CHEV, 394, y + 67);
   }
-  ui_text(F_R25, TR("Your phone needs internet.", "Điện thoại cần có internet."), W / 2, 664, 33, AL_CENTER);
 }
 
 // 04p GitHub / 04q Email: the link as a 260 px QR, the report ID, Done.
@@ -446,19 +445,17 @@ inline void draw_bugreview() {
   ui_button(40, 705, 400, 79, false, nullptr, TR("Try again", "Thử lại"));
 }
 
-// 04u: title left, state right; the note explains Waiting.
+// 04u: title left, state right; the note says email reports aren't listed.
 inline void draw_buglist() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
   ui_topbar(TR("My reports", "Báo cáo của tôi"), "");
+  ui_text(F_R20, TR("Only GitHub reports are listed here.", "Chỉ hiển thị báo cáo trên GitHub."), W / 2, 735, 26, AL_CENTER);
   if (g_reports.empty()) { ui_text(F_R25, TR("No reports yet", "Chưa có báo cáo"), W / 2, 430, 33, AL_CENTER); return; }
-  bool waiting = false;
   for (size_t i = 0; i < g_reports.size(); i++) {
     const Report &r = g_reports[i];
     const String st = report_state(r.st);
     const String title = ui_drawable(F_B25, r.title.length() ? r.title : r.id);
     info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, ui_fit(F_B25, title, 400 - ui_width(F_R25, st) - 12), st, false);
-    waiting |= r.st == 'w';
   }
-  if (waiting) ui_text(F_R20, TR("Waiting: not on GitHub yet.", "Đang chờ: chưa có trên GitHub."), W / 2, 735, 26, AL_CENTER);
 }
