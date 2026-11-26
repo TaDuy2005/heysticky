@@ -1,6 +1,6 @@
 # HeySticky — Roadmap
 
-What is planned after v1.2.0. Updated 2026-11-25.
+What is planned after v1.2.1. Updated 2026-11-26.
 
 ## Direction
 
@@ -8,7 +8,7 @@ The e-ink screen is a **dashboard**: it shows data and is read at a glance. Typi
 slow for it). Input comes by **voice** (hold the top button) and from the **phone**: the setup page today, a native
 iPhone app over Bluetooth later. Every screen is designed in Figma first, in English and Vietnamese.
 
-## Next — v1.3.0 Poster (`feature/poster`)
+## Upcoming — Poster (`feature/poster`)
 
 One task shown big, as a poster, until you take it down.
 
