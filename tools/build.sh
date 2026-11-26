@@ -6,10 +6,13 @@
 #   tools/build.sh -u -p <port>        compile + upload
 #   tools/build.sh -e                  compile + export .bin files to heysticky/build/
 cd "$(dirname "$0")/../heysticky" || exit 1
+# The Reader's CrossPoint engine (third_party/crosspoint) includes its headers by bare name: every folder is on the path.
+CP_INC=$(find ../third_party/crosspoint/src -name '*.h' -exec dirname {} \; | sort -u | sed "s|^\.\.|-I$(cd .. && pwd)|" | tr '\n' ' ')
+CP_DEF="-DXML_GE=0 -DXML_CONTEXT_BYTES=0 -DMAX_WIDTH=3072 -DPNG_MAX_BUFFERED_PIXELS=16416"
 exec arduino-cli compile --profile heysticky \
   --build-property build.flash_size=32MB \
   --build-property build.partitions=default_32MB \
   --build-property upload.maximum_size=13107200 \
-  --build-property "compiler.c.extra_flags=-ffile-prefix-map=$HOME=~" \
-  --build-property "compiler.cpp.extra_flags=-ffile-prefix-map=$HOME=~" \
+  --build-property "compiler.c.extra_flags=-ffile-prefix-map=$HOME=~ $CP_DEF $CP_INC" \
+  --build-property "compiler.cpp.extra_flags=-ffile-prefix-map=$HOME=~ $CP_DEF $CP_INC" \
   "$@" .

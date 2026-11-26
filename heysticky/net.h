@@ -208,7 +208,7 @@ button{font:inherit;color:#000;cursor:pointer}
 .r:first-child{border-top:0}.r .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r b.n{font-weight:600}
 .r .ck{flex:none;width:18px;height:18px}.r .i{background:none;border:0;padding:6px;margin:-6px -6px -6px 0;display:flex}
 .r .ch{font-size:22px;line-height:1}svg{display:block;flex:none}
-h2{font-size:13px;font-weight:600;margin:0 0 8px}.note{font-size:13px;margin:-14px 0 22px}.note button{background:none;border:0;padding:0;text-decoration:underline;font-size:13px}
+h2{font-size:13px;font-weight:600;margin:0 0 8px}.note{font-size:13px;margin:-14px 0 22px}.note button{background:none;border:0;padding:0;text-decoration:underline;font-size:13px}.note a{color:#000;font-weight:700}
 label{display:block;font-size:14px;font-weight:600;margin:10px 0 6px}label:first-child{margin-top:0}
 input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;border-radius:8px;background:#fff;color:#000}
 .city{position:relative}.sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:2px solid #000;border-radius:8px;z-index:1;overflow:hidden}
@@ -271,6 +271,7 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
 <button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
 <button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button>
+<button class="r" id="rbk"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Reader</b><span class="ch">›</span></button>
 <button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg><b class="n" id="lbg" style="flex:none">Report a bug</b><span id="bi" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg></span><span style="flex:1"></span><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
@@ -287,6 +288,9 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-todo" hidden></div>
 <div class="c" id="v-task" hidden></div>
 <div class="c" id="v-notes" hidden></div>
+<div class="c" id="v-reader" hidden></div>
+<div class="c" id="v-books" hidden></div>
+<div class="c" id="v-rfonts" hidden></div>
 <div class="c" id="v-note" hidden></div>
 <div class="c" id="v-noteed" hidden></div>
 <div class="c" id="v-bug" hidden></div>
@@ -313,18 +317,18 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
  render()}
 
 function go(v,d){view=v;det=d||'';dirty=()=>false;
- if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='reader')readerView();if(v==='books')booksView();if(v==='rfonts')rfontsView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
 // Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
-const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes'};
+const UP={books:'reader',rfonts:'reader',det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes'};
 function nav(v,d){history.pushState(null,'');go(v,d)}
 // A form with unsaved changes asks first (06p2 / 06r2): the back step is undone until Discard.
 addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
  close();if(view==='noteed'&&det!=='new')go('note',det);else go(UP[view]||'setup')});
 $('back').onclick=()=>history.back();
-$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rbk').onclick=()=>nav('reader');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
 // Report a bug opens GitHub or the email form, so the phone needs internet: on the hotspot the row is grayed (06 Pop-up).
 $('rb').onclick=()=>S.home?nav('bug'):alertBox(L('Report a bug needs internet','Báo lỗi cần internet'),L('On the Sticky, switch Web setup to Home Wi-Fi.','Trên Sticky, chuyển Cài đặt qua web sang Wi-Fi nhà.'));
 
@@ -338,16 +342,16 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','bug'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','reader','books','rfonts','bug'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
-  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),reader:L('Reader','Đọc sách'),books:L('Books','Sách'),rfonts:L('Fonts','Phông chữ'),
   bug:L('Report a bug','Báo lỗi')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · ','Đã kết nối với Sticky · ')+location.hostname;
  $('warn').hidden=!S.home;$('warn-t').textContent=L('Open on your home Wi-Fi','Đang mở trên Wi-Fi nhà');
  $('warn-p').textContent=L('Anyone on this Wi-Fi can open this page, and it isn’t encrypted. Use it only on a Wi-Fi you trust.','Ai dùng chung Wi-Fi này đều mở được trang này, và trang không được mã hoá. Chỉ dùng trên Wi-Fi bạn tin cậy.');
- const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);
+ const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);$('lb').textContent=L('Reader','Đọc sách');
  $('lbg').textContent=L('Report a bug','Báo lỗi');$('rb').classList.toggle('off',!S.home);$('bi').hidden=!!S.home;
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
@@ -667,6 +671,52 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
  v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
+// ---------- Reader (06s): books and reader fonts (.cpfont); the Sticky reads them in Apps › Reader ----------
+const mb=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB',ext=n=>n.split('.').pop().toUpperCase();
+let UPL=null;  // {name, pct, font} while a book or a font uploads
+const trash=()=>H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'));
+// One file to /api/book or /api/rfont with progress; resolves '' or the Sticky's reason.
+function send(url,f){return new Promise(res=>{const x=new XMLHttpRequest(),fd=new FormData();fd.append('f',f,f.name);
+ x.upload.onprogress=e=>{if(e.lengthComputable){UPL.pct=Math.round(e.loaded*100/e.total);const m=$('upm');if(m)m.textContent=L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}};
+ x.onload=()=>res(x.status===200?'':x.responseText||'x');x.onerror=()=>res('x');x.open('POST',url+'?name='+encodeURIComponent(f.name));x.send(fd)})}
+// 06s Reader: two rows, Books and Fonts, each a page of its own.
+async function readerView(){const v=$('v-reader'),d=await getJ('/api/books'),fd=await getJ('/api/rfonts');if(!d||!fd)return;
+ const row=(t,n,to)=>{const r=E('button',{className:'r'},E('b',{className:'n',textContent:t+' ('+n+')'}),E('span',{className:'ch',textContent:'›'}));r.onclick=()=>nav(to);return r};
+ v.replaceChildren(E('div',{className:'g'},row(L('Books','Sách'),d.books.length,'books'),row(L('Fonts','Phông chữ'),fd.fonts.length,'rfonts')))}
+async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/api/books');if(!d)return;
+ const file=E('input',{type:'file',accept:'.epub,.txt,.md',multiple:true,hidden:true});
+ const add=E('button',{className:'btn k',textContent:UPL?L('Uploading…','Đang tải lên…'):L('+  Upload book','+  Tải sách lên'),disabled:!!UPL});add.onclick=()=>file.click();
+ file.onchange=async()=>{for(const f of file.files){if(!/\.(epub|txt|md)$/i.test(f.name)||/[\/\\]/.test(f.name)||f.name[0]==='.'){alertBox(L('Only EPUB, MD or TXT files','Chỉ nhận tệp EPUB, MD hoặc TXT'),f.name);continue}
+   UPL={name:f.name.replace(/\.[^.]+$/,''),pct:0};booksView();const e=await send('/api/book',f);
+   UPL=null;if(e){alertBox(L('Couldn\'t upload the book','Không tải lên được sách'),f.name);break}}
+  booksView()};
+ const rows=d.books.map(b=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},trash());
+  del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” will be removed permanently from the card.','“'+b.title+'” sẽ bị xoá vĩnh viễn khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView()});
+  return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
+ if(UPL)rows.unshift(upRow());
+ const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('Supported EPUB, TXT or MD only','Chỉ hỗ trợ EPUB, TXT hoặc MD')});
+ if(!rows.length){add.style.margin='0 0 22px';v.replaceChildren(add,file,empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.')),note);return}
+ v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
+// Fonts: tap a row to read with it; Noto Sans is built in and can't be deleted.
+async function rfontsView(){const v=$('v-rfonts'),fd=UPL?{fonts:[],use:''}:await getJ('/api/rfonts');if(!fd)return;
+ const file=E('input',{type:'file',accept:'.cpfont',multiple:true,hidden:true});
+ const add=E('button',{className:'btn k',textContent:UPL?L('Uploading…','Đang tải lên…'):L('+  Upload font','+  Tải phông lên'),disabled:!!UPL});add.onclick=()=>file.click();
+ file.onchange=async()=>{for(const f of file.files){if(!/^[A-Za-z0-9][A-Za-z0-9 .-]{0,31}_\d{1,2}\.cpfont$/.test(f.name)){alertBox(L('Only .cpfont files, named like Literata_12.cpfont','Chỉ nhận tệp .cpfont, đặt tên như Literata_12.cpfont'),f.name);continue}
+   UPL={name:f.name,pct:0};rfontsView();const e=await send('/api/rfont',f);
+   UPL=null;if(e){alertBox(L('Couldn\'t upload the font','Không tải lên được phông'),e==='x'?f.name:f.name+': '+e);break}}
+  rfontsView()};
+ const use=async n=>{if(await post('/api/rfont_use',{name:n}))rfontsView()};
+ const frow=(name,sub,n,del)=>{const r=E('div',{className:'r',style:'cursor:pointer'},E('span',{className:'t'},E('b',{textContent:name}),...(sub?[E('small',{className:'pr',textContent:sub})]:[])));
+  if(fd.use===n)r.append(E('span',{textContent:L('In use','Đang dùng'),style:'flex:none'}));if(del)r.append(del);r.onclick=()=>{if(fd.use!==n)use(n)};return r};
+ const rows=[frow(L('Noto Sans (built-in)','Noto Sans (có sẵn)'),'','',null),...fd.fonts.map(f=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},trash());
+  del.onclick=e=>{e.stopPropagation();alertBox(L('Delete font?','Xoá phông?'),L('“'+f.name+'” is removed from the card.','“'+f.name+'” sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/rfont_del',{name:f.name}))rfontsView()})};
+  return frow(f.name,f.sizes.join(', ')+' pt',f.name,del)})];
+ if(UPL)rows.push(upRow());
+ const link=E('a',{href:'https://crosspointreader.com/fonts',target:'_blank',rel:'noopener',textContent:'crosspointreader.com/fonts'});
+ const note=E('p',{className:'note',style:'margin-top:12px'},L('Supported .cpfont and sizes 12 and 14 only','Chỉ hỗ trợ .cpfont, cỡ 12 và 14'),E('br'),
+  L('Visit ','Truy cập '),link,L(' to create/download font',' để tạo/tải phông'));
+ v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
+const upRow=()=>E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:UPL.name}),E('small',{className:'pr',id:'upm',textContent:L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'})));
 // ---------- Report a bug (06u): the Sticky gives the report ID and the link; the phone opens it ----------
 function bugView(){
  const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});
