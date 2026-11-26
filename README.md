@@ -34,7 +34,7 @@ file per note in <code>/notes/</code>.</td>
 <img src="assets/screens/reader-page.png" alt="Book page with a picture" width="200"></td>
 <td><b>Reader.</b> EPUB (with pictures), TXT and Markdown books from <code>/books/</code> on the card. The library
 puts the book you were reading first, with how far you got; a book opens where you left it, also after sleep or
-a restart. Tap the right or left side (or swipe, or UP / DOWN) to turn the page, the middle for Contents, Font,
+a restart. Tap the right or left side or UP / DOWN to turn the page, the middle for Contents, Font,
 Text size S / M and the Library. The font is Noto Sans, built in, or a CrossPoint <code>.cpfont</code> font added on the
 phone page. Laid out by the engine of <a href="https://github.com/crosspoint-reader/crosspoint-reader">CrossPoint
 Reader</a> (hyphenation, pictures), built into the HeySticky firmware.</td>
@@ -87,7 +87,7 @@ your network, for example <code>192.168.1.42</code>. Your phone stays on your Wi
 <tr>
 <td><img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
 <td><b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
-offline), fonts, AI keys, the To-do, Notes and Books pages, and Report a bug (greyed out on the hotspot, since it needs
+offline), fonts, AI keys, the To-do, Notes and Reader pages, and Report a bug (greyed out on the hotspot, since it needs
 internet).</td>
 </tr>
 <tr>
@@ -182,8 +182,8 @@ microSD
 ├── notes/
 │   └── 012.md                 one note per file: "# Title", then the body
 ├── fonts/
-│   └── <Name>/
-│       └── R20.vlw … I25.vlw  user font, one file per size/style, added from the phone page (Font book)
+│   ├── <Name>/
+│   │   └── R20.vlw … I25.vlw  user font, one file per size/style, added from the phone page (Font book)
 │   └── <Family>/
 │       └── <Family>_12.cpfont Reader font (CrossPoint .cpfont, sizes 12 and 14), added on the phone page (Reader)
 ├── ai/
