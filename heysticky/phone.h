@@ -160,7 +160,7 @@ inline void api_report() {
   if (!mail) report_keep(r);
   JsonDocument d;
   d["id"] = r.id;
-  d["url"] = mail ? report_mail_url(r, "") : report_gh_url(r, "");
+  d["url"] = mail ? report_mail_url(r, "", g_vi) : report_gh_url(r, "", g_vi);
   phone_json(d);
 }
 

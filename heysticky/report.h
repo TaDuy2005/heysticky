@@ -82,20 +82,24 @@ inline String q_enc(const String &s, bool mail = false) {
   return o;
 }
 
-// The last line of every report: the ID 04u searches GitHub for.
-inline String report_tag(const Report &r, const String &body) {
-  return (body.length() ? body + "\n\n" : String("")) + "Report " + r.id + ", HeySticky " + FW_VERSION;
+// What a blank report (no AI text) starts with, in the Sticky's language.
+inline String report_guide(bool vi) {
+  return vi ? "Lỗi gì đã xảy ra:\n\nCác bước để gặp lại lỗi:\n\nBạn mong đợi điều gì:\n\n(Bạn có thể đính kèm ảnh chụp màn hình.)"
+            : "What happened:\n\nSteps to make it happen:\n\nWhat you expected:\n\n(You can attach a photo of the screen.)";
 }
 
-// 04p: GitHub's New issue page with the title and text filled in.
-inline String report_gh_url(const Report &r, const String &body) {
-  return String("https://github.com/") + REPORT_REPO + "/issues/new?title=" + q_enc(r.title) + "&body=" + q_enc(report_tag(r, body));
+// 04p: GitHub's New issue page with the title and text (or the guide) filled in; the last line carries the ID 04u
+// searches for. A blank report has no title, so GitHub asks for one.
+inline String report_gh_url(const Report &r, const String &body, bool vi) {
+  const String b = (body.length() ? body : report_guide(vi)) + "\n\nReport " + r.id + ", HeySticky " + FW_VERSION;
+  return String("https://github.com/") + REPORT_REPO + "/issues/new?title=" + q_enc(r.title) + "&body=" + q_enc(b);
 }
 
-// 04q: the phone's mail app, to REPORT_MAIL, with the subject and text filled in.
-inline String report_mail_url(const Report &r, const String &body) {
-  const String subj = "[" + r.id + "] " + (r.title.length() ? r.title : String("HeySticky bug"));
-  return String("mailto:") + REPORT_MAIL + "?subject=" + q_enc(subj, true) + "&body=" + q_enc(report_tag(r, body), true);
+// 04q: the phone's mail app, to REPORT_MAIL; the subject carries the ID, the body the AI's title and text (or the guide).
+inline String report_mail_url(const Report &r, const String &body, bool vi) {
+  const String subj = "Confirmation Bug Report #" + r.id + ", HeySticky " + FW_VERSION;
+  const String b = body.length() ? (r.title.length() ? r.title + "\n\n" : String("")) + body : report_guide(vi);
+  return String("mailto:") + REPORT_MAIL + "?subject=" + q_enc(subj, true) + "&body=" + q_enc(b, true);
 }
 
 // GitHub search for reports [from, from + n): repo:… is:issue "HS-AAAA" OR "HS-BBBB"

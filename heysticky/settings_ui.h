@@ -417,7 +417,7 @@ inline void draw_bugqr(bool mail) {
   ui_topbar(mail ? "Email" : "GitHub", "");
   ui_text(F_B25, mail ? TR("Scan to report by email", "Quét để báo lỗi qua email") : TR("Scan to report on GitHub", "Quét để báo lỗi trên GitHub"),
           W / 2, 130, 33, AL_CENTER);
-  ws_qr(mail ? report_mail_url(g_bug, g_bugBody) : report_gh_url(g_bug, g_bugBody), 175, 260, 244, 25);
+  ws_qr(mail ? report_mail_url(g_bug, g_bugBody, g_vi) : report_gh_url(g_bug, g_bugBody, g_vi), 175, 260, 244, 25);
   if (mail) {
     ui_text(F_R25, REPORT_MAIL, W / 2, 455, 33, AL_CENTER);
     ui_wrap(F_R25, TR("Your mail app opens with the report filled in. Tap Send.",

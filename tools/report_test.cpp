@@ -68,18 +68,22 @@ int main() {
   assert(q_enc("a b+c", true) == "a%20b%2Bc");
   Report r{"HS-7K2P", "Clock stops in sleep", 'w'};
   const String V = FW_VERSION;
-  assert(report_gh_url(r, "It sleeps.") == "https://github.com/TaDuy2005/heysticky/issues/new?title=Clock+stops+in+sleep&body=It+sleeps.%0A%0AReport+HS-7K2P%2C+HeySticky+" + V);
-  assert(report_gh_url({"HS-7K2P", "", 'w'}, "") == "https://github.com/TaDuy2005/heysticky/issues/new?title=&body=Report+HS-7K2P%2C+HeySticky+" + V);
-  assert(report_mail_url(r, "It sleeps.") == "mailto:heystickyreport@gmail.com?subject=%5BHS-7K2P%5D%20Clock%20stops%20in%20sleep&body=It%20sleeps.%0A%0AReport%20HS-7K2P%2C%20HeySticky%20" + V);
-  assert(report_mail_url({"HS-7K2P", "", 'w'}, "") == "mailto:heystickyreport@gmail.com?subject=%5BHS-7K2P%5D%20HeySticky%20bug&body=Report%20HS-7K2P%2C%20HeySticky%20" + V);
+  assert(report_gh_url(r, "It sleeps.", true) == "https://github.com/TaDuy2005/heysticky/issues/new?title=Clock+stops+in+sleep&body=It+sleeps.%0A%0AReport+HS-7K2P%2C+HeySticky+" + V);
+  // blank: no title (GitHub asks), the guide in the Sticky's language, then the ID line
+  assert(report_gh_url({"HS-7K2P", "", 'w'}, "", false) == "https://github.com/TaDuy2005/heysticky/issues/new?title=&body=" + q_enc(report_guide(false)) + "%0A%0AReport+HS-7K2P%2C+HeySticky+" + V);
+  assert(report_guide(false).startsWith("What happened:") && report_guide(true).startsWith("Lỗi gì"));
+  const String subj = "mailto:heystickyreport@gmail.com?subject=Confirmation%20Bug%20Report%20%23HS-7K2P%2C%20HeySticky%20" + V;
+  assert(report_mail_url(r, "It sleeps.", false) == subj + "&body=Clock%20stops%20in%20sleep%0A%0AIt%20sleeps.");  // 04r: ready to send
+  assert(report_mail_url({"HS-7K2P", "", 'w'}, "", true) == subj + "&body=" + q_enc(report_guide(true), true));
+  assert(report_mail_url({"HS-7K2P", "", 'w'}, "", true).length() < 586 && report_gh_url({"HS-7K2P", "", 'w'}, "", true).length() < 586);
   // a full AI report must stay a QR the 260 px frame draws at 3 px a module (version 16, 586 bytes at ECC low)
   const String title40(std::string(40, 'w')), body300 = [] {
     std::string b;
     while (b.size() < 300) b += "words ";
     return String(b.substr(0, 300));
   }();
-  assert(report_gh_url({"HS-7K2P", title40, 'w'}, body300).length() < 586);
-  assert(report_mail_url({"HS-7K2P", title40, 'w'}, body300).length() < 586);
+  assert(report_gh_url({"HS-7K2P", title40, 'w'}, body300, false).length() < 586);
+  assert(report_mail_url({"HS-7K2P", title40, 'w'}, body300, false).length() < 586);
 
   // search: one query per REPORT_ORS + 1 IDs
   std::vector<Report> s = {{"HS-AAAA", "A", 'w'}, {"HS-BBBB", "", 'w'}, {"HS-CCCC", "C", 'o'}};
