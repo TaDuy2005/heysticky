@@ -197,7 +197,7 @@ On the Sticky, **Settings › About › SD card › Files** opens the same folde
 
 ## Install
 
-**Seeed Sticky Playground:** flash it in the browser from the Firmware page (once listed).
+**Seeed Sticky Playground:** flash it in the browser from the Firmware page.
 
 **From a GitHub Release:** download the files from the latest [release](https://github.com/TaDuy2005/heysticky/releases)
 and write them with [esptool](https://github.com/espressif/esptool):
@@ -208,6 +208,10 @@ esptool --chip esp32s3 --baud 460800 write-flash --flash-mode dio --flash-freq 8
 ```
 
 Later versions install from **Settings › Software Update** over Wi-Fi; the notes, to-dos and settings stay.
+
+**Installed before v1.3.1?** Install v1.3.1 once this way (or from Sticky Playground). Earlier versions put the
+second update slot past 16 MB, where the Sticky can't check an image as big as the Reader's, so Software Update
+says the new version needs a USB install. Settings stay; to-dos, notes and books are on the card.
 
 ## Build from source
 
@@ -226,8 +230,8 @@ tools/build.sh -u -p /dev/cu.usbmodemXXXX   # compile and upload
 tools/release.sh v1.0.0                     # release files + manifest.json into release/v1.0.0/
 ```
 
-Always build through `tools/build.sh`: it selects the 32 MB flash with two 12.5 MB OTA slots, which an
-update can never change later. Host tests for the data formats:
+Always build through `tools/build.sh`: it selects the 32 MB flash with the partition table in
+`heysticky/partitions.csv` (two 8 MB OTA slots, both below 16 MB), which an update can never change later. Host tests for the data formats:
 
 ```bash
 for t in notes todo settings wifi reader; do c++ -std=c++17 -I heysticky tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done

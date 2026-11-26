@@ -7,7 +7,7 @@
 #include <string.h>
 #include <strings.h>
 
-constexpr const char *FW_VERSION = "1.3.0";
+constexpr const char *FW_VERSION = "1.3.1";
 
 // GitHub release tag ("v1.2.0" or "1.2.0") newer than the running version? A tag that isn't x.y.z never is.
 inline bool ver_newer(const char *tag, const char *cur) {
@@ -18,6 +18,11 @@ inline bool ver_newer(const char *tag, const char *cur) {
     if (a[i] != b[i]) return a[i] > b[i];
   return false;
 }
+
+// Can an OTA image of `size` bytes go into the app slot at `addr`? It must fit the slot and end below 16 MB: the
+// ESP32-S3 maps only 24-bit flash addresses, so the check before switching slots can't read past 0x1000000.
+// Stickies installed before v1.3.1 have app1 at 0xC90000 (3.4 MB below 16 MB), new ones at 0x800000.
+inline bool ota_fits(uint32_t addr, uint32_t slot, uint32_t size) { return size <= slot && addr + size <= 0x1000000; }
 
 // A .vlw font from the card (made on the phone page, so untrusted): every glyph record and bitmap must fit
 // inside the file, in the ranges the display library stores them in, before it is ever loaded.
