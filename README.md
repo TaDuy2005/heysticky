@@ -5,6 +5,12 @@ The e-paper screen is a dashboard you read at a glance; you add things by voice 
 Works in **English and Tiếng Việt (Vietnamese)**: every screen, the phone page and voice input, including
 sentences that mix both.
 
+> [!WARNING]
+> **Installed HeySticky before v1.3.1? Update once over USB.** Earlier versions use a flash layout that can't
+> take a Wi-Fi update as big as v1.3.1, so Software Update can't install it. Install v1.3.1 once with esptool
+> ([Install](#install)) or from Sticky Playground; after that, updates come over Wi-Fi again. Settings stay;
+> to-dos, notes and books are on the card.
+
 <p align="center">
   <img src="assets/preview.jpg" alt="HeySticky Home on a reTerminal Sticky: greeting, 6:57 PM clock, weather, indoor climate and 3 tasks today" width="320">
 </p>
