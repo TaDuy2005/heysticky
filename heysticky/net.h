@@ -271,7 +271,7 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
 <button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
 <button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button>
-<button class="r" id="rbk"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Books</b><span class="ch">›</span></button>
+<button class="r" id="rbk"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Reader</b><span class="ch">›</span></button>
 <button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg><b class="n" id="lbg" style="flex:none">Report a bug</b><span id="bi" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg></span><span style="flex:1"></span><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
@@ -343,13 +343,13 @@ function render(){
  for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','books','bug'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
-  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),books:L('Books','Sách'),
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),books:L('Reader','Đọc sách'),
   bug:L('Report a bug','Báo lỗi')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · ','Đã kết nối với Sticky · ')+location.hostname;
  $('warn').hidden=!S.home;$('warn-t').textContent=L('Open on your home Wi-Fi','Đang mở trên Wi-Fi nhà');
  $('warn-p').textContent=L('Anyone on this Wi-Fi can open this page, and it isn’t encrypted. Use it only on a Wi-Fi you trust.','Ai dùng chung Wi-Fi này đều mở được trang này, và trang không được mã hoá. Chỉ dùng trên Wi-Fi bạn tin cậy.');
- const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);$('lb').textContent=L('Books','Sách')+cnt(C.books);
+ const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);$('lb').textContent=L('Reader','Đọc sách');
  $('lbg').textContent=L('Report a bug','Báo lỗi');$('rb').classList.toggle('off',!S.home);$('bi').hidden=!!S.home;
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
@@ -669,26 +669,44 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
  v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
-// ---------- Books (06s): upload / delete; the Sticky reads them in Apps › Reader ----------
+// ---------- Reader (06s): books and reader fonts (.cpfont); the Sticky reads them in Apps › Reader ----------
 const mb=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB',ext=n=>n.split('.').pop().toUpperCase();
-let UPL=null;  // {name, pct} while a book uploads
-async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/api/books');if(!d)return;
- const file=E('input',{type:'file',accept:'.epub,.txt,.md',multiple:true,hidden:true});
- const add=E('button',{className:'btn k',textContent:UPL?L('Uploading…','Đang tải lên…'):L('+  Upload book','+  Tải sách lên'),disabled:!!UPL});add.onclick=()=>file.click();
+let UPL=null;  // {name, pct, font} while a book or a font uploads
+const trash=()=>H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'));
+// One file to /api/book or /api/rfont with progress; resolves '' or the Sticky's reason.
+function send(url,f){return new Promise(res=>{const x=new XMLHttpRequest(),fd=new FormData();fd.append('f',f,f.name);
+ x.upload.onprogress=e=>{if(e.lengthComputable){UPL.pct=Math.round(e.loaded*100/e.total);const m=$('upm');if(m)m.textContent=L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}};
+ x.onload=()=>res(x.status===200?'':x.responseText||'x');x.onerror=()=>res('x');x.open('POST',url+'?name='+encodeURIComponent(f.name));x.send(fd)})}
+async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/api/books'),fd=UPL?{fonts:[],use:''}:await getJ('/api/rfonts');if(!d||!fd)return;
+ const file=E('input',{type:'file',accept:'.epub,.txt,.md',multiple:true,hidden:true}),ffile=E('input',{type:'file',accept:'.cpfont',multiple:true,hidden:true});
+ const add=E('button',{className:'btn k',textContent:UPL&&!UPL.font?L('Uploading…','Đang tải lên…'):L('+  Upload book','+  Tải sách lên'),disabled:!!UPL});add.onclick=()=>file.click();
+ const fadd=E('button',{className:'btn k',textContent:UPL&&UPL.font?L('Uploading…','Đang tải lên…'):L('+  Upload font','+  Tải phông lên'),disabled:!!UPL});fadd.onclick=()=>ffile.click();
  file.onchange=async()=>{for(const f of file.files){if(!/\.(epub|txt|md)$/i.test(f.name)||/[\/\\]/.test(f.name)||f.name[0]==='.'){alertBox(L('Only EPUB, TXT or MD files','Chỉ nhận tệp EPUB, TXT hoặc MD'),f.name);continue}
-   UPL={name:f.name.replace(/\.[^.]+$/,''),pct:0};booksView();
-   const ok=await new Promise(res=>{const x=new XMLHttpRequest(),fd=new FormData();fd.append('f',f,f.name);
-    x.upload.onprogress=e=>{if(e.lengthComputable){UPL.pct=Math.round(e.loaded*100/e.total);const m=$('upm');if(m)m.textContent=L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}};
-    x.onload=()=>res(x.status===200);x.onerror=()=>res(false);x.open('POST','/api/book?name='+encodeURIComponent(f.name));x.send(fd)});
-   UPL=null;if(!ok){alertBox(L('Couldn\'t upload the book','Không tải lên được sách'),f.name);break}}
+   UPL={name:f.name.replace(/\.[^.]+$/,''),pct:0};booksView();const e=await send('/api/book',f);
+   UPL=null;if(e){alertBox(L('Couldn\'t upload the book','Không tải lên được sách'),f.name);break}}
   booksView();counts()};
- const rows=d.books.map(b=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},H(svg(20,'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')));
+ ffile.onchange=async()=>{for(const f of ffile.files){if(!/^[A-Za-z0-9][A-Za-z0-9 .-]{0,31}_\d{1,2}\.cpfont$/.test(f.name)){alertBox(L('Name it like Literata_12.cpfont','Đặt tên như Literata_12.cpfont'),f.name);continue}
+   UPL={name:f.name,pct:0,font:1};booksView();const e=await send('/api/rfont',f);
+   UPL=null;if(e){alertBox(L('Couldn\'t upload the font','Không tải lên được phông'),e==='x'?f.name:f.name+': '+e);break}}
+  booksView()};
+ const rows=d.books.map(b=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},trash());
   del.onclick=()=>alertBox(L('Delete book?','Xoá sách?'),L('“'+b.title+'” and your place in it are removed from the card.','“'+b.title+'” và vị trí đang đọc sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/book_del',{name:b.name}))booksView();counts()});
   return E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:b.title}),E('small',{className:'pr',textContent:[b.author,ext(b.name),mb(b.size)].filter(Boolean).join(' · ')})),del)});
- if(UPL)rows.unshift(E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:UPL.name}),E('small',{className:'pr',id:'upm',textContent:L('Uploading… ','Đang tải lên… ')+UPL.pct+'%'}))));
- const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('EPUB, TXT or MD. Books go into /books/ on the card. Read them on the Sticky: Apps › Reader.','EPUB, TXT hoặc MD. Sách được lưu vào /books/ trên thẻ. Đọc trên Sticky: Ứng dụng › Đọc.')});
- if(!rows.length){v.replaceChildren(add,file,empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.')));add.style.margin='0 0 22px';return}
- v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
+ const up=E('div',{className:'r'},E('span',{className:'t'},E('b',{textContent:UPL?UPL.name:''}),E('small',{className:'pr',id:'upm',textContent:L('Uploading… ','Đang tải lên… ')+(UPL?UPL.pct:0)+'%'})));
+ if(UPL&&!UPL.font)rows.unshift(up);
+ // Fonts: tap a row to read with it; Noto Sans is built in and can't be deleted.
+ const use=async n=>{if(await post('/api/rfont_use',{name:n}))booksView()};
+ const inUse=E('span',{textContent:L('In use','Đang dùng'),style:'flex:none'});
+ const frow=(name,sub,n,del)=>{const r=E('div',{className:'r',style:'cursor:pointer'},E('span',{className:'t'},E('b',{textContent:name}),...(sub?[E('small',{className:'pr',textContent:sub})]:[])));
+  if(fd.use===n)r.append(inUse.cloneNode(true));if(del)r.append(del);r.onclick=()=>{if(fd.use!==n)use(n)};return r};
+ const frows=[frow(L('Noto Sans (built-in)','Noto Sans (có sẵn)'),'','',null),...fd.fonts.map(f=>{const del=E('button',{className:'ib',ariaLabel:L('Delete','Xoá')},trash());
+  del.onclick=e=>{e.stopPropagation();alertBox(L('Delete font?','Xoá phông?'),L('“'+f.name+'” is removed from the card.','“'+f.name+'” sẽ bị xoá khỏi thẻ.'),L('Delete','Xoá'),async()=>{if(await post('/api/rfont_del',{name:f.name}))booksView()})};
+  return frow(f.name,f.sizes.join(', ')+' pt',f.name,del)})];
+ if(UPL&&UPL.font)frows.push(up);
+ const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('Books: EPUB, TXT or MD, saved in /books/. Fonts: .cpfont files made at crosspointreader.com/fonts, named like Literata_12.cpfont (sizes 12 and 14), saved in /fonts/. Tap a font to read with it.','Sách: EPUB, TXT hoặc MD, lưu trong /books/. Phông chữ: tệp .cpfont tạo tại crosspointreader.com/fonts, đặt tên như Literata_12.cpfont (cỡ 12 và 14), lưu trong /fonts/. Chạm vào một phông để đọc bằng phông đó.')});
+ const books=rows.length?E('div',{className:'g'},...rows):empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.'));
+ add.style.margin='0 0 22px';fadd.style.margin='0 0 22px';
+ v.replaceChildren(E('h2',{textContent:L('BOOKS','SÁCH')}),books,add,file,E('h2',{textContent:L('FONTS','PHÔNG CHỮ')}),E('div',{className:'g'},...frows),fadd,ffile,note)}
 // ---------- Report a bug (06u): the Sticky gives the report ID and the link; the phone opens it ----------
 function bugView(){
  const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});

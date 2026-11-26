@@ -23,7 +23,9 @@ GrayscaleCapabilities and the ContentProtection interface.
   `HalDisplay` as a plain 1-bit framebuffer (no grayscale), `BoardConfig`, `HalGPIO`, `Logging`
   (compiled out) and a ContentProtection stub (no DRM: protected books do not open). `HalMemory.*`
   and `fontIds.h` are CrossPoint's, moved here.
-- Fonts: only Noto Sans 12 pt and 14 pt (regular, bold, italic, bold italic) are kept.
+- Fonts: only Noto Sans 12 pt and 14 pt (regular, bold, italic, bold italic) are built in. Card fonts
+  (`.cpfont` version 4, from CrossPoint's SD-card font builder) are loaded with `SdCardFontManager`
+  (`heysticky/reader_engine.cpp`), one family at the reader size, with Noto Sans filling glyphs they lack.
 - `EpdFont/VectorFontSupport.h`: TTF/OTF rendering always off (FreeType is not vendored).
 - Hyphenation: Russian, Swedish and Ukrainian patterns (LPPL) removed from `LanguageRegistry.cpp`.
 - Removed: `Epub/ContentProtection.cpp`, `Epub/BookKey.*`, DeviceSecret, TrustedTime (DRM).

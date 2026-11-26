@@ -180,3 +180,39 @@ inline std::string html_opening_title(const std::string &h) {
   if (blocks < 2) end_block();
   return out;
 }
+
+// ---------- Reader fonts: CrossPoint .cpfont files (made at crosspointreader.com/fonts) ----------
+// The card keeps them as /fonts/<Family>/<Family>_<size>.cpfont; the phone page checks each upload here.
+constexpr size_t CPFONT_MAX = 8u << 20;  // 8 MB a file (a Latin + Vietnamese family is well under 1 MB)
+constexpr uint16_t CPFONT_V = 4;         // the .cpfont version this engine reads (SdCardFont.h CPFONT_VERSION)
+
+// Family: 1-32 of A-Z a-z 0-9 space . -, not starting with "." or a space ("_" separates the size).
+inline bool cpfont_family_ok(const String &s) {
+  if (!s.length() || s.length() > 32 || s[0] == '.' || s[0] == ' ') return false;
+  for (unsigned i = 0; i < s.length(); i++) {
+    const char c = s[i];
+    if (!isalnum(uint8_t(c)) && c != ' ' && c != '.' && c != '-') return false;
+  }
+  return true;
+}
+
+// "Literata_12.cpfont" -> "Literata", 12. Sizes 6-72 pt.
+inline bool cpfont_name(const String &file, String &family, int &size) {
+  if (!file.endsWith(".cpfont")) return false;
+  const String base = file.substring(0, file.length() - 7);
+  const int u = base.lastIndexOf("_");
+  if (u < 1) return false;
+  const String num = base.substring(u + 1);
+  if (!num.length() || num.length() > 2) return false;
+  for (unsigned i = 0; i < num.length(); i++)
+    if (!isdigit(uint8_t(num[i]))) return false;
+  size = int(num.toInt());
+  family = base.substring(0, u);
+  return size >= 6 && size <= 72 && cpfont_family_ok(family);
+}
+
+// The file's first 10 bytes: "CPFONT\0\0" and the version (little-endian).
+inline bool cpfont_header_ok(const uint8_t *b, size_t n) {
+  static const uint8_t MAGIC[8] = {'C', 'P', 'F', 'O', 'N', 'T', 0, 0};
+  return n >= 10 && std::equal(MAGIC, MAGIC + 8, b) && uint16_t(b[8] | b[9] << 8) == CPFONT_V;
+}

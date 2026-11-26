@@ -60,12 +60,24 @@ inline bool font_apply(const String &name) {
   return true;
 }
 
+// A folder of Reader fonts (.cpfont, phone page Reader › Fonts) only: not a UI font.
+inline bool reader_font_dir(File &dir) {
+  bool cp = false;
+  for (File e = dir.openNextFile(); e; e = dir.openNextFile()) {
+    const String n = e.name();
+    e.close();
+    if (!n.endsWith(".cpfont")) return false;
+    cp = true;
+  }
+  return cp;
+}
+
 inline std::vector<String> font_list() {  // folder names under /fonts, sorted
   std::vector<String> v;
   File d = g_sdOk ? SD.open("/fonts") : File();
   if (!d) return v;
   for (File f = d.openNextFile(); f && int(v.size()) < FONTS_MAX; f = d.openNextFile()) {
-    if (f.isDirectory() && font_name_ok(f.name())) v.push_back(f.name());
+    if (f.isDirectory() && font_name_ok(f.name()) && !reader_font_dir(f)) v.push_back(f.name());
     f.close();
   }
   d.close();

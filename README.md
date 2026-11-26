@@ -34,8 +34,9 @@ file per note in <code>/notes/</code>.</td>
 <img src="assets/screens/reader-page.png" alt="Book page with a picture" width="200"></td>
 <td><b>Reader.</b> EPUB (with pictures), TXT and Markdown books from <code>/books/</code> on the card. The library
 puts the book you were reading first, with how far you got; a book opens where you left it, also after sleep or
-a restart. Tap the right or left side (or swipe, or UP / DOWN) to turn the page, the middle for Contents and text
-size S / M. Laid out by the engine of <a href="https://github.com/crosspoint-reader/crosspoint-reader">CrossPoint
+a restart. Tap the right or left side (or swipe, or UP / DOWN) to turn the page, the middle for Contents, Reader
+settings and the Library. <b>Reader settings</b> (also <b>Aa</b> in the Library): text size S / M and the font,
+Noto Sans built in or a CrossPoint <code>.cpfont</code> font added on the phone page. Laid out by the engine of <a href="https://github.com/crosspoint-reader/crosspoint-reader">CrossPoint
 Reader</a> (hyphenation, pictures), built into the HeySticky firmware.</td>
 </tr>
 <tr>
@@ -96,9 +97,11 @@ internet).</td>
 redraws at once.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/phone-books.png" alt="Phone Books page" width="200"></td>
-<td><b>Phone Books page.</b> Upload EPUB, TXT or MD books to the card (several at once, with progress) and
-delete them. Or copy them into <code>/books/</code> with the card in a computer.</td>
+<td><img src="assets/screens/phone-books.png" alt="Phone Reader page" width="200"></td>
+<td><b>Phone Reader page.</b> <b>Books:</b> upload EPUB, TXT or MD books to the card (several at once, with
+progress) and delete them, or copy them into <code>/books/</code> with the card in a computer. <b>Fonts:</b> upload
+fonts made with CrossPoint's <a href="https://crosspointreader.com/fonts">SD-card font builder</a>, named like
+<code>Literata_12.cpfont</code> (sizes 12 and 14), tap one to read with it, or delete it.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
@@ -118,7 +121,7 @@ gets an automatic reply. The phone setup page has the same two buttons. Your pho
 | Next / previous page (To-do, Notes) | Swipe up / down (pages loop) |
 | Scroll a note or SD Files | Swipe, or DOWN = later / UP = earlier |
 | Turn a book page (Reader) | Tap the right / left third, swipe up / down, or DOWN / UP |
-| Reader menu (Contents, Text size, Library) | Tap the middle of the page |
+| Reader menu (Contents, Reader settings, Library) | Tap the middle of the page |
 | Tick a to-do | Tap it |
 | Open a to-do | Long-tap it |
 | Talk to AI | Hold the top button while you speak (up to 60 s), then let go |
@@ -179,6 +182,8 @@ microSD
 ├── fonts/
 │   └── <Name>/
 │       └── R20.vlw … I25.vlw  user font, one file per size/style, added from the phone page (Font book)
+│   └── <Family>/
+│       └── <Family>_12.cpfont Reader font (CrossPoint .cpfont, sizes 12 and 14), added on the phone page (Reader)
 ├── ai/
 │   └── note-instructions.txt  how the AI writes notes, set on the phone page (Integrations › AI)
 ├── books/

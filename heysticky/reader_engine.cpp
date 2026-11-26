@@ -11,6 +11,8 @@
 #include <EpdFontFamily.h>
 #include <FontCacheManager.h>
 #include <FontDecompressor.h>
+#include <SdCardFontManager.h>
+#include <SdCardFontRegistry.h>
 #include <SD.h>
 #include <Seeed_GFX.h>
 #include <Txt/Txt.h>
@@ -24,6 +26,7 @@
 #include <builtinFonts/notosans_14_regular.h>
 #include <fontIds.h>
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -41,6 +44,13 @@ EpdFont n12r(&notosans_12_regular), n12b(&notosans_12_bold), n12i(&notosans_12_i
 EpdFont n14r(&notosans_14_regular), n14b(&notosans_14_bold), n14i(&notosans_14_italic), n14bi(&notosans_14_bolditalic);
 EpdFontFamily noto12(12, &n12r, &n12b, &n12i, &n12bi);
 EpdFontFamily noto14(14, &n14r, &n14b, &n14i, &n14bi);
+
+// Card fonts (.cpfont): one family at one size is loaded at a time; Noto Sans fills glyphs it lacks (Vietnamese).
+SdCardFontRegistry g_fontReg;
+SdCardFontManager g_fontMgr;
+String g_fontWant, g_fontHave;  // chosen family / the one loaded ("" = Noto Sans)
+uint8_t g_fontSize = 0;         // point size loaded
+int g_sdFontId = 0;             // 0 = Noto Sans
 
 bool g_ready = false;
 std::shared_ptr<Epub> g_epub;
@@ -135,7 +145,41 @@ void begin() {
   g_ready = true;
 }
 
-int font_id() { return g_large ? NOTOSANS_14_FONT_ID : NOTOSANS_12_FONT_ID; }
+int font_id() { return g_sdFontId ? g_sdFontId : g_large ? NOTOSANS_14_FONT_ID : NOTOSANS_12_FONT_ID; }
+
+// The ID names the family, the size and the file's length, so a changed font lays chapters out again
+// (Section keeps the font ID it was laid out with).
+int sd_font_id(const String &family, uint8_t size, uint32_t len) {
+  uint32_t h = 2166136261u ^ len;
+  for (const char c : family) h = (h ^ uint8_t(c)) * 16777619u;
+  h = (h ^ size) * 16777619u;
+  return int(h | 0x40000000u);  // away from the built-in IDs and 0
+}
+
+// Load the chosen family at the reader size (or its nearest), or go back to Noto Sans.
+void load_font() {
+  const uint8_t want = g_large ? 14 : 12;
+  if (g_fontWant == g_fontHave && (g_fontHave.isEmpty() || g_fontSize == want)) return;
+  if (g_sdFontId) g_fontMgr.unloadFont(renderer, g_sdFontId);
+  g_sdFontId = 0;
+  g_fontHave = "";
+  g_fontSize = 0;
+  if (g_fontWant.isEmpty()) return;
+  g_fontReg.discover();
+  const SdCardFontFamilyInfo *f = g_fontReg.findFamily(g_fontWant.c_str());
+  const SdCardFontFileInfo *file = f ? f->findNearestSize(want) : nullptr;
+  char path[SdCardFontFamilyInfo::PATH_BUFFER_SIZE];
+  if (!file || !f->filePath(*file, path, sizeof(path))) return;
+  File fh = SD.open(path);
+  const uint32_t len = fh ? fh.size() : 0;
+  if (fh) fh.close();
+  const int id = sd_font_id(g_fontWant, file->pointSize, len);
+  const EpdFontFamily *fallback = file->pointSize >= 13 ? &noto14 : &noto12;
+  if (!len || !g_fontMgr.loadFamilyVariant(*f, renderer, file->pointSize, id, fallback)) return;
+  g_sdFontId = id;
+  g_fontHave = g_fontWant;
+  g_fontSize = want;  // the size asked for, so a family with only one size isn't reloaded every page
+}
 
 ReaderRenderSpec spec() {
   ReaderRenderSpec s;
@@ -197,6 +241,9 @@ bool show(int chapter, uint32_t offset, bool large) {
     g_large = large;
     g_section.reset();  // laid out for the other size
   }
+  const int was = font_id();
+  load_font();
+  if (font_id() != was) g_section.reset();  // laid out in the other font
   chapter = constrain(chapter, 0, max(0, g_epub->getSpineItemsCount() - 1));
   if (!load_chapter(chapter)) return false;
   const auto p = g_section->getPageForVisibleTextOffset(offset);
@@ -295,6 +342,14 @@ void draw() {
 }
 
 bool image_page() { return g_image; }
+
+void set_font(const String &family) {
+  if (family == g_fontWant) return;
+  g_fontWant = family;
+  g_section.reset();  // show() lays the chapter out again in the new font
+}
+
+String font() { return g_fontHave; }
 
 bool metadata(const String &path, String &t, String &a) {
   Epub e(std::string(path.c_str()), "/.reader");

@@ -3,6 +3,7 @@
 // A place in a book is (chapter = spine index, offset = visible text offset): it survives a text-size change.
 #pragma once
 #include <Arduino.h>
+#include <vector>
 
 namespace rd {
 
@@ -15,7 +16,7 @@ String title();
 String author();
 
 // Lay out `chapter` (cached on the card per text size) and go to the page holding `offset`.
-// large: Noto Sans 14 pt (M) instead of 12 pt (S). Slow the first time a chapter is laid out.
+// large: 14 pt (M) instead of 12 pt (S), in the font set_font chose. Slow the first time a chapter is laid out.
 bool show(int chapter, uint32_t offset, bool large);
 int start_chapter();  // where a book never opened starts: its first text (EPUB guide), not the cover
 bool next();  // false at the end of the book
@@ -35,6 +36,11 @@ int toc_current();
 
 void draw();  // render the current page into the whole 480 x 800 screen; HeySticky draws the status bar and footer on top
 bool image_page();  // the page last drawn has a picture: a partial refresh would leave ghosts of it, or on it
+// Reader fonts: CrossPoint .cpfont families on the card (/fonts/<Family>/<Family>_<size>.cpfont, or /.fonts/).
+// "" = Noto Sans. Takes effect at the next show(); a family that can't be loaded falls back to Noto Sans.
+void set_font(const String &family);
+String font();  // the family pages are drawn in now, "" = Noto Sans
+
 bool metadata(const String &path, String &title, String &author);  // for the library, without laying out
 void forget(const String &path);  // drop the book's layout cache (/.reader/epub_<hash>): deleted or replaced
 

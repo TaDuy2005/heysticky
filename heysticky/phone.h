@@ -5,7 +5,7 @@
 #pragma once
 #include "screens.h"
 
-inline bool g_phoneTodo = false, g_phoneNotes = false, g_phoneBooks = false;  // changed from the phone: phone_loop() redraws
+inline bool g_phoneTodo = false, g_phoneNotes = false, g_phoneBooks = false, g_phoneRdFont = false;  // changed from the phone: phone_loop() redraws
 
 inline void phone_json(JsonDocument &d) {
   String s;
@@ -35,7 +35,6 @@ inline void api_counts() {  // 06 Setup rows: "To-do (n)" = open tasks, "Notes (
   JsonDocument d;
   d["todo"] = g_sdOk ? todo_left(g_tasks) : -1;
   d["notes"] = g_sdOk && notes_scan() ? int(g_notes.size()) : -1;
-  d["books"] = g_sdOk && books_scan() ? int(g_books.size()) : -1;
   phone_json(d);
 }
 
@@ -218,6 +217,95 @@ inline void api_book_del() {
   g_web.send(200, "text/plain", "ok");
 }
 
+// ---------- Reader fonts (06s Fonts): /fonts/<Family>/<Family>_<size>.cpfont; the Sticky reads with them ----------
+inline void api_rfonts() {
+  if (!phone_card()) return;
+  JsonDocument d;
+  d["use"] = reader_font();
+  JsonArray a = d["fonts"].to<JsonArray>();
+  for (const ReaderFont &f : rfont_scan()) {
+    JsonObject o = a.add<JsonObject>();
+    o["name"] = f.name;
+    JsonArray z = o["sizes"].to<JsonArray>();
+    for (int n : f.sizes) z.add(n);
+  }
+  phone_json(d);
+}
+
+// One file per request (multipart): /api/rfont?name=Literata_12.cpfont. Checked (name, "CPFONT" header, version,
+// size), written as .part and renamed into /fonts/<Family>/ when complete.
+inline File g_rfUp;
+inline bool g_rfOk = false;
+inline size_t g_rfN = 0;
+inline uint8_t g_rfHead[10];
+inline void api_rfont_part() {
+  HTTPUpload &u = g_web.upload();
+  const String name = g_web.arg("name"), part = String(READER_DIR) + "/font.part";
+  String fam;
+  int size;
+  if (u.status == UPLOAD_FILE_START) {
+    g_rfN = 0;
+    g_rfOk = web_local() && (g_sdOk || sd_mount()) && cpfont_name(name, fam, size);
+    if (g_rfOk) { SD.mkdir(READER_DIR); g_rfUp = SD.open(part, FILE_WRITE); g_rfOk = bool(g_rfUp); }
+  } else if (u.status == UPLOAD_FILE_WRITE) {
+    for (size_t i = 0; i < u.currentSize && g_rfN + i < sizeof(g_rfHead); i++) g_rfHead[g_rfN + i] = u.buf[i];
+    g_rfN += u.currentSize;
+    if (g_rfOk) g_rfOk = g_rfN <= CPFONT_MAX && g_rfUp.write(u.buf, u.currentSize) == u.currentSize;
+  } else {  // END or ABORTED
+    if (g_rfUp) g_rfUp.close();
+    g_rfOk = g_rfOk && u.status == UPLOAD_FILE_END && cpfont_header_ok(g_rfHead, min(g_rfN, sizeof(g_rfHead))) &&
+             cpfont_name(name, fam, size);
+    if (g_rfOk) {
+      const String dir = "/fonts/" + fam, path = dir + "/" + name;
+      SD.mkdir("/fonts");
+      SD.mkdir(dir);
+      SD.remove(path);  // the same file again replaces it
+      g_rfOk = SD.rename(part, path);
+    }
+    if (!g_rfOk) SD.remove(part);
+  }
+}
+inline void api_rfont_done() {
+  if (!web_ok()) return;
+  if (g_rfOk) g_phoneRdFont = true;
+  const bool head = g_rfN >= sizeof(g_rfHead) && !cpfont_header_ok(g_rfHead, sizeof(g_rfHead));
+  g_web.send(g_rfOk ? 200 : 400, "text/plain", g_rfOk ? "OK" : head ? "Not a CrossPoint font (.cpfont version 4)" : "Upload failed");
+  g_rfOk = false;
+}
+
+inline void api_rfont_del() {  // the whole family: every .cpfont of it in /fonts and /.fonts
+  if (!phone_card()) return;
+  const String fam = g_web.arg("name");
+  if (!cpfont_family_ok(fam)) return g_web.send(404, "text/plain", "gone");
+  for (const char *root : {"/fonts/", "/.fonts/"}) {
+    const String dir = root + fam;
+    File d = SD.open(dir);
+    if (!d) continue;
+    std::vector<String> files;
+    for (File e = d.openNextFile(); e; e = d.openNextFile()) {
+      String ef;
+      int sz;
+      if (cpfont_name(e.name(), ef, sz) && ef == fam) files.push_back(dir + "/" + e.name());
+      e.close();
+    }
+    d.close();
+    for (const String &f : files) SD.remove(f);
+    SD.rmdir(dir);  // only if nothing else is in it
+  }
+  if (reader_font() == fam) cfg_set("rd_font", "");
+  g_phoneRdFont = true;
+  g_web.send(200, "text/plain", "ok");
+}
+
+inline void api_rfont_use() {  // "" = Noto Sans (built-in)
+  if (!phone_card()) return;
+  const String fam = g_web.arg("name");
+  if (fam.length() && !cpfont_family_ok(fam)) return g_web.send(400, "text/plain", "bad name");
+  cfg_set("rd_font", fam);
+  g_phoneRdFont = true;
+  g_web.send(200, "text/plain", "ok");
+}
+
 // ---------- Report a bug ----------
 // 06u Report on GitHub / by email: a new report ID and the link to open.
 inline void api_report() {
@@ -241,6 +329,10 @@ inline void phone_begin() {
   g_web.on("/api/books", HTTP_GET, api_books);
   g_web.on("/api/book", HTTP_POST, api_book_done, api_book_part);
   g_web.on("/api/book_del", HTTP_POST, api_book_del);
+  g_web.on("/api/rfonts", HTTP_GET, api_rfonts);
+  g_web.on("/api/rfont", HTTP_POST, api_rfont_done, api_rfont_part);
+  g_web.on("/api/rfont_del", HTTP_POST, api_rfont_del);
+  g_web.on("/api/rfont_use", HTTP_POST, api_rfont_use);
   g_web.on("/api/report", HTTP_POST, api_report);
 }
 
@@ -263,5 +355,12 @@ inline void phone_loop() {
     g_phoneBooks = false;
     const Screen s = g_screen;
     if (s == SCR_LIBRARY || ((s == SCR_BOOK || s == SCR_CONTENTS) && !SD.exists(g_bookPath))) open_library();
+  }
+  if (g_phoneRdFont) {  // a font chosen, added or deleted on the phone: 07i / 07j redraw, an open book takes it
+    g_phoneRdFont = false;
+    const Screen s = g_screen;
+    if (s == SCR_RDFONT) { g_rdFonts = rfont_scan(); show(s); }
+    else if (s == SCR_RDSET) show(s);
+    else if (s == SCR_BOOK && rd::font() != reader_font()) { g_rdSetFromBook = true; g_menu = false; reader_settings_back(); }
   }
 }

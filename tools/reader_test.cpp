@@ -122,5 +122,24 @@ int main() {
   assert(html_opening_title("<body><p>Chapter 2</p><p>The second block is far too long to be part of the chapter title.</p>") ==
          "Chapter 2");
 
+  // .cpfont uploads (phone page Reader › Fonts)
+  {
+    String fam; int sz = 0;
+    assert(cpfont_name("Literata_12.cpfont", fam, sz) && fam == "Literata" && sz == 12);
+    assert(cpfont_name("Noto Serif-VN_14.cpfont", fam, sz) && fam == "Noto Serif-VN" && sz == 14);
+    assert(cpfont_name("My_Font_14.cpfont", fam, sz) == false);  // "_" only before the size
+    assert(!cpfont_name("Literata.cpfont", fam, sz));
+    assert(!cpfont_name("Literata_.cpfont", fam, sz));
+    assert(!cpfont_name("Literata_5.cpfont", fam, sz));
+    assert(!cpfont_name("Literata_120.cpfont", fam, sz));
+    assert(!cpfont_name("Literata_12.ttf", fam, sz));
+    assert(!cpfont_name("_12.cpfont", fam, sz));
+    assert(!cpfont_name(".hidden_12.cpfont", fam, sz));
+    assert(!cpfont_name("../x_12.cpfont", fam, sz));
+    const uint8_t ok[10] = {'C', 'P', 'F', 'O', 'N', 'T', 0, 0, 4, 0};
+    uint8_t v3[10] = {'C', 'P', 'F', 'O', 'N', 'T', 0, 0, 3, 0};
+    const uint8_t bad[10] = {'C', 'P', 'F', 'O', 'N', 'X', 0, 0, 4, 0};
+    assert(cpfont_header_ok(ok, 10) && !cpfont_header_ok(ok, 9) && !cpfont_header_ok(v3, 10) && !cpfont_header_ok(bad, 10));
+  }
   puts("reader_test: all passed");
 }
