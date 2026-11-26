@@ -337,7 +337,8 @@ inline std::vector<Report> g_reports;  // 04u, read when it opens
 
 inline std::vector<Report> reports_load() { return reports_parse(cfg_get("reports")); }
 inline void reports_save(const std::vector<Report> &v) { cfg_set("reports", reports_text(v)); }
-inline void report_keep(const Report &r) {  // 04p / 04q Done, or the phone's Report buttons: 04u follows it
+inline void report_keep(Report r) {  // 04p Done, or the phone's Report on GitHub: 04u follows it
+  r.at = time(nullptr) >= CLOCK_OK ? uint32_t(time(nullptr)) : 0;
   auto v = reports_load();
   reports_add(v, r);
   reports_save(v);
@@ -347,12 +348,19 @@ inline void bug_draft(const String &title = "", const String &body = "") {
   g_bugBody = body;
 }
 
-// States from the report server, one request; cancelled and unfinished reports drop off. Saved if changed.
+// States from GitHub's issue search (no token: 10 searches a minute, REPORT_ORS + 1 IDs each); after a full
+// search, reports never sent drop off. Saved if changed.
 inline bool reports_refresh(std::vector<Report> &v) {
   if (v.empty() || WiFi.status() != WL_CONNECTED) return false;
-  JsonDocument d;
-  if (!http_json(report_status_url(v), d) || !d.is<JsonObject>()) return false;  // offline or server down: the last states
-  const bool changed = reports_apply(v, d.as<JsonObjectConst>());
+  JsonDocument f;
+  report_filter(f);
+  bool changed = false, all = true;
+  for (size_t i = 0; i < v.size(); i += REPORT_ORS + 1) {
+    JsonDocument d;
+    if (!http_json(report_search_url(v, i, REPORT_ORS + 1), d, &f)) { all = false; break; }  // offline or rate-limited: keep the last states
+    changed |= reports_apply(v, i, REPORT_ORS + 1, d["items"]);
+  }
+  if (all) changed |= reports_prune(v, uint32_t(time(nullptr)));
   if (changed) reports_save(v);
   return changed;
 }
@@ -409,14 +417,14 @@ inline void draw_bugqr(bool mail) {
   ui_topbar(mail ? "Email" : "GitHub", "");
   ui_text(F_B25, mail ? TR("Scan to report by email", "Quét để báo lỗi qua email") : TR("Scan to report on GitHub", "Quét để báo lỗi trên GitHub"),
           W / 2, 130, 33, AL_CENTER);
-  ws_qr(report_url(g_bug, g_bugBody, g_vi, !mail), 175, 260, 244, 25);
+  ws_qr(mail ? report_mail_url(g_bug, g_bugBody) : report_gh_url(g_bug, g_bugBody), 175, 260, 244, 25);
   if (mail) {
-    ui_text(F_R25, REPORT_HOST, W / 2, 455, 33, AL_CENTER);
-    ui_wrap(F_R25, TR("Type your email on your phone. We send a link to confirm it’s you.",
-                      "Nhập email trên điện thoại. Chúng tôi gửi liên kết để xác nhận đó là bạn."), 40, 500, 400, 33, 3, AL_CENTER);
+    ui_text(F_R25, REPORT_MAIL, W / 2, 455, 33, AL_CENTER);
+    ui_wrap(F_R25, TR("Your mail app opens with the report filled in. Tap Send.",
+                      "Ứng dụng email mở với báo cáo đã điền sẵn. Bấm Gửi."), 40, 500, 400, 33, 3, AL_CENTER);
   } else {
-    ui_wrap(F_R25, TR("On your phone, check the text, then tap Send with GitHub and sign in.",
-                      "Trên điện thoại, kiểm tra nội dung, rồi bấm Gửi bằng GitHub và đăng nhập."), 40, 455, 400, 33, 3, AL_CENTER);
+    ui_wrap(F_R25, TR("Sign in to GitHub on your phone, check the text, then tap Create.",
+                      "Đăng nhập GitHub trên điện thoại, kiểm tra nội dung, rồi bấm Create."), 40, 455, 400, 33, 3, AL_CENTER);
   }
   ui_text(F_R20, TR("Report ", "Báo cáo ") + g_bug.id, W / 2, mail ? 645 : 600, 26, AL_CENTER);
   ui_button(40, 705, 400, 79, true, nullptr, TR("Done", "Xong"));
@@ -452,5 +460,5 @@ inline void draw_buglist() {
     info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, ui_fit(F_B25, title, 400 - ui_width(F_R25, st) - 12), st, false);
     waiting |= r.st == 'w';
   }
-  if (waiting) ui_text(F_R20, TR("Waiting: not sent yet.", "Đang chờ: chưa gửi."), W / 2, 735, 26, AL_CENTER);
+  if (waiting) ui_text(F_R20, TR("Waiting: not on GitHub yet.", "Đang chờ: chưa có trên GitHub."), W / 2, 735, 26, AL_CENTER);
 }

@@ -152,14 +152,15 @@ inline void api_note_del() {
 }
 
 // ---------- Report a bug ----------
-// 06u Report on GitHub / by email: a new report ID, followed on 04u from now on, and the link to open.
+// 06u Report on GitHub / by email: a new report ID and the link to open; 04u follows the GitHub ones from now on.
 inline void api_report() {
   if (!web_ok()) return;
   const Report r{report_id(esp_random()), "", 'w'};  // not g_bug: the Sticky may be showing its own draft
-  report_keep(r);
+  const bool mail = g_web.arg("via") == "mail";
+  if (!mail) report_keep(r);
   JsonDocument d;
   d["id"] = r.id;
-  d["url"] = report_url(r, "", g_vi, g_web.arg("via") != "mail");
+  d["url"] = mail ? report_mail_url(r, "") : report_gh_url(r, "");
   phone_json(d);
 }
 

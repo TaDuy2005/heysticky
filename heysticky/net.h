@@ -677,16 +677,16 @@ function bugView(){const rw=(i,t,v)=>{const b=E('button',{className:'r'},ico(BI[
 function bugNewView(){
  const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});
   x.onclick=async()=>{x.disabled=true;let d=null;try{const r=await api('/api/report',{via});if(r.ok)d=await r.json()}catch(e){}x.disabled=false;
-   if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(!window.open(d.url,'_blank'))location.href=d.url};return x};
+   if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(via==='mail'||!window.open(d.url,'_blank'))location.href=d.url};return x};
  $('v-bugnew').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
   b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'),
-  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: tap Send with GitHub and sign in. Email: type your report, then confirm your email.','GitHub: bấm Gửi bằng GitHub và đăng nhập. Email: nhập báo cáo, rồi xác nhận email.')}))}
-async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking…','Đang kiểm tra…')}));
+  E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: your mail app opens; tap Send.','GitHub: đăng nhập, rồi bấm Create. Email: ứng dụng email mở ra; bấm Gửi.')}))}
+async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking GitHub…','Đang kiểm tra GitHub…')}));
  const d=await getJ('/api/reports');if(!d||view!=='bugs')return;
  if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),''));return}
  const ST={w:L('Waiting','Đang chờ'),o:L('Open','Đang mở'),f:L('Fixed','Đã sửa'),x:L('Won’t fix','Không sửa')};
  v.replaceChildren(E('div',{className:'g'},...d.reports.map(r=>E('div',{className:'r'},E('b',{className:'n',textContent:r.title||r.id}),E('span',{textContent:ST[r.st]})))),
-  E('p',{className:'foot',textContent:L('Waiting: not sent yet. Fixed: the issue is closed.','Đang chờ: chưa gửi. Đã sửa: issue đã đóng.')}))}
+  E('p',{className:'foot',textContent:L('GitHub reports only. Waiting: not on GitHub yet. Fixed: the issue is closed.','Chỉ báo cáo GitHub. Đang chờ: chưa có trên GitHub. Đã sửa: issue đã đóng.')}))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 

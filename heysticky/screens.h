@@ -483,10 +483,10 @@ inline void bugnew_tap(int x, int y) {  // the first card is the top button, not
     if (in(x, y, 40, BUGOPT_Y + i * BUGOPT_STEP, 400, BUGOPT_H)) { hw_beep(); bug_draft(); show(i == 1 ? SCR_BUGGH : SCR_BUGMAIL); }
 }
 
-inline void bugqr_tap(int x, int y) {  // Done: 04u follows the report from now on
+inline void bugqr_tap(int x, int y) {  // Done: 04u follows a GitHub report from now on (email can't be seen)
   if (!in(x, y, 40, 705, 400, 79)) return;
   hw_beep();
-  report_keep(g_bug);
+  if (g_screen == SCR_BUGGH) report_keep(g_bug);
   g_bugBody = "";
   show(SCR_BUGMENU);
 }
