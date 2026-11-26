@@ -20,7 +20,7 @@ void setup() {
   g_sound = cfg_get("sound") == "1";  // Settings › Sound, off by default
   g_vol = cfg_get("vol", "2").toInt();  // Settings › Sound › Volume, High by default
   g_vi = cfg_get("lang") == "vi";     // Settings › Language & Font › System Language
-  g_sleepMin = cfg_get("sleep_min", "2").toInt();  // Settings › Sleep after, 0 = Never
+  g_sleepMin = cfg_get("sleep_min", "2").toInt();  // Settings › Auto-sleep, 0 = Never
   hw_beep();
   if (!display.begin()) Serial.println(display.lastResult().message);
   display.setRotation(1);  // portrait, confirmed upright on the real panel

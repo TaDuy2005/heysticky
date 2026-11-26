@@ -1,4 +1,4 @@
-// TASK-11 Power. Sleep after (04l): idle -> Home with the moon (01b/01d), then light sleep.
+// TASK-11 Power. Auto-sleep (04l): idle -> Home with the moon (01b/01d), then light sleep.
 // Asleep: Wi-Fi and touch off, CPU at 80 MHz; a timer wakes it each minute for the clock and every
 // hour Wi-Fi comes on for weather + NTP; each wake re-reads the RTC (light sleep's clock drifts). Only the top button wakes it fully, to Home.
 #pragma once

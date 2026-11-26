@@ -81,7 +81,7 @@ inline void ui_card_dashed(int x, int y, int w, int h, int r, int stroke) {
 
 // ---------- status bar (Figma StatusBar, 40 px) ----------
 inline bool g_plugged = false;  // external power present: the status bar shows the bolt (set by ui_battery_pct)
-inline bool g_asleep = false;  // Sleep after (power.h): status bar shows the moon
+inline bool g_asleep = false;  // Auto-sleep (power.h): status bar shows the moon
 inline bool g_webOn = false;  // 04j toggle: hotspot + phone setup page (status bar shows the hotspot icon)
 inline int ui_battery_pct() {
   Battery b;

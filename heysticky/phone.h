@@ -1,4 +1,4 @@
-// Phone setup page: To-do (06o / 06p) and Notes (06q / 06r) API. The pages are in PAGE (net.h).
+// Phone setup page: To-do (06o / 06p), Notes (06q / 06r) and Report a bug (06u) API. The pages are in PAGE (net.h).
 // Runs on the main loop (WebServer is polled from net_loop), so the card is never used by two tasks at once.
 // A task is addressed by its line index plus the line as the phone saw it ("was"): if the Sticky changed the
 // list meanwhile, the phone gets 409 and reloads instead of editing the wrong line.
@@ -13,7 +13,10 @@ inline void phone_json(JsonDocument &d) {
   g_web.sendHeader("Cache-Control", "no-store");
   g_web.send(200, "application/json", s);
 }
-inline bool phone_card() {  // 503 = no card; the page says "Put a microSD card in the Sticky first."
+// Every To-do / Notes call starts here: only on the address 04j chose (web_ok: 404 on the other network), then
+// 503 = no card; the page says "Put a microSD card in the Sticky first."
+inline bool phone_card() {
+  if (!web_ok()) return false;
   if (g_sdOk || sd_mount()) return true;
   g_web.send(503, "text/plain", "no card");
   return false;
@@ -28,6 +31,7 @@ inline String one_line_arg(const char *k, unsigned max) {
 
 // ---------- To-do ----------
 inline void api_counts() {  // 06 Setup rows: "To-do (n)" = open tasks, "Notes (n)"
+  if (!web_ok()) return;
   JsonDocument d;
   d["todo"] = g_sdOk ? todo_left(g_tasks) : -1;
   d["notes"] = g_sdOk && notes_scan() ? int(g_notes.size()) : -1;
@@ -147,6 +151,17 @@ inline void api_note_del() {
   g_web.send(200, "text/plain", "ok");
 }
 
+// ---------- Report a bug ----------
+// 06u Report on GitHub / by email: a new report ID and the link to open.
+inline void api_report() {
+  if (!web_ok()) return;
+  const Report r{report_id(esp_random()), ""};  // not g_bug: the Sticky may be showing its own draft
+  JsonDocument d;
+  d["id"] = r.id;
+  d["url"] = g_web.arg("via") == "mail" ? report_mail_url(r, "", g_vi) : report_gh_url(r, "", g_vi);
+  phone_json(d);
+}
+
 inline void phone_begin() {
   g_web.on("/api/counts", HTTP_GET, api_counts);
   g_web.on("/api/todo", HTTP_GET, api_todo);
@@ -156,6 +171,7 @@ inline void phone_begin() {
   g_web.on("/api/note", HTTP_GET, api_note);
   g_web.on("/api/note_set", HTTP_POST, api_note_set);
   g_web.on("/api/note_del", HTTP_POST, api_note_del);
+  g_web.on("/api/report", HTTP_POST, api_report);
 }
 
 // The Sticky shows what the phone changed: a list (or Home's Today count) redraws; a task or note screen,

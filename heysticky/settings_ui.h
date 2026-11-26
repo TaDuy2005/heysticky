@@ -1,4 +1,4 @@
-// Settings screens, Figma 04-04k: Settings, Configuration, Temperature, About, SD Card, SD Files, Web setup. Drawing and hit areas only; screens.h navigates.
+// Settings screens, Figma 04-04t: Settings, Configuration, Temperature, About, SD Card, SD Files, Web setup, Report a bug. Drawing and hit areas only; screens.h navigates.
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include <esp_efuse.h>
@@ -7,6 +7,7 @@
 #include "net.h"
 #include "ota.h"
 #include "settings.h"
+#include "report.h"
 
 // ---------- shared rows ----------
 constexpr int SROW_TOP = 112, SROW_H = 72, IROW_H = 66;  // settings rows (Bold 28) / info rows (Bold 25)
@@ -26,11 +27,12 @@ inline int srow_at(int y, int h, int n) {  // row index under y, or -1
 }
 
 // ---------- 04 Settings ----------
-enum SetRow : uint8_t { SR_ROTATE, SR_SOUND, SR_LANG, SR_UPDATE, SR_CONFIG, SR_SLEEP, SR_WEB, SR_ABOUT, SR_COUNT };
+enum SetRow : uint8_t { SR_ROTATE, SR_SOUND, SR_LANG, SR_UPDATE, SR_CONFIG, SR_SLEEP, SR_WEB, SR_BUG, SR_ABOUT, SR_COUNT };
 inline const struct { const Icon *icon; const char *label, *vi; } SET_ROWS[SR_COUNT] = {
   {&ICON_SET_ROTATE, "Auto-rotate", "Tự xoay"}, {&ICON_SET_SOUND, "Sound", "Âm thanh"},
   {&ICON_SET_LANG, "Language & Font", "Ngôn ngữ & Phông"}, {&ICON_SET_UPDATE, "Software Update", "Cập nhật phần mềm"},
-  {&ICON_SET_CONFIG, "Configuration", "Cấu hình"}, {&ICON_SET_SLEEP, "Sleep after", "Ngủ sau"}, {&ICON_SET_WEB, "Web setup", "Cài đặt qua web"}, {&ICON_SET_ABOUT, "About", "Thông tin"},
+  {&ICON_SET_CONFIG, "Configuration", "Cấu hình"}, {&ICON_SET_SLEEP, "Auto-sleep", "Tự ngủ"}, {&ICON_SET_WEB, "Web setup", "Cài đặt qua web"},
+  {&ICON_SET_BUG, "Report a bug", "Báo lỗi"}, {&ICON_SET_ABOUT, "About", "Thông tin"},
 };
 
 inline bool set_rotate() { return cfg_get("rotate") == "1"; }  // stored only: no screen rotates yet (needs the IMU)
@@ -130,7 +132,7 @@ inline void draw_sound() {
   }
 }
 
-// ---------- 04l Sleep after (flash key sleep_min, 0 = Never) ----------
+// ---------- 04l Auto-sleep (flash key sleep_min, 0 = Never) ----------
 inline const int SLEEP_CHOICES[] = {1, 2, 5, 10, 0};
 constexpr int SLEEP_N = sizeof SLEEP_CHOICES / sizeof SLEEP_CHOICES[0];
 inline int g_sleepMin = 2;  // loaded at boot
@@ -143,7 +145,7 @@ inline void draw_sleep() {
     rows.push_back(m ? String(m) + TR(" min", " phút") : TR("Never", "Không bao giờ"));
     if (m == g_sleepMin) sel = i;
   }
-  draw_choices(TR("Sleep after", "Ngủ sau"), rows, sel);
+  draw_choices(TR("Auto-sleep", "Tự ngủ"), rows, sel);
 }
 
 // ---------- 04a Language & Font, 04b System Language, 04c User Font ----------
@@ -235,14 +237,13 @@ inline void draw_files() {
 }
 
 // ---------- 04j Web setup ----------
-static int s_qrX, s_qrY, s_qrS;
+static int s_qrY, s_qrW, s_qrIn;
 static void qr_modules(esp_qrcode_handle_t q) {
-  const int n = esp_qrcode_get_size(q);
-  s_qrS = 157 / n;  // whole pixels per module inside the 181 px frame
-  const int x0 = 150 + (181 - n * s_qrS) / 2, y0 = s_qrY + (181 - n * s_qrS) / 2;
+  const int n = esp_qrcode_get_size(q), m = s_qrIn / n;  // whole pixels per module inside the frame
+  const int x0 = (W - n * m + 1) / 2, y0 = s_qrY + (s_qrW - n * m) / 2;
   for (int y = 0; y < n; y++)
     for (int x = 0; x < n; x++)
-      if (esp_qrcode_get_module(q, x, y)) display.fillRect(x0 + x * s_qrS, y0 + y * s_qrS, s_qrS, s_qrS, INK);
+      if (esp_qrcode_get_module(q, x, y)) display.fillRect(x0 + x * m, y0 + y * m, m, m, INK);
 }
 
 // "Wi-Fi  HeySticky-Setup": bold label + value, centred as one line.
@@ -252,11 +253,15 @@ static void kv_center(const String &k, const String &v, int y) {
   ui_text(F_R25, v, x + w - ui_width(F_R25, v), y, 35);
 }
 
-static void ws_qr(const String &s, int y) {  // 181 px framed QR, centred
-  ui_card(150, y, 181, 181, 6, 2);
+// Framed QR, centred: 181 px for 04j, 260 px for 04p / 04q (a report link needs up to version ~16).
+static void ws_qr(const String &s, int y, int size = 181, int inner = 157, int maxVer = 10) {
+  ui_card((W - size + 1) / 2, y, size, size, 6, 2);
   s_qrY = y;
+  s_qrW = size;
+  s_qrIn = inner;
   esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
   cfg.display_func = qr_modules;
+  cfg.max_qrcode_version = maxVer;
   esp_qrcode_generate(&cfg, s.c_str());
 }
 
@@ -323,4 +328,68 @@ inline void draw_websetup(bool loading = false) {  // loading: toggle already On
   ui_text(F_B25, TR("Then open", "Rồi mở"), W / 2, 545, 33, AL_CENTER);
   ws_url(WiFi.softAPIP().toString(), 590);
   ui_text(F_R25, TR("It may open by itself.", "Trang có thể tự mở."), W / 2, 689, 35, AL_CENTER);
+}
+
+// ---------- 04p-04t Report a bug (report.h) ----------
+inline Report g_bug;         // the report being made: a new ID per draft, the AI's title ("" when written on the phone)
+inline String g_bugBody;     // the AI's text
+
+inline void bug_draft(const String &title = "", const String &body = "") {
+  g_bug = {report_id(esp_random()), title};
+  g_bugBody = body;
+}
+
+// 04t Report a bug (Settings opens it): three cards; Tell the AI is the top button held (no tap), GitHub / Email open their QR.
+constexpr int BUGOPT_Y = 128, BUGOPT_STEP = 176, BUGOPT_H = 160;
+inline void draw_bugnew() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar(TR("Report a bug", "Báo lỗi"), "");
+  const String head[3] = {TR("Tell the AI", "Nói với AI"), "GitHub", "Email"};
+  const String sub[3] = {TR("Hold the top button and say what went wrong.", "Giữ nút trên cùng và nói lỗi gặp phải."),
+                         TR("Write it on GitHub with your phone.", "Viết trên GitHub bằng điện thoại."),
+                         TR("Write an email from your phone.", "Viết email từ điện thoại.")};
+  for (int i = 0; i < 3; i++) {
+    const int y = BUGOPT_Y + i * BUGOPT_STEP;
+    ui_card(40, y, 400, BUGOPT_H, 14, 3);
+    ui_text(F_X30, head[i], 64, y + 26, 40);
+    ui_wrap(F_R25, sub[i], 64, y + 72, i ? 320 : 352, 33, 2);
+    if (i) ui_icon(ICON_CHEV, 394, y + 67);
+  }
+}
+
+// 04p GitHub / 04q Email: the link as a 260 px QR, the report ID, Done.
+inline void draw_bugqr(bool mail) {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_topbar(mail ? "Email" : "GitHub", "");
+  ui_text(F_B25, mail ? TR("Scan to report by email", "Quét để báo lỗi qua email") : TR("Scan to report on GitHub", "Quét để báo lỗi trên GitHub"),
+          W / 2, 130, 33, AL_CENTER);
+  ws_qr(mail ? report_mail_url(g_bug, g_bugBody, g_vi) : report_gh_url(g_bug, g_bugBody, g_vi), 175, 260, 244, 25);
+  if (mail) {
+    ui_text(F_R25, REPORT_MAIL, W / 2, 455, 33, AL_CENTER);
+    ui_wrap(F_R25, TR("Your mail app opens with the report filled in. Tap Send.",
+                      "Ứng dụng email mở với báo cáo đã điền sẵn. Bấm Gửi."), 40, 500, 400, 33, 3, AL_CENTER);
+  } else {
+    ui_wrap(F_R25, TR("Sign in to GitHub on your phone, check the text, then tap Create.",
+                      "Đăng nhập GitHub trên điện thoại, kiểm tra nội dung, rồi bấm Create."), 40, 455, 400, 33, 3, AL_CENTER);
+  }
+  ui_text(F_R20, TR("Report ", "Báo cáo ") + g_bug.id, W / 2, mail ? 645 : 600, 26, AL_CENTER);
+  ui_button(40, 705, 400, 79, true, nullptr, TR("Done", "Xong"));
+}
+
+// 04r: what the AI wrote (in English), then GitHub | Email, or Try again.
+inline void draw_bugreview() {
+  display.fillScreen(PAPER);
+  ui_status_bar(ui_battery_pct());
+  ui_text(F_X32, TR("Your bug report", "Báo cáo lỗi của bạn"), 40, 52, 42);
+  ui_text(F_R25, TR("Check it, then send.", "Kiểm tra, rồi gửi."), 40, 104, 33);
+  ui_card(40, 147, 400, 300, 14, 3);
+  ui_text(F_B26, ui_fit(F_B26, ui_drawable(F_B26, g_bug.title), 354), 63, 166, 33);
+  ui_wrap(F_R25, ui_drawable(F_R25, g_bugBody), 63, 209, 354, 33, 6);
+  ui_wrap(F_R25, TR("Posted publicly on GitHub. Don’t say personal info.", "Đăng công khai trên GitHub. Đừng nói thông tin cá nhân."), 40, 470, 400, 33, 2);
+  ui_text(F_B25, TR("Send it with", "Gửi qua"), 40, 576, 33);
+  ui_button(40, 619, 193, 72, false, nullptr, "GitHub");
+  ui_button(247, 619, 193, 72, false, nullptr, "Email");
+  ui_button(40, 705, 400, 79, false, nullptr, TR("Try again", "Thử lại"));
 }
