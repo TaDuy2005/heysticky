@@ -69,6 +69,11 @@ The phone page already has hidden rows for Notion, Home Assistant and Remote acc
 ## Considering features
 
 - **Repeat tasks** and other to-do extras (2026-11-20).
+- **My reports** (2026-11-26), taken out of Report a bug for now. The Sticky (04u) and the phone page (06v) listed
+  each report and followed its GitHub issue through GitHub's issue search: Waiting, Open, Fixed, Won't fix; a report
+  not on GitHub within an hour (cancelled, never sent) dropped off. Email reports can't be seen, so they weren't listed.
+  Open: email reports could be followed if each daily summary issue names their `HS-XXXX` IDs. The working code is in
+  commit `519b05c` on `feature/bug-report`; the Figma frames are kept as "Considering · 04u My reports".
 - **Raise to wake** (2026-11-25), under consideration and still in development on `feature/raise-to-wake`.
   Picking it up and tilting it 30° wakes it, and pushes or knocks don't, but in a trouser pocket it kept
   waking: the IMU alone can't tell when someone is looking at the screen (no proximity or light sensor).

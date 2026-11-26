@@ -201,7 +201,7 @@ for t in ai report; do c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino
 ```
 
 Report a bug opens GitHub's New issue page or the phone's mail app (to `heystickyreport@gmail.com`, where a Gmail
-filter sends the auto reply), both filled in. 04u and the phone page follow the GitHub reports through GitHub's issue search.
+filter sends the auto reply), both filled in.
 
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
 `python3 tools/make_icons.py` (PNGs in `tools/icons/`).

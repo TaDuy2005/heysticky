@@ -290,8 +290,6 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-note" hidden></div>
 <div class="c" id="v-noteed" hidden></div>
 <div class="c" id="v-bug" hidden></div>
-<div class="c" id="v-bugnew" hidden></div>
-<div class="c" id="v-bugs" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -315,12 +313,12 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
  render()}
 
 function go(v,d){view=v;det=d||'';dirty=()=>false;
- if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();if(v==='bugnew')bugNewView();if(v==='bugs')bugsView();
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
 // Each page opened gets a history entry, so the phone's swipe back (and ‹, and "done" returns) all go up one page.
-const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes',bugnew:'bug',bugs:'bug'};
+const UP={det:'wifi',addfont:'fonts',ai:'integ',stt:'ai',nai:'ai',task:'todo',note:'notes'};
 function nav(v,d){history.pushState(null,'');go(v,d)}
 // A form with unsaved changes asks first (06p2 / 06r2): the back step is undone until Discard.
 addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
@@ -340,11 +338,11 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','bug','bugnew','bugs'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','bug'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
   todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),
-  bug:L('Report a bug','Báo lỗi'),bugnew:L('Create a report','Tạo báo cáo'),bugs:L('My reports','Báo cáo của tôi')}[view];
+  bug:L('Report a bug','Báo lỗi')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
  $('sub').textContent=L('Connected to your Sticky · ','Đã kết nối với Sticky · ')+location.hostname;
  $('warn').hidden=!S.home;$('warn-t').textContent=L('Open on your home Wi-Fi','Đang mở trên Wi-Fi nhà');
@@ -669,24 +667,14 @@ async function noteEdView(){const v=$('v-noteed'),nw=det==='new';v.replaceChildr
   del.onclick=()=>alertBox(L('Delete note?','Xoá ghi chú?'),L('This can’t be undone.','Không thể hoàn tác.'),L('Delete','Xoá'),async()=>{if(await post('/api/note_del',{num:n.num})){dirty=()=>false;view='note';history.go(-2)}})}
  btns.append(save);
  v.replaceChildren(E('label',{htmlFor:'n-title',textContent:L('Title','Tiêu đề')}),ti,E('label',{htmlFor:'n-body',textContent:L('Note','Ghi chú')}),bo,...(n.created?[E('p',{className:'cr',textContent:L('Created ','Ngày tạo ')+stamp(n.created)})]:[]),btns)}
-// ---------- Report a bug (06t / 06u / 06v): the Sticky gives the report ID and the link; the phone opens it ----------
-const BI={pen:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a1 1 0 0 1 3 3l-9 9a2 2 0 0 1-.85.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.85z"/>',
- list:'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>'};
-function bugView(){const rw=(i,t,v)=>{const b=E('button',{className:'r'},ico(BI[i]),E('b',{className:'n',textContent:t}),E('span',{className:'ch',textContent:'›'}));b.onclick=()=>nav(v);return b};
- $('v-bug').replaceChildren(E('div',{className:'g'},rw('pen',L('Create a report','Tạo báo cáo'),'bugnew'),rw('list',L('My reports','Báo cáo của tôi'),'bugs')))}
-function bugNewView(){
+// ---------- Report a bug (06u): the Sticky gives the report ID and the link; the phone opens it ----------
+function bugView(){
  const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});
   x.onclick=async()=>{x.disabled=true;let d=null;try{const r=await api('/api/report',{via});if(r.ok)d=await r.json()}catch(e){}x.disabled=false;
    if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(via==='mail'||!window.open(d.url,'_blank'))location.href=d.url};return x};
- $('v-bugnew').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
+ $('v-bug').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
   b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'),
   E('p',{className:'foot',style:'margin-top:22px',textContent:L('GitHub: sign in, then tap Create. Email: your mail app opens; tap Send.','GitHub: đăng nhập, rồi bấm Create. Email: ứng dụng email mở ra; bấm Gửi.')}))}
-async function bugsView(){const v=$('v-bugs');v.replaceChildren(E('p',{className:'foot',textContent:L('Checking GitHub…','Đang kiểm tra GitHub…')}));
- const d=await getJ('/api/reports');if(!d||view!=='bugs')return;
- if(!d.reports.length){v.replaceChildren(empty(L('No reports yet','Chưa có báo cáo'),L('Only GitHub reports are listed.','Chỉ hiển thị báo cáo trên GitHub.')));return}
- const ST={w:L('Waiting','Đang chờ'),o:L('Open','Đang mở'),f:L('Fixed','Đã sửa'),x:L('Won’t fix','Không sửa')};
- v.replaceChildren(E('div',{className:'g'},...d.reports.map(r=>E('div',{className:'r'},E('b',{className:'n',textContent:r.title||r.id}),E('span',{textContent:ST[r.st]})))),
-  E('p',{className:'foot',textContent:L('Only GitHub reports are listed.','Chỉ hiển thị báo cáo trên GitHub.')}))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 

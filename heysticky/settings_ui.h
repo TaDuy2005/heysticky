@@ -1,4 +1,4 @@
-// Settings screens, Figma 04-04u: Settings, Configuration, Temperature, About, SD Card, SD Files, Web setup, Report a bug. Drawing and hit areas only; screens.h navigates.
+// Settings screens, Figma 04-04t: Settings, Configuration, Temperature, About, SD Card, SD Files, Web setup, Report a bug. Drawing and hit areas only; screens.h navigates.
 #pragma once
 #include <qrcode.h>  // esp_qrcode, bundled with the ESP32 core
 #include <esp_efuse.h>
@@ -330,72 +330,21 @@ inline void draw_websetup(bool loading = false) {  // loading: toggle already On
   ui_text(F_R25, TR("It may open by itself.", "Trang có thể tự mở."), W / 2, 689, 35, AL_CENTER);
 }
 
-// ---------- 04n-04u Report a bug (report.h) ----------
+// ---------- 04p-04t Report a bug (report.h) ----------
 inline Report g_bug;         // the report being made: a new ID per draft, the AI's title ("" when written on the phone)
 inline String g_bugBody;     // the AI's text
-inline std::vector<Report> g_reports;  // 04u, read when it opens
 
-inline std::vector<Report> reports_load() { return reports_parse(cfg_get("reports")); }
-inline void reports_save(const std::vector<Report> &v) { cfg_set("reports", reports_text(v)); }
-inline void report_keep(Report r) {  // 04p Done, or the phone's Report on GitHub: 04u follows it
-  r.at = time(nullptr) >= CLOCK_OK ? uint32_t(time(nullptr)) : 0;
-  auto v = reports_load();
-  reports_add(v, r);
-  reports_save(v);
-}
 inline void bug_draft(const String &title = "", const String &body = "") {
-  g_bug = {report_id(esp_random()), title, 'w'};
+  g_bug = {report_id(esp_random()), title};
   g_bugBody = body;
 }
 
-// States from GitHub's issue search (no token: 10 searches a minute, REPORT_ORS + 1 IDs each); after a full
-// search, reports never sent drop off. Saved if changed.
-inline bool reports_refresh(std::vector<Report> &v) {
-  if (v.empty() || WiFi.status() != WL_CONNECTED) return false;
-  JsonDocument f;
-  report_filter(f);
-  bool changed = false, all = true;
-  for (size_t i = 0; i < v.size(); i += REPORT_ORS + 1) {
-    JsonDocument d;
-    if (!http_json(report_search_url(v, i, REPORT_ORS + 1), d, &f)) { all = false; break; }  // offline or rate-limited: keep the last states
-    changed |= reports_apply(v, i, REPORT_ORS + 1, d["items"]);
-  }
-  if (all) changed |= reports_prune(v, uint32_t(time(nullptr)));
-  if (changed) reports_save(v);
-  return changed;
-}
-
-inline String report_state(char st) {
-  switch (st) {
-    case 'o': return TR("Open", "Đang mở");
-    case 'f': return TR("Fixed", "Đã sửa");
-    case 'x': return TR("Won’t fix", "Không sửa");
-    default: return TR("Waiting", "Đang chờ");
-  }
-}
-
-// 04n: Create a report, My reports.
-inline void draw_bugmenu() {
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("Report a bug", "Báo lỗi"), "");
-  const Icon *icons[2] = {&ICON_BUG_NEW, &ICON_BUG_LIST};
-  const String labels[2] = {TR("Create a report", "Tạo báo cáo"), TR("My reports", "Báo cáo của tôi")};
-  for (int i = 0; i < 2; i++) {
-    const int y = SROW_TOP + i * SROW_H;
-    ui_icon(*icons[i], 40, y + 20);
-    ui_text(F_B28, labels[i], 86, y + 17, 37);
-    ui_icon(ICON_CHEV, 414, y + 23);
-    display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
-  }
-}
-
-// 04t: three cards; Tell the AI is the top button held (no tap), GitHub / Email open their QR.
+// 04t Report a bug (Settings opens it): three cards; Tell the AI is the top button held (no tap), GitHub / Email open their QR.
 constexpr int BUGOPT_Y = 128, BUGOPT_STEP = 176, BUGOPT_H = 160;
 inline void draw_bugnew() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("Create a report", "Tạo báo cáo"), "");
+  ui_topbar(TR("Report a bug", "Báo lỗi"), "");
   const String head[3] = {TR("Tell the AI", "Nói với AI"), "GitHub", "Email"};
   const String sub[3] = {TR("Hold the top button and say what went wrong.", "Giữ nút trên cùng và nói lỗi gặp phải."),
                          TR("Write it on GitHub with your phone.", "Viết trên GitHub bằng điện thoại."),
@@ -443,19 +392,4 @@ inline void draw_bugreview() {
   ui_button(40, 619, 193, 72, false, nullptr, "GitHub");
   ui_button(247, 619, 193, 72, false, nullptr, "Email");
   ui_button(40, 705, 400, 79, false, nullptr, TR("Try again", "Thử lại"));
-}
-
-// 04u: title left, state right; the note says email reports aren't listed.
-inline void draw_buglist() {
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("My reports", "Báo cáo của tôi"), "");
-  ui_text(F_R20, TR("Only GitHub reports are listed.", "Chỉ hiển thị báo cáo trên GitHub."), W / 2, 735, 26, AL_CENTER);
-  if (g_reports.empty()) { ui_text(F_R25, TR("No reports yet", "Chưa có báo cáo"), W / 2, 430, 33, AL_CENTER); return; }
-  for (size_t i = 0; i < g_reports.size(); i++) {
-    const Report &r = g_reports[i];
-    const String st = report_state(r.st);
-    const String title = ui_drawable(F_B25, r.title.length() ? r.title : r.id);
-    info_row(SROW_TOP + i * IROW_H, IROW_H, F_B25, ui_fit(F_B25, title, 400 - ui_width(F_R25, st) - 12), st, false);
-  }
 }

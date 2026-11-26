@@ -1,4 +1,4 @@
-// Phone setup page: To-do (06o / 06p), Notes (06q / 06r) and Report a bug (06u / 06v) API. The pages are in PAGE (net.h).
+// Phone setup page: To-do (06o / 06p), Notes (06q / 06r) and Report a bug (06u) API. The pages are in PAGE (net.h).
 // Runs on the main loop (WebServer is polled from net_loop), so the card is never used by two tasks at once.
 // A task is addressed by its line index plus the line as the phone saw it ("was"): if the Sticky changed the
 // list meanwhile, the phone gets 409 and reloads instead of editing the wrong line.
@@ -152,30 +152,13 @@ inline void api_note_del() {
 }
 
 // ---------- Report a bug ----------
-// 06u Report on GitHub / by email: a new report ID and the link to open; 04u follows the GitHub ones from now on.
+// 06u Report on GitHub / by email: a new report ID and the link to open.
 inline void api_report() {
   if (!web_ok()) return;
-  const Report r{report_id(esp_random()), "", 'w'};  // not g_bug: the Sticky may be showing its own draft
-  const bool mail = g_web.arg("via") == "mail";
-  if (!mail) report_keep(r);
+  const Report r{report_id(esp_random()), ""};  // not g_bug: the Sticky may be showing its own draft
   JsonDocument d;
   d["id"] = r.id;
-  d["url"] = mail ? report_mail_url(r, "", g_vi) : report_gh_url(r, "", g_vi);
-  phone_json(d);
-}
-
-inline void api_reports() {  // 06v, states from GitHub first (a second or two)
-  if (!web_ok()) return;
-  auto v = reports_load();
-  reports_refresh(v);
-  JsonDocument d;
-  JsonArray a = d["reports"].to<JsonArray>();
-  for (const Report &r : v) {
-    JsonObject o = a.add<JsonObject>();
-    o["id"] = r.id;
-    o["title"] = r.title;
-    o["st"] = String(r.st);
-  }
+  d["url"] = g_web.arg("via") == "mail" ? report_mail_url(r, "", g_vi) : report_gh_url(r, "", g_vi);
   phone_json(d);
 }
 
@@ -189,7 +172,6 @@ inline void phone_begin() {
   g_web.on("/api/note_set", HTTP_POST, api_note_set);
   g_web.on("/api/note_del", HTTP_POST, api_note_del);
   g_web.on("/api/report", HTTP_POST, api_report);
-  g_web.on("/api/reports", HTTP_GET, api_reports);
 }
 
 // The Sticky shows what the phone changed: a list (or Home's Today count) redraws; a task or note screen,
