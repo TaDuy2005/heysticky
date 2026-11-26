@@ -53,9 +53,19 @@ inline void ota_install(void (*shown)()) {
   tls.useBuiltinCACertBundle();
   httpUpdate.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);  // GitHub sends the asset from another host
   httpUpdate.rebootOnUpdate(false);
+  static int got, size;  // bytes so far, for the failure log
+  static uint32_t t0;
+  got = size = 0;
+  t0 = millis();
   httpUpdate.onProgress([shown](int cur, int total) {
+    got = cur, size = total;
     const int p = total > 0 ? int(cur * 10LL / total) * 10 : 0;
-    if (p != g_otaPct) { g_otaPct = p; shown(); }
+    if (p != g_otaPct) {
+      g_otaPct = p;
+      Serial.printf("[ota] %d%% %d/%d B %lu ms heap %u max %u\n", p, cur, total, millis() - t0,
+                    heap_caps_get_free_size(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+      shown();
+    }
   });
   Serial.printf("[ota] installing %s\n", g_otaTag.c_str());
   if (httpUpdate.update(tls, g_otaUrl) == HTTP_UPDATE_OK) {  // image checked (header + SHA-256) before the slot is switched
@@ -63,7 +73,11 @@ inline void ota_install(void (*shown)()) {
     delay(200);
     ESP.restart();
   }
-  Serial.printf("[ota] failed: %s\n", httpUpdate.getLastErrorString().c_str());
+  // getLastErrorString() always says "Aborted" (runUpdate aborts after any error); getLastError() kept the real code
+  // (Update.h UPDATE_ERROR_*, or HTTP_UE_* when < 0).
+  Serial.printf("[ota] failed: code %d at %d/%d B after %lu ms, heap %u max %u, wifi %d rssi %d\n", httpUpdate.getLastError(),
+                got, size, millis() - t0, heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), int(WiFi.status()), int(WiFi.RSSI()));
   g_ota = OTA_FAILED;
 }
 
