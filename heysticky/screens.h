@@ -13,7 +13,7 @@
 
 enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SCR_DATE, SCR_TIME, SCR_DELTASK, SCR_NOSD,
                        SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD,
-                       SCR_LIBRARY, SCR_BOOK, SCR_CONTENTS, SCR_BOOKERR, SCR_RDSET, SCR_RDFONT, SCR_RDNOSD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
+                       SCR_LIBRARY, SCR_BOOK, SCR_CONTENTS, SCR_BOOKERR, SCR_RDFONT, SCR_RDNOSD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
                        SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND,
                        SCR_BUGNEW, SCR_BUGGH, SCR_BUGMAIL, SCR_BUGREVIEW };  // Settings last
@@ -223,7 +223,6 @@ inline void draw_screen() {
     case SCR_BOOK: draw_book(); break;
     case SCR_CONTENTS: draw_contents(); break;
     case SCR_BOOKERR: draw_book_error(); break;
-    case SCR_RDSET: draw_reader_settings(); break;
     case SCR_RDFONT: draw_reader_fonts(); break;
     case SCR_RDNOSD: draw_reader_nosd(); break;
     case SCR_SETTINGS: draw_settings(); break;
@@ -349,7 +348,6 @@ inline bool top_right(int x, int y) { return x >= 340 && y >= 40 && y < 112; }  
 
 // ---------- Reader (07) ----------
 inline bool reader_screen(Screen s) { return s >= SCR_LIBRARY && s <= SCR_RDNOSD; }
-inline bool g_rdSetFromBook = false;  // 07i opened from a book's menu (07e), not the Library's Aa
 
 inline void open_library() {  // read fresh each time: books may have come from a computer or the phone page
   rd::close();
@@ -397,39 +395,34 @@ inline void book_tap(int x, int y) {
     g_menu = false;
     g_tocPage = max(0, rd::toc_current()) / TOC_ROWS;
     show(SCR_CONTENTS);
-  } else if (in(x, y, 40, MENU_ROW0 + 72, 400, 72)) {
+  } else if (in(x, y, 40, MENU_ROW0 + 72, 400, 72)) {  // Font: 07j
     hw_beep();
     g_menu = false;
-    g_rdSetFromBook = true;
-    show(SCR_RDSET);
-  } else if (in(x, y, 40, MENU_ROW0 + 144, 400, 72)) { hw_beep(); open_library(); }
-}
-
-// 07i / 07j: back to a book lays it out again in the font and size now set, at the place saved with the last page turn.
-inline void reader_settings_back() {
-  if (!g_rdSetFromBook || !rd::is_open()) { g_libPage = 0; open_library(); return; }
-  const Book *b = open_book();
-  draw_reader_wait(book_title_clean(rd::title()), TR("Opening…", "Đang mở…"));
-  rd::set_font(reader_font());
-  if (!b || !rd::show(b->chapter, b->offset, reader_large())) { rd::close(); show(SCR_BOOKERR); return; }
-  show(SCR_BOOK);
-}
-
-inline void rdset_tap(int x, int y) {
-  if (in(x, y, 40, SROW_TOP, 400, SROW_H)) {
-    hw_beep();
     g_rdFonts = rfont_scan();
     g_rdFontPage = 0;
     for (size_t i = 0; i < g_rdFonts.size(); i++)
       if (g_rdFonts[i].name == reader_font()) g_rdFontPage = int(i + 1) / RDFONT_ROWS;
     show(SCR_RDFONT);
-  } else if (y >= SROW_TOP + SROW_H && y < SROW_TOP + 2 * SROW_H && x >= SIZE_S_X - 8) {
+  } else if (y >= MENU_ROW0 + 144 && y < MENU_ROW0 + 216 && x >= SIZE_S_X - 8 && x < SIZE_M_X + SIZE_W + 8) {
     const bool large = x >= SIZE_M_X - 8;
     if (large == reader_large()) return;
     hw_beep();
     cfg_set("rd_size", large ? "M" : "S");
-    g_redraw = true;
-  }
+    draw_reader_wait(book_title_clean(rd::title()), TR("Opening…", "Đang mở…"));  // the chapter is laid out again in the new size
+    if (!rd::show(rd::chapter(), rd::offset(), large)) { show(SCR_BOOKERR); return; }
+    g_menu = false;
+    book_remember();
+    show(SCR_BOOK);
+  } else if (in(x, y, 40, MENU_ROW0 + 216, 400, 72)) { hw_beep(); open_library(); }
+}
+
+// Back from 07j: the book is laid out again in the font now set, at the place saved with the last page turn.
+inline void font_back() {
+  const Book *b = open_book();
+  draw_reader_wait(book_title_clean(rd::title()), TR("Opening…", "Đang mở…"));
+  rd::set_font(reader_font());
+  if (!b || !rd::show(b->chapter, b->offset, reader_large())) { rd::close(); show(SCR_BOOKERR); return; }
+  show(SCR_BOOK);
 }
 
 inline void rdfont_tap(int x, int y) {
@@ -669,8 +662,7 @@ inline void back() {
   else if (g_screen == SCR_BOOK && g_menu) { hw_beep(); g_menu = false; g_redraw = true; }
   else if (g_screen == SCR_BOOK || g_screen == SCR_BOOKERR) { hw_beep(); open_library(); }
   else if (g_screen == SCR_CONTENTS) go(SCR_BOOK);
-  else if (g_screen == SCR_RDFONT) go(SCR_RDSET);
-  else if (g_screen == SCR_RDSET) { hw_beep(); reader_settings_back(); }
+  else if (g_screen == SCR_RDFONT) { hw_beep(); font_back(); }
   else if (g_screen == SCR_LIBRARY || g_screen == SCR_RDNOSD) { rd::close(); go(SCR_APPS); }
 }
 inline bool scroll_screen() { return g_screen == SCR_NOTE || g_screen == SCR_FILES || g_screen == SCR_BOOK; }  // UP / DOWN scroll (book: turn pages)
@@ -914,13 +906,7 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
       }
       return;
     case SCR_NOTES: notes_tap(x0, y0); return;
-    case SCR_LIBRARY: {
-      if (aa_hit(x0, y0)) { hw_beep(); g_rdSetFromBook = false; show(SCR_RDSET); return; }
-      const int i = library_hit(x0, y0);
-      if (i >= 0) { hw_beep(); open_book(i); }
-      return;
-    }
-    case SCR_RDSET: rdset_tap(x0, y0); return;
+    case SCR_LIBRARY: { const int i = library_hit(x0, y0); if (i >= 0) { hw_beep(); open_book(i); } return; }
     case SCR_RDFONT: rdfont_tap(x0, y0); return;
     case SCR_BOOK: book_tap(x0, y0); return;
     case SCR_CONTENTS: contents_tap(x0, y0); return;

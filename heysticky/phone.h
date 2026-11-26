@@ -356,11 +356,10 @@ inline void phone_loop() {
     const Screen s = g_screen;
     if (s == SCR_LIBRARY || ((s == SCR_BOOK || s == SCR_CONTENTS) && !SD.exists(g_bookPath))) open_library();
   }
-  if (g_phoneRdFont) {  // a font chosen, added or deleted on the phone: 07i / 07j redraw, an open book takes it
+  if (g_phoneRdFont) {  // a font chosen, added or deleted on the phone: 07j redraws, an open book takes it
     g_phoneRdFont = false;
     const Screen s = g_screen;
     if (s == SCR_RDFONT) { g_rdFonts = rfont_scan(); show(s); }
-    else if (s == SCR_RDSET) show(s);
-    else if (s == SCR_BOOK && rd::font() != reader_font()) { g_rdSetFromBook = true; g_menu = false; reader_settings_back(); }
+    else if (s == SCR_BOOK && rd::font() != reader_font()) { g_menu = false; font_back(); }
   }
 }

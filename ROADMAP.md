@@ -61,8 +61,8 @@ own picture, until you take it down.
 
 **What is built.** EPUB (with pictures), TXT and Markdown from `/books/` on the card. The library puts the book
 you were reading first; each book opens where you left it, also after sleep or a restart. Tap or swipe to turn the
-page; the middle opens the reader menu. Books are uploaded and deleted on the phone page (06s). **Reader settings** (07i, from the reader menu or **Aa** in
-the Library) set the text size and the font: Noto Sans built in, or CrossPoint `.cpfont` fonts uploaded on the phone page. Layout
+page; the middle opens the reader menu. Books are uploaded and deleted on the phone page (06s). The reader menu also sets
+the text size and the font: Noto Sans built in, or CrossPoint `.cpfont` fonts uploaded on the phone page. Layout
 comes from the engine of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader), built into
 the firmware. Two rounds of device tests are done and fixed.
 

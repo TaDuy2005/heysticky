@@ -1,5 +1,5 @@
 // Reader screens, Figma 07-07j: Library (07 / 07a empty / 07b no card / 07c loading), book page (07d) with the
-// reader menu sheet (07e), Contents (07f), Opening (07g), Can't open (07h), Reader settings (07i), Font (07j). Books are /books/*.epub|txt|md;
+// reader menu sheet (07e), Contents (07f), Opening (07g), Can't open (07h), Font (07j). Books are /books/*.epub|txt|md;
 // /.reader/books.tsv keeps titles and each book's place. Drawing, card I/O and the engine calls; screens.h navigates.
 #pragma once
 #include "ui.h"
@@ -18,7 +18,7 @@ inline bool g_menu = false;        // 07e sheet over the page
 inline int g_tocPage = 0;          // 07f page
 constexpr int TOC_TOP = 112, TOC_H = 64, TOC_ROWS = 9;
 
-inline bool reader_large() { return cfg_get("rd_size") == "M"; }  // 07i Text size: S = 12 pt, M = 14 pt
+inline bool reader_large() { return cfg_get("rd_size") == "M"; }  // 07e Text size: S = 12 pt, M = 14 pt
 inline String reader_font() { return cfg_get("rd_font"); }       // 07j: a card font family, "" = Noto Sans (built-in)
 
 // Reader fonts on the card: /fonts/<Family>/<Family>_<size>.cpfont (and /.fonts/, which CrossPoint also reads).
@@ -126,14 +126,13 @@ inline void book_remember() {
   books_save();
 }
 
-// S / M (07i) and Aa (07 / 07a: opens Reader settings): 64 x 48 buttons, filled when on.
-constexpr int SIZE_S_X = 296, SIZE_M_X = 376, SIZE_W = 64, AA_X = 376, AA_Y = 52;
+// 07e Text size S / M: 64 x 48 buttons, filled when on.
+constexpr int SIZE_S_X = 296, SIZE_M_X = 376, SIZE_W = 64;
 inline void draw_size_button(int x, int y, const char *label, bool on) {
   display.fillRoundRect(x, y, SIZE_W, 48, 10, INK);
   if (!on) display.fillRoundRect(x + 3, y + 3, SIZE_W - 6, 42, 7, PAPER);
   ui_text(F_X25, label, x + SIZE_W / 2, y + 7, 33, AL_CENTER, on ? PAPER : INK, on ? INK : PAPER);
 }
-inline bool aa_hit(int x, int y) { return x >= AA_X - 16 && y >= 40 && y < 112; }
 
 // ---------- 07 Library / 07a empty ----------
 // Titles take up to two lines: the Continue card grows by a line, a row drops its author line.
@@ -146,8 +145,7 @@ inline int lib_rows_top() {  // first row's y on the current page
 inline void draw_library() {
   display.fillScreen(PAPER);
   ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("Library", "Thư viện"), "");
-  draw_size_button(AA_X, AA_Y, "Aa", false);
+  ui_topbar(TR("Library", "Thư viện"), String(g_books.size()));
   if (g_books.empty()) {
     ui_icon(ICON_APP_BOOK, 210, 303);
     ui_text(F_X30, TR("No books yet", "Chưa có sách"), W / 2, 381, 40, AL_CENTER);
@@ -225,7 +223,8 @@ inline void draw_book_error() {
 }
 
 // ---------- 07d book page / 07e reader menu ----------
-constexpr int MENU_Y = 430, MENU_ROW0 = MENU_Y + 100;
+// Rows: Contents, Font, Text size, Library.
+constexpr int MENU_Y = 358, MENU_ROW0 = MENU_Y + 100;
 
 inline void draw_book() {
   rd::draw();  // the whole screen: the page, white elsewhere
@@ -239,8 +238,12 @@ inline void draw_book() {
             40, MENU_Y + 58, 26);
     const int toc = rd::toc_current();
     info_row(MENU_ROW0, 72, F_B28, TR("Contents", "Mục lục"), toc >= 0 ? String(toc + 1) + "/" + rd::toc_count() : "", true);
-    info_row(MENU_ROW0 + 72, 72, F_B28, TR("Reader settings", "Cài đặt đọc"), "", true);
-    info_row(MENU_ROW0 + 144, 72, F_B28, TR("Library", "Thư viện"), "", true);
+    info_row(MENU_ROW0 + 72, 72, F_B28, TR("Font", "Phông chữ"), reader_font().length() ? reader_font() : "Noto Sans", true);
+    ui_text(F_B28, TR("Text size", "Cỡ chữ"), 40, MENU_ROW0 + 144 + 17, 37);
+    draw_size_button(SIZE_S_X, MENU_ROW0 + 144 + 12, "S", !reader_large());
+    draw_size_button(SIZE_M_X, MENU_ROW0 + 144 + 12, "M", reader_large());
+    display.fillRect(40, MENU_ROW0 + 215, 400, 1, INK);
+    info_row(MENU_ROW0 + 216, 72, F_B28, TR("Library", "Thư viện"), "", true);
     return;
   }
   // Pages count within the chapter (laying out the whole book for a book-wide count is too slow).
@@ -274,23 +277,11 @@ inline int contents_hit(int x, int y) {  // TOC index under (x, y), or -1
   return i < rd::toc_count() ? i : -1;
 }
 
-// ---------- 07i Reader settings / 07j Font ----------
+// ---------- 07j Font (from the 07e Font row) ----------
 inline std::vector<ReaderFont> g_rdFonts;  // 07j rows after Noto Sans, read when 07j opens
 inline int g_rdFontPage = 0;
 constexpr int RDFONT_ROWS = 8;
 inline int rdfont_pages() { return max(1, (int(g_rdFonts.size()) + 1 + RDFONT_ROWS - 1) / RDFONT_ROWS); }
-
-inline void draw_reader_settings() {
-  display.fillScreen(PAPER);
-  ui_status_bar(ui_battery_pct());
-  ui_topbar(TR("Reader settings", "Cài đặt đọc"), "");
-  info_row(SROW_TOP, SROW_H, F_B28, TR("Font", "Phông chữ"), reader_font().length() ? reader_font() : "Noto Sans", true);
-  const int y = SROW_TOP + SROW_H;
-  ui_text(F_B28, TR("Text size", "Cỡ chữ"), 40, y + 17, 37);
-  draw_size_button(SIZE_S_X, y + 12, "S", !reader_large());
-  draw_size_button(SIZE_M_X, y + 12, "M", reader_large());
-  display.fillRect(40, y + SROW_H - 1, 400, 1, INK);
-}
 
 // sel: the row just tapped (ticked at once). Row 0 = Noto Sans (built-in).
 inline void draw_reader_fonts(int sel = -1) {
