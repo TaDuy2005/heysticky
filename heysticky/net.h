@@ -1,6 +1,7 @@
 // HeySticky network: saved Wi-Fi networks joined in the background, the HeySticky-Setup hotspot (04j)
 // with the phone setup page, city lookup, weather (Open-Meteo) and NTP time.
-// Known limit (PLAN.md §9): the setup page is plain HTTP, served only on the Sticky's own WPA2 hotspot.
+// Known limit (PLAN.md §9): the setup page is plain HTTP, on the Sticky's own WPA2 hotspot or, after a warning on
+// 04j, on the home network (anyone on that Wi-Fi can open it).
 #pragma once
 #include <WiFi.h>
 #include <WebServer.h>
@@ -23,6 +24,7 @@ constexpr int SCAN_MAX = 20;
 inline WebServer g_web(80);
 inline DNSServer g_dns;
 inline String g_apPass;       // new for every hotspot start
+inline bool g_webHome = false;  // 04j Home Wi-Fi: page on the home network address, no hotspot
 inline WifiList g_wifi;       // saved networks, flash keys wifi0…wifi4
 inline ScanNet g_nets[SCAN_MAX];  // last scan, strongest entry per name. Not "g_scan": the ESP32 ROM owns that symbol
 inline int g_netsN = 0;
@@ -44,7 +46,7 @@ inline volatile time_t g_netTime = 0;  // UTC just taken from the network, waiti
 inline long g_utc_off = LONG_MIN;  // seconds, from Open-Meteo; the last one is kept in flash (utc_off)
 inline time_t g_bootClock = 0;  // RTC time at boot minus uptime: net_loop() logs how far off it was at the first network time
 
-inline bool http_json(const String &url, JsonDocument &doc);
+inline bool http_json(const String &url, JsonDocument &doc, const JsonDocument *filter = nullptr);
 inline String url_enc(const String &s);
 
 // ---------- saved networks ----------
@@ -111,7 +113,7 @@ inline void net_sta_step() {
     case NS_IDLE:
       if (on) { g_wasOn = true; return; }
       if (g_wasOn) { g_wasOn = false; g_retryAt = millis(); Serial.println("[net] Wi-Fi lost"); }
-      if (!g_wifiOn || g_webOn || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
+      if (!g_wifiOn || (g_webOn && !g_webHome) || !g_wifi.count || millis() < g_retryAt) return;  // hotspot on: joins come from the page only
       WiFi.scanNetworks(true);
       g_scanOnly = false;
       g_ns = NS_SCAN;
@@ -158,30 +160,35 @@ inline void net_sta_step() {
 // ---------- hotspot (04j) ----------
 inline uint32_t g_webSeen = 0;  // millis() of the last request from the phone page (it asks for /api/status every 1.5 s)
 
-inline void net_hotspot(bool on) {
-  if (on == g_webOn) return;
+// 04j: the phone page on the hotspot (home = false) or on the home network address (home = true, no hotspot).
+inline void net_web(bool on, bool home = false) {
+  if (on == g_webOn && (!on || home == g_webHome)) return;
   g_webSeen = millis();
-  if (on) {
-    for (uint32_t t0 = millis(); g_ns == NS_SCAN && millis() - t0 < SCAN_TIMEOUT_MS; delay(50)) net_sta_step();
-    // The page's network list. Scanning while softAP() starts crashed the Wi-Fi driver on core 3.3.12,
-    // so the scan is taken here, just before (about 3 s).
-    if (g_ns == NS_IDLE) store_scan(WiFi.scanNetworks());
-    static const char A[] = "abcdefghjkmnpqrstuvwxyz23456789";  // no 0/o, 1/l/i: read off e-paper, typed by hand
-    g_apPass = "";
-    for (int i = 0; i < 8; i++) g_apPass += A[esp_random() % (sizeof A - 1)];
-    WiFi.mode(WIFI_AP_STA);  // the home connection stays up next to the hotspot
-    WiFi.softAP(AP_SSID, g_apPass.c_str());
-    g_dns.start(53, "*", WiFi.softAPIP());  // captive portal: every name -> us
-    g_web.begin();
-  } else {
+  if (g_webOn) {  // stop what runs now (also before switching mode)
     g_web.stop();
-    g_dns.stop();
-    WiFi.softAPdisconnect(true);
+    if (!g_webHome) { g_dns.stop(); WiFi.softAPdisconnect(true); }
     g_jr = JR_NONE;
     g_retryAt = millis();  // background joining resumes
+    g_webOn = false;
   }
-  g_webOn = on;
-  Serial.printf("[net] hotspot %s\n", on ? "on" : "off");
+  if (on) {
+    if (!home) {
+      for (uint32_t t0 = millis(); g_ns == NS_SCAN && millis() - t0 < SCAN_TIMEOUT_MS; delay(50)) net_sta_step();
+      // The page's network list. Scanning while softAP() starts crashed the Wi-Fi driver on core 3.3.12,
+      // so the scan is taken here, just before (about 3 s).
+      if (g_ns == NS_IDLE) store_scan(WiFi.scanNetworks());
+      static const char A[] = "abcdefghjkmnpqrstuvwxyz23456789";  // no 0/o, 1/l/i: read off e-paper, typed by hand
+      g_apPass = "";
+      for (int i = 0; i < 8; i++) g_apPass += A[esp_random() % (sizeof A - 1)];
+      WiFi.mode(WIFI_AP_STA);  // the home connection stays up next to the hotspot
+      WiFi.softAP(AP_SSID, g_apPass.c_str());
+      g_dns.start(53, "*", WiFi.softAPIP());  // captive portal: every name -> us
+    }
+    g_web.begin();
+    g_webHome = home;
+    g_webOn = true;
+  }
+  Serial.printf("[net] web setup %s%s\n", on ? "on " : "off", on ? (home ? "home Wi-Fi " + WiFi.localIP().toString() : String("hotspot")).c_str() : "");
 }
 
 // ---------- phone setup page (Figma 06–06f, 06l). One page; data through /api. ----------
@@ -212,6 +219,7 @@ input{width:100%;height:47px;font:inherit;padding:0 14px;border:2px solid #000;b
 .dim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:5}
 .sheet{position:fixed;left:0;right:0;top:56px;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:20px 24px;z-index:6;overflow:auto}
 .bar{display:flex;justify-content:space-between}.rb{width:44px;height:44px;border-radius:50%;border:2px solid #000;background:#fff;font-size:20px;padding:0}.rb.k{background:#000;color:#fff}
+.warn{display:flex;align-items:flex-start;gap:10px;border:2px solid #000;border-radius:8px;padding:12px 14px;margin-bottom:22px}.warn b{display:block;font-size:14px}.warn p{font-size:13px;margin:2px 0 0}
 .big{display:flex;justify-content:center;margin:36px 0 40px}.sheet h3{font-size:22px;margin:0 0 4px}.sheet p{font-size:18px;margin:0 0 40px}
 .sheet input{height:54px;border-radius:27px;padding:0 22px;font-size:17px;margin-bottom:12px}
 .al{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:300px;max-width:calc(100% - 40px);background:#fff;border:2px solid #000;border-radius:14px;z-index:8;text-align:center;overflow:hidden}
@@ -252,17 +260,19 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 .wh .col{position:relative;width:76px;height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}.wh .col::-webkit-scrollbar{display:none}.wh .col i{display:block;height:72px}
 .wh .col div{height:36px;line-height:36px;text-align:center;scroll-snap-align:center;font-size:20px;cursor:pointer}.wh .co{position:relative;line-height:180px;font-weight:700;font-size:20px}
 .nv h2{font-size:22px;margin:0 0 4px}.nv .cd{font-size:13px;text-align:right;margin:0 0 12px}.nv .bd{white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5;margin:0 0 8px}
+.r.off .ico,.r.off .n,.r.off .ch{opacity:.35}.btn+.btn{margin-top:14px}
 .emp{text-align:center;padding:40px 0}.emp b{display:block;font-size:18px;margin-bottom:8px}.emp p{font-size:14px;margin:0}.cr{font-size:13px;margin:12px 0 0}
 </style></head><body><main>
 <header><div><h1 id="ttl">HeySticky setup</h1><p id="sub">Connected to your Sticky · 192.168.4.1</p></div><button class="back" id="back" hidden aria-label="Back">‹</button></header>
-<div class="c" id="v-setup"><div class="g">
+<div class="c" id="v-setup"><div class="warn" id="warn" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg><div><b id="warn-t"></b><p id="warn-p"></p></div></div><div class="g">
 <button class="r" id="rp"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg><b class="n" id="lp">Profile</b><span id="pv"></span><span class="ch">›</span></button>
 <button class="r" id="rw"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg><b class="n">Wi-Fi</b><span id="wv"></span><span class="ch">›</span></button>
 <button class="r" id="rf"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg><b class="n" id="lf">Font book</b><span class="ch">›</span></button>
 <button class="r" id="ri"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></svg><b class="n" id="li">Integrations</b><span class="ch">›</span></button>
 <button class="r" id="rt"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg><b class="n" id="lt">To-do</b><span class="ch">›</span></button>
 <button class="r" id="rn"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><b class="n" id="ln">Notes</b><span class="ch">›</span></button>
-<button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Books</b><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
+<button class="r" id="rbk"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><b class="n" id="lb">Books</b><span class="ch">›</span></button>
+<button class="r" id="rb"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg><b class="n" id="lbg" style="flex:none">Report a bug</b><span id="bi" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg></span><span style="flex:1"></span><span class="ch">›</span></button></div><p class="foot" id="foot"></p></div>
 <form class="c" id="v-profile" hidden>
 <label for="name" id="lname">Your name</label><input id="name" maxlength="32">
 <label for="city" id="lcity">City (for weather)</label><div class="city"><input id="city" maxlength="64" autocomplete="off"><div class="sug" id="sug" hidden></div></div>
@@ -281,6 +291,7 @@ select{width:100%;height:47px;font:inherit;padding:0 40px 0 14px;border:2px soli
 <div class="c" id="v-books" hidden></div>
 <div class="c" id="v-note" hidden></div>
 <div class="c" id="v-noteed" hidden></div>
+<div class="c" id="v-bug" hidden></div>
 </main><div id="ov"></div>
 <script>
 const $=i=>document.getElementById(i),E=(t,p,...k)=>{const e=Object.assign(document.createElement(t),p||{});e.append(...k);return e};
@@ -304,7 +315,7 @@ async function load(){try{S=await(await api('/api/status')).json()}catch(e){retu
  render()}
 
 function go(v,d){view=v;det=d||'';dirty=()=>false;
- if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='books')booksView();if(v==='note')noteView();if(v==='noteed')noteEdView();
+ if(v==='setup')counts();if(v==='todo')todoView();if(v==='task')taskView();if(v==='notes')notesView();if(v==='books')booksView();if(v==='note')noteView();if(v==='noteed')noteEdView();if(v==='bug')bugView();
  if(v==='profile'){$('name').value=S.name||'';$('city').value=S.city||'';lat=lon='';$('sug').hidden=true;$('save').textContent=L('✓  Save to Sticky','✓  Lưu vào Sticky')}
  if(v==='fonts')fontsView();if(v==='addfont')addView();if(v==='integ')integView();if(v==='ai')aiView();if(v==='stt'||v==='nai')svcView(v);
  render();scrollTo(0,0)}
@@ -315,7 +326,9 @@ function nav(v,d){history.pushState(null,'');go(v,d)}
 addEventListener('popstate',()=>{if(dirty()){history.pushState(null,'');alertBox(L('Discard changes?','Bỏ thay đổi?'),L('Your changes won’t be saved.','Thay đổi sẽ không được lưu.'),L('Discard','Bỏ'),()=>{dirty=()=>false;history.back()});return}
  close();if(view==='noteed'&&det!=='new')go('note',det);else go(UP[view]||'setup')});
 $('back').onclick=()=>history.back();
-$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rb').onclick=()=>nav('books');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+$('rt').onclick=()=>nav('todo');$('rn').onclick=()=>nav('notes');$('rbk').onclick=()=>nav('books');$('rp').onclick=()=>nav('profile');$('rw').onclick=()=>nav('wifi');$('rf').onclick=()=>nav('fonts');$('ri').onclick=()=>nav('integ');
+// Report a bug opens GitHub or the email form, so the phone needs internet: on the hotspot the row is grayed (06 Pop-up).
+$('rb').onclick=()=>S.home?nav('bug'):alertBox(L('Report a bug needs internet','Báo lỗi cần internet'),L('On the Sticky, switch Web setup to Home Wi-Fi.','Trên Sticky, chuyển Cài đặt qua web sang Wi-Fi nhà.'));
 
 function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.ssid;
  const r=E('div',{className:'r'}),ck=E('span',{className:'ck'});if(o.cur)ck.append(check());
@@ -327,13 +340,17 @@ function row(n,o){const joining=S.join&&S.join.state==='busy'&&S.join.ssid===n.s
 
 function render(){
  const cur=S.cur?S.cur.ssid:'';
- for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','books'])$('v-'+v).hidden=v!==view;
+ for(const v of['setup','profile','wifi','det','fonts','addfont','integ','ai','stt','nai','todo','task','notes','note','noteed','books','bug'])$('v-'+v).hidden=v!==view;
  $('back').hidden=view==='setup';$('sub').hidden=view!=='setup';
  $('ttl').textContent={setup:L('HeySticky setup','Cài đặt HeySticky'),profile:L('Profile','Hồ sơ'),wifi:'Wi-Fi',det,fonts:L('Font book','Sổ tay phông chữ'),addfont:L('Add font','Thêm phông'),integ:L('Integrations','Tích hợp'),ai:'AI',stt:SVC.stt(),nai:SVC.nai(),
-  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),books:L('Books','Sách')}[view];
+  todo:L('To-do','Việc cần làm'),task:det==='new'?L('New task','Việc mới'):L('Edit task','Sửa việc'),notes:L('Notes','Ghi chú'),note:L('Note','Ghi chú'),noteed:det==='new'?L('New note','Ghi chú mới'):L('Edit note','Sửa ghi chú'),books:L('Books','Sách'),
+  bug:L('Report a bug','Báo lỗi')}[view];
  const t=$('ttl');let z=26;t.style.fontSize='';while(t.scrollWidth>t.clientWidth&&z>16)t.style.fontSize=--z+'px';  // long titles shrink to fit
- $('sub').textContent=L('Connected to your Sticky · 192.168.4.1','Đã kết nối với Sticky · 192.168.4.1');
+ $('sub').textContent=L('Connected to your Sticky · ','Đã kết nối với Sticky · ')+location.hostname;
+ $('warn').hidden=!S.home;$('warn-t').textContent=L('Open on your home Wi-Fi','Đang mở trên Wi-Fi nhà');
+ $('warn-p').textContent=L('Anyone on this Wi-Fi can open this page, and it isn’t encrypted. Use it only on a Wi-Fi you trust.','Ai dùng chung Wi-Fi này đều mở được trang này, và trang không được mã hoá. Chỉ dùng trên Wi-Fi bạn tin cậy.');
  const cnt=n=>n>=0?' ('+n+')':'';$('lt').textContent=L('To-do','Việc cần làm')+cnt(C.todo);$('ln').textContent=L('Notes','Ghi chú')+cnt(C.notes);$('lb').textContent=L('Books','Sách')+cnt(C.books);
+ $('lbg').textContent=L('Report a bug','Báo lỗi');$('rb').classList.toggle('off',!S.home);$('bi').hidden=!!S.home;
  $('lp').textContent=L('Profile','Hồ sơ');$('lf').textContent=L('Font book','Sổ tay phông chữ');$('li').textContent=L('Integrations','Tích hợp');
  $('foot').textContent=L('Keys are stored only on this Sticky. They are never part of the firmware file you flash or share.','Khoá chỉ được lưu trên Sticky này, không bao giờ nằm trong file firmware bạn nạp hay chia sẻ.');
  $('lname').textContent=L('Your name','Tên của bạn');$('lcity').textContent=L('City (for weather)','Thành phố (cho thời tiết)');
@@ -672,17 +689,26 @@ async function booksView(){const v=$('v-books'),d=UPL?{books:[]}:await getJ('/ap
  const note=E('p',{className:'note',style:'margin-top:12px',textContent:L('EPUB, TXT or MD. Books go into /books/ on the card. Read them on the Sticky: Apps › Reader.','EPUB, TXT hoặc MD. Sách được lưu vào /books/ trên thẻ. Đọc trên Sticky: Ứng dụng › Đọc.')});
  if(!rows.length){v.replaceChildren(add,file,empty(L('No books yet','Chưa có sách'),L('Upload EPUB, TXT or MD files here, or copy them into /books/ on the card.','Tải tệp EPUB, TXT hoặc MD lên ở đây, hoặc chép vào /books/ trên thẻ.')));add.style.margin='0 0 22px';return}
  v.replaceChildren(E('div',{className:'g'},...rows),add,file,note)}
+// ---------- Report a bug (06u): the Sticky gives the report ID and the link; the phone opens it ----------
+function bugView(){
+ const b=(t,via)=>{const x=E('button',{className:'btn',textContent:t});
+  x.onclick=async()=>{x.disabled=true;let d=null;try{const r=await api('/api/report',{via});if(r.ok)d=await r.json()}catch(e){}x.disabled=false;
+   if(!d)return alertBox(L('Couldn\'t reach the Sticky','Không kết nối được Sticky'));if(via==='mail'||!window.open(d.url,'_blank'))location.href=d.url};return x};
+ $('v-bug').replaceChildren(E('p',{style:'margin:0 0 22px',textContent:L('Tell the AI on your Sticky: hold the top button and say what went wrong.','Nói với AI trên Sticky: giữ nút trên cùng và nói lỗi gặp phải.')}),
+  b(L('Report on GitHub','Báo lỗi trên GitHub'),'gh'),b(L('Report by email','Báo lỗi qua email'),'mail'))}
 load();counts();setInterval(load,1500);
 </script></body></html>)HTML";
 
-// The page and its API answer only on the hotspot's own address, never on the home network.
-inline bool ap_only() {
-  if (g_web.client().localIP() == WiFi.softAPIP()) return true;
+// The page and its API answer only on the address 04j chose: the hotspot's, or (Home Wi-Fi) the home network's.
+inline IPAddress web_ip() { return g_webHome ? WiFi.localIP() : WiFi.softAPIP(); }
+inline bool web_local() { return g_webOn && g_web.client().localIP() == web_ip(); }
+inline bool web_ok() {
+  if (web_local()) return true;
   g_web.send(404, "text/plain", "Not found");
   return false;
 }
 inline void font_send(const uint8_t *d, size_t n) {  // the page's web font; same bytes until the firmware changes
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   g_web.sendHeader("Cache-Control", "max-age=86400");
   g_web.send_P(200, "font/woff", (PGM_P)d, n);
 }
@@ -702,7 +728,7 @@ inline bool text_ok(const String &s, size_t maxLen) {
 }
 
 inline void api_status() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   g_webSeen = millis();
   JsonDocument d;
   d["name"] = cfg_get("name");
@@ -724,6 +750,7 @@ inline void api_status() {
   }
   d["scanning"] = g_ns == NS_SCAN;
   d["wifi_on"] = g_wifiOn;
+  d["home"] = g_webHome;  // 04j Home Wi-Fi: the page shows its warning
   d["lang"] = g_vi ? "vi" : "en";
   d["font"] = cfg_get("font");
   if (g_jr != JR_NONE) {
@@ -738,7 +765,7 @@ inline void api_reply(int code, const char *msg) { g_web.send(code, "text/plain"
 
 // Test-join: the hotspot stays up, the result is read from /api/status. A saved network needs no password.
 inline void api_join() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   String ssid = g_web.arg("ssid"), pass = g_web.arg("pass");
   if (ssid.isEmpty() || !text_ok(ssid, 32) || !text_ok(pass, 63)) return api_reply(400, "Invalid input");
   if (g_ns == NS_SCAN) return api_reply(409, "Busy");
@@ -752,7 +779,7 @@ inline void api_join() {
 }
 
 inline void api_forget() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   const String ssid = g_web.arg("ssid");
   if (!wl_forget(g_wifi, ssid)) return api_reply(404, "Not saved");
   wifi_save();
@@ -768,7 +795,7 @@ inline void api_forget() {
 
 // Name + city. lat/lon only as numbers in range, both or neither (a picked suggestion). No restart.
 inline void api_save() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   String name = g_web.arg("name"), city = g_web.arg("city"), lat = g_web.arg("lat"), lon = g_web.arg("lon");
   name.trim(); city.trim();
   char *e1 = nullptr, *e2 = nullptr;
@@ -790,7 +817,7 @@ inline void api_save() {
 
 // Refresh of the network list while the hotspot runs.
 inline void api_scan() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   if (g_ns != NS_IDLE) return api_reply(409, "Busy");
   WiFi.scanNetworks(true);
   g_scanOnly = true;
@@ -801,7 +828,7 @@ inline void api_scan() {
 
 // ---------- user fonts (06m, 06n): the phone converts, the Sticky only stores and checks ----------
 inline void api_fonts() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   JsonDocument d;
   d["cur"] = cfg_get("font");
   d["sd"] = g_sdOk;
@@ -820,7 +847,7 @@ inline void api_font_part() {
   const String tmp = font_path(name, slot.c_str(), ".tmp");
   if (u.status == UPLOAD_FILE_START) {
     g_upN = 0;
-    g_upOk = g_web.client().localIP() == WiFi.softAPIP() && g_sdOk && font_name_ok(name) && font_slot_ok(slot);
+    g_upOk = web_local() && g_sdOk && font_name_ok(name) && font_slot_ok(slot);
     if (g_upOk) { SD.mkdir("/fonts"); SD.mkdir("/fonts/" + name); g_upFile = SD.open(tmp, FILE_WRITE); g_upOk = bool(g_upFile); }
   } else if (u.status == UPLOAD_FILE_WRITE) {
     g_upN += u.currentSize;
@@ -837,7 +864,7 @@ inline void api_font_part() {
   }
 }
 inline void api_font_done() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   if (g_upOk && cfg_get("font") == g_web.arg("name") && g_web.arg("slot") == FONT_SLOTS[FONT_SLOTS_N - 1].file) {
     font_apply(g_web.arg("name"));  // the font in use was replaced: take the new files after the last slot
     g_pageDirty = true;
@@ -847,13 +874,13 @@ inline void api_font_done() {
 }
 
 inline void api_font_del() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   api_reply(font_delete(g_web.arg("name")) ? 200 : 400, "");
 }
 
 // City suggestions through the Sticky's own Wi-Fi (the phone on the hotspot has no internet).
 inline void api_city() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   String q = g_web.arg("q");
   q.trim();
   if (q.length() < 2 || !text_ok(q, 64)) return api_reply(400, "Invalid input");
@@ -907,7 +934,7 @@ inline bool notes_ok(const String &s) {  // multi-line text: line breaks and tab
 }
 
 inline void api_ai_get() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   JsonDocument d;
   d["stt_url"] = cfg_get("stt_url", AI_URL_DEF);
   d["stt_model"] = cfg_get("stt_model", STT_MODEL_DEF);
@@ -933,7 +960,7 @@ inline void api_ai_get() {
 
 // 06h2 toggles save as they flip; note instructions (only when sent) go to the card, written as .tmp then renamed.
 inline void api_ai_opts() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   if (g_web.hasArg("notes")) {
     const String notes = g_web.arg("notes");
     if (!notes_ok(notes)) return api_reply(400, "Invalid input");
@@ -960,7 +987,7 @@ inline void api_ai_opts() {
 
 // 06h4: forget one service's URL, model, key and provider choice.
 inline void api_ai_del() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   const String p = g_web.arg("svc") == "stt" ? "stt_" : "ai_";
   for (const char *k : {"url", "model", "key", "order", "auto", "sort"}) cfg_del((p + k).c_str());  // "auto": the old 06h2 switch
   api_reply(200, "OK");
@@ -968,7 +995,7 @@ inline void api_ai_del() {
 
 inline void wifi_set_on(bool on);
 inline void api_wifi_on() {  // 06b switch, saved as it flips
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   const String v = g_web.arg("on");
   if (v != "0" && v != "1") return api_reply(400, "Invalid input");
   wifi_set_on(v == "1");
@@ -994,7 +1021,7 @@ inline bool net_begin() {
   g_bootClock = time(nullptr) - millis() / 1000;
   sntp_set_time_sync_notification_cb([](timeval *tv) { g_ntpOk = true; g_netTime = tv->tv_sec; });
   g_web.on("/", HTTP_GET, [] {
-    if (!ap_only()) return;
+    if (!web_ok()) return;
     g_web.sendHeader("Cache-Control", "no-store");  // a new firmware's page shows on the next reload
     g_web.send_P(200, "text/html; charset=utf-8", PAGE);
   });
@@ -1015,17 +1042,17 @@ inline bool net_begin() {
   g_web.on("/api/ai_del", HTTP_POST, api_ai_del);
   g_web.on("/api/ai_test", HTTP_POST, api_ai_test);
   g_web.onNotFound([] {  // captive portal: any other address -> the page
-    if (!ap_only()) return;
-    g_web.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/");
+    if (!web_ok()) return;
+    g_web.sendHeader("Location", "http://" + web_ip().toString() + "/");
     g_web.send(302, "text/plain", "");
   });
   Serial.printf("[net] %d saved network(s)\n", g_wifi.count);
-  if (!g_wifi.count) net_hotspot(true);
+  if (!g_wifi.count) net_web(true);
   return g_wifi.count > 0;
 }
 
 // ---------- HTTPS JSON (certificates checked against the core's built-in root CA bundle) ----------
-inline bool http_json(const String &url, JsonDocument &doc) {
+inline bool http_json(const String &url, JsonDocument &doc, const JsonDocument *filter) {  // filter: keep only these fields
   NetworkClientSecure tls;
   tls.useBuiltinCACertBundle();
   HTTPClient http;
@@ -1038,7 +1065,8 @@ inline bool http_json(const String &url, JsonDocument &doc) {
     const long long t = http_date(http.header("Date").c_str());
     if (t > 1700000000LL) { timeval tv = {time_t(t), 0}; settimeofday(&tv, nullptr); g_netTime = t; }
   }
-  const bool ok = code == 200 && !deserializeJson(doc, http.getString());
+  const bool ok = code == 200 && !(filter ? deserializeJson(doc, http.getString(), DeserializationOption::Filter(*filter))
+                                          : deserializeJson(doc, http.getString()));
   if (!ok) Serial.printf("[http] %d %s\n", code, url.c_str());
   http.end();
   return ok;

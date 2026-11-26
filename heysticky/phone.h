@@ -1,4 +1,4 @@
-// Phone setup page: To-do (06o / 06p), Notes (06q / 06r) and Books (06s) API. The pages are in PAGE (net.h).
+// Phone setup page: To-do (06o / 06p), Notes (06q / 06r), Books (06s) and Report a bug (06u) API. The pages are in PAGE (net.h).
 // Runs on the main loop (WebServer is polled from net_loop), so the card is never used by two tasks at once.
 // A task is addressed by its line index plus the line as the phone saw it ("was"): if the Sticky changed the
 // list meanwhile, the phone gets 409 and reloads instead of editing the wrong line.
@@ -13,7 +13,10 @@ inline void phone_json(JsonDocument &d) {
   g_web.sendHeader("Cache-Control", "no-store");
   g_web.send(200, "application/json", s);
 }
-inline bool phone_card() {  // 503 = no card; the page says "Put a microSD card in the Sticky first."
+// Every To-do / Notes call starts here: only on the address 04j chose (web_ok: 404 on the other network), then
+// 503 = no card; the page says "Put a microSD card in the Sticky first."
+inline bool phone_card() {
+  if (!web_ok()) return false;
   if (g_sdOk || sd_mount()) return true;
   g_web.send(503, "text/plain", "no card");
   return false;
@@ -28,6 +31,7 @@ inline String one_line_arg(const char *k, unsigned max) {
 
 // ---------- To-do ----------
 inline void api_counts() {  // 06 Setup rows: "To-do (n)" = open tasks, "Notes (n)"
+  if (!web_ok()) return;
   JsonDocument d;
   d["todo"] = g_sdOk ? todo_left(g_tasks) : -1;
   d["notes"] = g_sdOk && notes_scan() ? int(g_notes.size()) : -1;
@@ -181,7 +185,7 @@ inline void api_book_part() {
   const String name = g_web.arg("name"), path = String(BOOKS_DIR) + "/" + name, part = String(READER_DIR) + "/upload.part";
   if (u.status == UPLOAD_FILE_START) {
     g_bookN = 0;
-    g_bookOk = g_web.client().localIP() == WiFi.softAPIP() && (g_sdOk || sd_mount()) && book_name_ok(name);
+    g_bookOk = web_local() && (g_sdOk || sd_mount()) && book_name_ok(name);
     if (g_bookOk) { SD.mkdir(BOOKS_DIR); SD.mkdir(READER_DIR); g_bookUp = SD.open(part, FILE_WRITE); g_bookOk = bool(g_bookUp); }
   } else if (u.status == UPLOAD_FILE_WRITE) {
     g_bookN += u.currentSize;
@@ -198,20 +202,31 @@ inline void api_book_part() {
   }
 }
 inline void api_book_done() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   if (g_bookOk) g_phoneBooks = true;
   g_web.send(g_bookOk ? 200 : 400, "text/plain", g_bookOk ? "OK" : "Upload failed");
   g_bookOk = false;
 }
 
 inline void api_book_del() {
-  if (!ap_only() || !phone_card()) return;
+  if (!phone_card()) return;
   const String name = g_web.arg("name"), path = String(BOOKS_DIR) + "/" + name;
   if (!book_name_ok(name) || !SD.exists(path)) return g_web.send(404, "text/plain", "gone");
   rd::forget(path);
   if (!SD.remove(path)) return g_web.send(503, "text/plain", "no card");
   g_phoneBooks = true;
   g_web.send(200, "text/plain", "ok");
+}
+
+// ---------- Report a bug ----------
+// 06u Report on GitHub / by email: a new report ID and the link to open.
+inline void api_report() {
+  if (!web_ok()) return;
+  const Report r{report_id(esp_random()), ""};  // not g_bug: the Sticky may be showing its own draft
+  JsonDocument d;
+  d["id"] = r.id;
+  d["url"] = g_web.arg("via") == "mail" ? report_mail_url(r, "", g_vi) : report_gh_url(r, "", g_vi);
+  phone_json(d);
 }
 
 inline void phone_begin() {
@@ -226,6 +241,7 @@ inline void phone_begin() {
   g_web.on("/api/books", HTTP_GET, api_books);
   g_web.on("/api/book", HTTP_POST, api_book_done, api_book_part);
   g_web.on("/api/book_del", HTTP_POST, api_book_del);
+  g_web.on("/api/report", HTTP_POST, api_report);
 }
 
 // The Sticky shows what the phone changed: a list (or Home's Today count) redraws; a task or note screen,

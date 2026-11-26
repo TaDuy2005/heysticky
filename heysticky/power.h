@@ -1,4 +1,4 @@
-// TASK-11 Power. Sleep after (04l): idle -> Home with the moon (01b/01d), then light sleep.
+// TASK-11 Power. Auto-sleep (04l): idle -> Home with the moon (01b/01d), then light sleep.
 // Asleep: Wi-Fi and touch off, CPU at 80 MHz; a timer wakes it each minute for the clock and every
 // hour Wi-Fi comes on for weather + NTP; each wake re-reads the RTC (light sleep's clock drifts). Only the top button wakes it fully, to Home.
 #pragma once
@@ -195,9 +195,9 @@ inline void power_loop() {
   else if (!both) both = millis() | 1;
   else if (millis() - both >= OFF_HOLD_MS) power_off(false);
   if (millis() - batAt >= 60000 && g_ota != OTA_INSTALLING) { batAt = millis(); if (battery_empty()) power_off(true); }
-  if (g_webOn && millis() - g_webSeen >= WEB_IDLE_MS && millis() - g_lastInput >= WEB_IDLE_MS) {  // phone gone: hotspot off
+  if (g_webOn && millis() - g_webSeen >= WEB_IDLE_MS && millis() - g_lastInput >= WEB_IDLE_MS) {  // phone gone: web setup off (either mode)
     Serial.println("[net] no phone for 5 min");
-    net_hotspot(false);
+    net_web(false);
     if (g_screen == SCR_WEBSETUP) g_redraw = true;
   }
   if (may_sleep()) power_sleep();

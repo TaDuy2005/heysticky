@@ -56,7 +56,7 @@ minute and the weather every 60 min. UP + DOWN shuts it down; it turns itself of
 <tr>
 <td><img src="assets/screens/settings.png" alt="Settings" width="200"></td>
 <td><b>Settings.</b> Sound (volume Low / Medium / High), Language &amp; Font, Software Update, Configuration (city,
-timezone, °C / °F), Sleep after, Web setup, About (SN, MAC, version, SD card and its files).</td>
+timezone, °C / °F), Auto-sleep, Web setup, Report a bug, About (SN, MAC, version, SD card and its files).</td>
 </tr>
 <tr>
 <td><img src="assets/screens/home-vi.png" alt="Home in Vietnamese" width="200"></td>
@@ -70,26 +70,42 @@ temperature and humidity, and today's to-do count. User fonts can be added from 
 new version fails to start. Notes, to-dos and settings stay.</td>
 </tr>
 <tr>
-<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
-<img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
-<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). The Sticky
-starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
+<td><img src="assets/screens/web-setup.png" alt="Web setup on the Sticky: Hotspot and Home Wi-Fi buttons, QR code, hotspot name and password, 192.168.4.1" width="200"><br><br>
+<img src="assets/screens/web-setup-home-wifi.png" alt="Web setup on the Sticky with Home Wi-Fi picked: QR code and 192.168.1.42 on the home network" width="200"></td>
+<td><b>Web setup.</b> Turn it on in Settings (it opens by itself on first start, with no Wi-Fi saved). Two buttons
+at the top pick how your phone connects: <b>Hotspot</b> or <b>Home Wi-Fi</b>. Web setup turns itself off after
+5 min without the phone.
+<br><br>
+<b>Hotspot.</b> The Sticky starts its own hotspot, <code>HeySticky-Setup</code>, with a new random password each time (the one in the picture
 is an example). Scan the QR code to join, then open <code>192.168.4.1</code>, or let the page open by itself.
 <br><br>
-<b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
-offline), fonts, AI keys, and the To-do, Notes and Books pages. Web setup turns itself off after 5 min without the
-phone.</td>
+<b>Home Wi-Fi.</b> Once the Sticky is on your Wi-Fi, pick <b>Home Wi-Fi</b> instead of Hotspot: after a
+warning (anyone on that Wi-Fi can open the page, and it is not encrypted) it shows a QR code and its address on
+your network, for example <code>192.168.1.42</code>. Your phone stays on your Wi-Fi.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/phone-setup.png" alt="Phone setup page" width="200"></td>
+<td><b>Phone setup page.</b> Name, city, Wi-Fi (up to 5 networks, joined automatically, or a switch to stay
+offline), fonts, AI keys, the To-do, Notes and Books pages, and Report a bug (greyed out on the hotspot, since it needs
+internet).</td>
 </tr>
 <tr>
 <td><img src="assets/screens/phone-todo.png" alt="Phone To-do page" width="200"><br><br>
 <img src="assets/screens/phone-notes.png" alt="Phone Notes page" width="200"></td>
-<td><b>Phone To-do and Notes pages.</b> On the Sticky's own hotspot: add, edit, tick and delete; the Sticky
+<td><b>Phone To-do and Notes pages.</b> On the Sticky's hotspot or your home Wi-Fi: add, edit, tick and delete; the Sticky
 redraws at once.</td>
 </tr>
 <tr>
 <td><img src="assets/screens/phone-books.png" alt="Phone Books page" width="200"></td>
 <td><b>Phone Books page.</b> Upload EPUB, TXT or MD books to the card (several at once, with progress) and
 delete them. Or copy them into <code>/books/</code> with the card in a computer.</td>
+</tr>
+<tr>
+<td><img src="assets/screens/report-bug.png" alt="Report a bug" width="200"></td>
+<td><b>Report a bug.</b> In Settings, hold the top button and tell the AI what went wrong, or tap GitHub or Email
+and scan the QR code with your phone. GitHub opens a new issue and Email opens your mail app to
+<code>heystickyreport@gmail.com</code>, both already filled in with the report and its number (HS-XXXX); an email
+gets an automatic reply. The phone setup page has the same two buttons. Your phone needs internet.</td>
 </tr>
 </table>
 
@@ -118,7 +134,8 @@ delete them. Or copy them into <code>/books/</code> with the card in a computer.
 3. Set **Profile** (name, city) and **Wi-Fi**. Turn Web setup off on the Sticky when done.
 
 Wi-Fi passwords and settings are kept in the Sticky's flash only. They are never in the source or the `.bin`,
-and the setup page is served only on the Sticky's own password-protected hotspot.
+and the setup page is served on the Sticky's own password-protected hotspot, or on your home Wi-Fi only after
+you choose Home Wi-Fi and accept its warning (plain HTTP: use it only on a Wi-Fi you trust).
 
 ## AI setup
 
@@ -209,14 +226,17 @@ update can never change later. Host tests for the data formats:
 for t in notes todo settings wifi reader; do c++ -std=c++17 -I heysticky tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
 
-The AI test also needs ArduinoJson (installed by the build profile):
+The AI and report tests also need ArduinoJson (installed by the build profile):
 
 ```bash
-c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/ai_test.cpp -o /tmp/ai_test && /tmp/ai_test
+for t in ai report; do c++ -std=c++17 -I heysticky -I "$(ls -d ~/Library/Arduino15/internal/ArduinoJson_7.4.3_*/ArduinoJson/src)" tools/${t}_test.cpp -o /tmp/${t}_test && /tmp/${t}_test; done
 ```
 
+Report a bug opens GitHub's New issue page or the phone's mail app (to `heystickyreport@gmail.com`, where a Gmail
+filter sends the auto reply), both filled in.
+
 Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTFs in `fonts/`) and
-`python3 tools/make_icons.py` (PNGs in `tools/icons/`). `PLAN.md` is the full design and behaviour spec.
+`python3 tools/make_icons.py` (PNGs in `tools/icons/`).
 
 ### Releasing an update
 
@@ -229,14 +249,14 @@ Fonts and icons are generated: `python3 tools/make_fonts.py` (JetBrains Mono TTF
 
 The full list with details is in [ROADMAP.md](ROADMAP.md).
 
-- **Released:** v1.0 dashboard, To-do, Notes, phone setup, updates over Wi-Fi · v1.1 AI voice · v1.2 phone To-do
-  and Notes pages, RTC clock, 12-hour times.
-- **Next, v1.3.0 Poster:** one task shown big as a poster with your own picture, set up and pushed from the phone.
-- **Then:** choose and arrange the Home cards (widgets).
-- **Reader:** built on `feature/reader` (EPUB, TXT, MD; phone upload). PDF later.
-- **Integrations:** Notion daily sync, Home Assistant, deadline reminders, remote access.
-- **iPhone app over Bluetooth:** to-dos, notes and fonts without the hotspot.
-- **Power:** measure a night on battery, then decide on hourly deep sleep on Home.
+- [Poster](ROADMAP.md#poster)
+- [Reader](ROADMAP.md#reader)
+- [Home widgets](ROADMAP.md#home-widgets)
+- [Home Assistant](ROADMAP.md#home-assistant)
+- [Notion daily sync](ROADMAP.md#notion-daily-sync)
+- [Remote access](ROADMAP.md#remote-access)
+- [iPhone app over Bluetooth](ROADMAP.md#iphone-app-over-bluetooth)
+- [Considering features](ROADMAP.md#considering-features)
 
 ## Credits and licences
 

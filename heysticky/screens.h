@@ -15,7 +15,8 @@ enum Screen : uint8_t { SCR_HOME, SCR_APPS, SCR_WEBSETUP, SCR_TODO, SCR_TASK, SC
                        SCR_NOTES, SCR_NOTE, SCR_DELNOTE, SCR_DISCARD,
                        SCR_LIBRARY, SCR_BOOK, SCR_CONTENTS, SCR_BOOKERR, SCR_RDNOSD, SCR_LISTEN, SCR_WORKING, SCR_REVIEW, SCR_DONE, SCR_FAILED,
                        SCR_SETTINGS, SCR_CONFIG, SCR_TEMP, SCR_ABOUT, SCR_SDCARD, SCR_FILES, SCR_UPDATE,
-                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND };  // Settings last
+                       SCR_LANGFONT, SCR_SYSLANG, SCR_USERFONT, SCR_SLEEP, SCR_SOUND,
+                       SCR_BUGNEW, SCR_BUGGH, SCR_BUGMAIL, SCR_BUGREVIEW };  // Settings last
 inline Screen g_screen = SCR_HOME;
 
 // ---------- shared state shown on Home ----------
@@ -200,7 +201,7 @@ inline int apps_hit(int x, int y) {
 
 // ---------- navigation ----------
 inline Screen g_discardBack = SCR_TASK;  // 02j Cancel returns here
-inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Sleep after counts from here
+inline uint32_t g_lastInput = 0;  // millis() of the last touch or button: Auto-sleep counts from here
 inline bool g_redraw = false, g_timeDirty = false;  // redraw the current screen with one partial refresh (batched taps)
 
 inline void draw_screen() {
@@ -235,6 +236,10 @@ inline void draw_screen() {
     case SCR_USERFONT: draw_userfont(); break;
     case SCR_SLEEP: draw_sleep(); break;
     case SCR_SOUND: draw_sound(); break;
+    case SCR_BUGNEW: draw_bugnew(); break;
+    case SCR_BUGGH: draw_bugqr(false); break;
+    case SCR_BUGMAIL: draw_bugqr(true); break;
+    case SCR_BUGREVIEW: draw_bugreview(); break;
     case SCR_LISTEN: draw_listen(); break;
     case SCR_WORKING: draw_working(); break;
     case SCR_REVIEW: draw_review(); break;
@@ -303,6 +308,8 @@ inline Screen settings_parent() {  // DOWN / swipe right goes up one level
     case SCR_SDCARD: return SCR_ABOUT;
     case SCR_FILES: return SCR_SDCARD;
     case SCR_SYSLANG: case SCR_USERFONT: return SCR_LANGFONT;
+    case SCR_BUGREVIEW: return SCR_BUGNEW;
+    case SCR_BUGGH: case SCR_BUGMAIL: return g_bugBody.length() ? SCR_BUGREVIEW : SCR_BUGNEW;  // the AI's report stays
     default: return SCR_SETTINGS;  // Configuration, About, Web setup
   }
 }
@@ -436,7 +443,8 @@ inline void settings_tap(int x, int y) {
     case SR_SOUND: hw_beep(); show(SCR_SOUND); break;
     case SR_CONFIG: hw_beep(); show(SCR_CONFIG); break;
     case SR_SLEEP: hw_beep(); show(SCR_SLEEP); break;
-    case SR_WEB: hw_beep(); show(SCR_WEBSETUP); break;
+    case SR_WEB: hw_beep(); g_wsNote = WS_NONE; show(SCR_WEBSETUP); break;
+    case SR_BUG: hw_beep(); show(SCR_BUGNEW); break;
     case SR_ABOUT: hw_beep(); show(SCR_ABOUT); break;
     case SR_UPDATE: hw_beep(); show(SCR_UPDATE); break;
     case SR_LANG: hw_beep(); show(SCR_LANGFONT); break;
@@ -455,11 +463,38 @@ inline void sound_tap(int x, int y) {
   g_redraw = true;
 }
 
+inline void websetup_hotspot() {  // On (or back from Home Wi-Fi): scans first (about 3 s), new password each time
+  draw_websetup(true);
+  ui_partial(0, 0, W, H);  // show On + Loading... before the start
+  net_web(true);
+}
+
+// 04j: toggle; then Hotspot | Home Wi-Fi (Home Wi-Fi asks first: warning, or "No Wi-Fi").
 inline void websetup_tap(int x, int y) {
-  if (!top_right(x, y)) return;
-  hw_beep();
-  if (!g_webOn) { draw_websetup(true); ui_partial(0, 0, W, H); }  // show On + Loading... before the ~3 s start
-  net_hotspot(!g_webOn);  // On: scans first (about 3 s), new password each time
+  const WsNote note = ws_note();
+  if (top_right(x, y)) {
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (g_webOn) net_web(false);
+    else websetup_hotspot();  // always starts on Hotspot
+  } else if (!g_webOn) {
+    return;
+  } else if (in(x, y, 40, 128, 194, 67) && ws_home()) {  // Hotspot
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (g_webHome) websetup_hotspot();
+  } else if (in(x, y, 246, 128, 194, 67) && !ws_home()) {  // Home Wi-Fi: the hotspot runs until Turn on
+    hw_beep();
+    g_wsNote = WiFi.status() == WL_CONNECTED ? WS_WARN : WS_NOWIFI;
+  } else if (note && in(x, y, 40, 705, 400, 79)) {
+    hw_beep();
+    g_wsNote = WS_NONE;
+    if (note == WS_WARN && x < 240) net_web(true, true);  // Turn on
+    else if (g_webHome) websetup_hotspot();                // Use Hotspot after Home Wi-Fi lost its network
+    // Cancel / Use Hotspot from the notice: the hotspot never stopped
+  } else {
+    return;
+  }
   g_redraw = true;
 }
 
@@ -504,6 +539,25 @@ inline void update_tap(int x, int y) {  // Check / Install / Try again; both blo
   if (install) ota_install(update_redraw);
   else ota_check();
   g_redraw = true;
+}
+
+// ---------- 04p-04t Report a bug ----------
+inline void bugnew_tap(int x, int y) {  // the first card is the top button, not a tap
+  for (int i = 1; i < 3; i++)
+    if (in(x, y, 40, BUGOPT_Y + i * BUGOPT_STEP, 400, BUGOPT_H)) { hw_beep(); bug_draft(); show(i == 1 ? SCR_BUGGH : SCR_BUGMAIL); }
+}
+
+inline void bugqr_tap(int x, int y) {  // Done: back to 04t
+  if (!in(x, y, 40, 705, 400, 79)) return;
+  hw_beep();
+  g_bugBody = "";
+  show(SCR_BUGNEW);
+}
+
+inline void bugreview_tap(int x, int y) {  // one ID for this report, whichever way it is sent
+  if (in(x, y, 40, 619, 193, 72)) { hw_beep(); show(SCR_BUGGH); }
+  else if (in(x, y, 247, 619, 193, 72)) { hw_beep(); show(SCR_BUGMAIL); }
+  else if (in(x, y, 40, 705, 400, 79)) { hw_beep(); g_bugBody = ""; show(SCR_BUGNEW); }  // then hold the top button again
 }
 
 inline void notes_tap(int x, int y) {
@@ -594,9 +648,14 @@ inline size_t g_lastWav = 0;                    // the take, kept for Try again 
 
 inline bool ai_screen(Screen s) { return s >= SCR_LISTEN && s <= SCR_FAILED; }
 
+inline bool g_bugTake = false;  // the take started on 04t / 04r: a bug report, back to 04t
+
 inline void listen_start() {
   if (g_screen == SCR_WORKING || !mic_start()) { hw_beep(BEEP_MS, 1200); return; }  // the job still reads the last take
-  if (!ai_screen(g_screen)) g_listenBack = g_screen;
+  if (!ai_screen(g_screen)) {
+    g_bugTake = g_screen == SCR_BUGNEW || g_screen == SCR_BUGREVIEW;
+    g_listenBack = g_bugTake ? SCR_BUGNEW : g_screen;
+  }
   show(SCR_LISTEN);  // recording already runs in the mic task during this full refresh
 }
 
@@ -609,7 +668,7 @@ inline void ai_fail(AiFail f, int code) {
 }
 
 inline void ai_begin() {  // 05a opens with Heard you ticked; the calls run in their task
-  const AiFail f = ai_start(g_lastWav);
+  const AiFail f = ai_start(g_lastWav, g_bugTake);
   if (f) return ai_fail(f, 0);
   g_aiStep = 1;
   show(SCR_WORKING);
@@ -673,6 +732,7 @@ inline void working_loop() {
   }
   if (g_job.fail) return ai_fail(g_job.fail, g_job.code);
   g_aiText = g_job.text;
+  if (g_job.r.kind == AI_BUG) { bug_draft(g_job.r.note.title, g_job.r.note.body); hw_beep(); show(SCR_BUGREVIEW); return; }
   g_aiSecs = mic_seconds();
   if (g_job.r.kind == AI_NOTE && g_job.cfg.plain) {  // 06h Plain text: your words, minus what the fonts can't draw
     g_job.r.note = plain_note(g_aiText);
@@ -781,6 +841,9 @@ inline void on_touch_up(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     case SCR_USERFONT: userfont_tap(y0); return;
     case SCR_SLEEP: sleep_tap(y0); return;
     case SCR_SOUND: sound_tap(x0, y0); return;
+    case SCR_BUGNEW: bugnew_tap(x0, y0); return;
+    case SCR_BUGGH: case SCR_BUGMAIL: bugqr_tap(x0, y0); return;
+    case SCR_BUGREVIEW: bugreview_tap(x0, y0); return;
     case SCR_HOME:
       if (in(x0, y0, 40, 561, 400, 72)) { hw_beep(); open_todo(); }
       return;

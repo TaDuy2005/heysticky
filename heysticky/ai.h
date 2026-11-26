@@ -71,9 +71,9 @@ inline int ai_transcribe(const AiCfg &c, size_t wavSize, String &text) {
   return code;
 }
 
-// Transcript -> to-dos / note / unsure.
-inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, AiResult &r) {
-  const String body = ai_body(c.model, c.route, g_vi, now, c.instr, transcript);
+// Transcript -> to-dos / note / unsure, or (bug: 04t Tell the AI) a bug report.
+inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, AiResult &r, bool bug = false) {
+  const String body = ai_body(c.model, c.route, g_vi, now, c.instr, transcript, bug);
   String reply;
   const int code = ai_post(c.url + "/chat/completions", c.key, "application/json", (const uint8_t *)body.c_str(), body.length(), reply);
   if (code == 200) {
@@ -88,7 +88,7 @@ inline int ai_sort(const AiCfg &c, const String &transcript, const String &now, 
 // Runs inside the web handler, so the page waits on "Testing…" (up to AI_TIMEOUT_MS).
 // Reply: {"code": HTTP status or < 0, "msg": the service's error text} or {"why": "stt"|"wifi"} when nothing was sent.
 inline void api_ai_test() {
-  if (!ap_only()) return;
+  if (!web_ok()) return;
   const bool stt = g_web.arg("svc") == "stt";
   String url = g_web.arg("url"), model = g_web.arg("model"), key = g_web.arg("key"), order = g_web.arg("order"), sort = g_web.arg("sort");
   for (String *s : {&url, &model, &key, &order}) s->trim();
@@ -158,6 +158,7 @@ struct AiJob {
   AiResult r;
   int code = 0;
   AiFail fail = AF_NONE;
+  bool bug = false;  // 04t Tell the AI: the take is a bug report
   volatile bool done = true;
 };
 inline AiJob g_job;
@@ -169,9 +170,9 @@ inline void ai_task(void *) {
   else if (j.text.isEmpty()) j.fail = AF_EMPTY;
   else {
     Serial.printf("[ai] heard: %s\n", j.text.c_str());
-    j.code = ai_sort(j.cfg, j.text, j.now, j.r);
+    j.code = ai_sort(j.cfg, j.text, j.now, j.r, j.bug);
     if (j.code != 200) j.fail = AF_AI;
-    else if (j.r.kind == AI_BAD) j.fail = AF_REPLY;
+    else if (j.r.kind == AI_BAD || ((j.r.kind == AI_BUG) != j.bug && j.r.kind != AI_UNCLEAR)) j.fail = AF_REPLY;
     else if (j.r.kind == AI_UNCLEAR) j.fail = AF_EMPTY;  // mumbling, noise: 05d, not 05b
   }
   j.done = true;
@@ -179,8 +180,9 @@ inline void ai_task(void *) {
 }
 
 // Checks what can be checked without the network; on AF_NONE the task is running.
-inline AiFail ai_start(size_t wav) {
+inline AiFail ai_start(size_t wav, bool bug = false) {
   g_job = AiJob();
+  g_job.bug = bug;
   if (!wav || mic_seconds() < 0.5f) return g_job.fail = AF_SHORT;
   if (WiFi.status() != WL_CONNECTED) return g_job.fail = AF_NONET;
   g_job.cfg = ai_cfg();

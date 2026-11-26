@@ -1,6 +1,7 @@
 // AI requests and replies (PLAN_AI.md §4). No I/O here, so tools/ai_test.cpp checks it on the Mac.
 // Speech-to-text: OpenAI-style multipart upload, reply {"text": "..."}.
 // Sorting: OpenAI-style chat, the model answers one JSON object: todo / note / unsure.
+// Report a bug (04t Tell the AI): the same chat with BUG_PROMPT, the model answers bug / unclear.
 #pragma once
 #include <cctype>
 #include <string>
@@ -26,7 +27,22 @@ constexpr const char *AI_PROMPT =
     "(often a short Chinese, Japanese or Korean phrase, or subtitle lines like \"Thank you for watching\"). If the "
     "transcript does not read like something a person said to their to-do and notes device, reply unclear.";
 
+// 04t Tell the AI: the take becomes a public GitHub issue (04r shows it first). English for the maintainer, whatever the device language.
+constexpr const char *BUG_PROMPT =
+    "You turn one voice memo into a short bug report for HeySticky, a small e-paper to-do and notes device with Wi-Fi, "
+    "weather, a clock, voice notes and a phone setup page.\n"
+    "Reply with ONE JSON object and nothing else:\n"
+    "{\"type\":\"bug\",\"title\":\"…\",\"body\":\"…\"}  - title: what is wrong, at most 40 characters, no full stop; "
+    "body: what happened, when or after what, and what was expected, in plain first-person sentences, at most 300 characters\n"
+    "{\"type\":\"unclear\"}  - no clear meaning: mumbling, noise, filler words, or nothing about the device\n"
+    "Write in English, translating anything said in another language. The report is posted publicly: leave out names, "
+    "email addresses, phone numbers, street addresses, Wi-Fi names and passwords.\n"
+    "The transcript comes from speech-to-text, which turns mumbling or noise into fluent text in a random language "
+    "(often a short Chinese, Japanese or Korean phrase, or subtitle lines like \"Thank you for watching\"). If the "
+    "transcript does not read like someone describing a problem with their device, reply unclear.";
+
 constexpr unsigned AI_TASK_MAX = 200;  // bytes per to-do line text
+constexpr unsigned BUG_TITLE_MAX = 80, BUG_BODY_MAX = 400;  // bytes; the prompt asks for 40 / 300 characters
 
 inline const char *const DAY_NAMES[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
@@ -89,7 +105,8 @@ inline void route_chat(JsonDocument &d, const Route &r) {
 
 // now = "YYYY-MM-DD HH:MM" local.
 // vi: the device's system language; every item comes back in it, so the fonts can always draw it.
-inline String ai_body(const String &model, const Route &r, bool vi, const String &now, const String &instructions, const String &transcript) {
+// bug: 04t Tell the AI, BUG_PROMPT and the transcript only.
+inline String ai_body(const String &model, const Route &r, bool vi, const String &now, const String &instructions, const String &transcript, bool bug = false) {
   JsonDocument d;
   d["model"] = model.c_str();
   d["temperature"] = 0;
@@ -98,12 +115,15 @@ inline String ai_body(const String &model, const Route &r, bool vi, const String
   JsonArray m = d["messages"].to<JsonArray>();
   JsonObject s = m.add<JsonObject>();
   s["role"] = "system";
-  s["content"] = AI_PROMPT;
-  std::string u = std::string("Now: ") + now.c_str();
-  if (now.length() >= 10) u += std::string(" (") + DAY_NAMES[weekday(ymd_num(now))] + ")";
-  u += std::string("\nOutput language: ") + (vi ? "Vietnamese" : "English");
-  u += std::string("\nNote instructions: ") + (instructions.length() ? instructions.c_str() : "(none)");
-  u += std::string("\nTranscript: ") + transcript.c_str();
+  s["content"] = bug ? BUG_PROMPT : AI_PROMPT;
+  std::string u;
+  if (!bug) {
+    u = std::string("Now: ") + now.c_str();
+    if (now.length() >= 10) u += std::string(" (") + DAY_NAMES[weekday(ymd_num(now))] + ")";
+    u += std::string("\nOutput language: ") + (vi ? "Vietnamese" : "English");
+    u += std::string("\nNote instructions: ") + (instructions.length() ? instructions.c_str() : "(none)") + "\n";
+  }
+  u += std::string("Transcript: ") + transcript.c_str();
   JsonObject us = m.add<JsonObject>();
   us["role"] = "user";
   us["content"] = u;
@@ -118,7 +138,7 @@ inline String ai_content(const char *reply) {  // chat reply -> choices[0].messa
   return String(d["choices"][0]["message"]["content"] | "");
 }
 
-enum AiKind : uint8_t { AI_BAD, AI_TODO, AI_NOTE, AI_UNSURE, AI_UNCLEAR };
+enum AiKind : uint8_t { AI_BAD, AI_TODO, AI_NOTE, AI_UNSURE, AI_UNCLEAR, AI_BUG };  // AI_BUG: title + body in note
 struct AiResult {
   AiKind kind = AI_BAD;
   std::vector<Task> todos;
@@ -162,6 +182,10 @@ inline AiResult ai_parse(const String &content) {
     body.trim();
     r.note.body = body;
     if (r.note.title.length() || r.note.body.length()) r.kind = AI_NOTE;
+  } else if (type == "bug") {
+    r.note.title = one_line(d["title"] | "", BUG_TITLE_MAX);
+    r.note.body = one_line(d["body"] | "", BUG_BODY_MAX);
+    if (r.note.title.length() && r.note.body.length()) r.kind = AI_BUG;
   } else if (type == "unsure") {
     r.kind = AI_UNSURE;
   } else if (type == "unclear") {
